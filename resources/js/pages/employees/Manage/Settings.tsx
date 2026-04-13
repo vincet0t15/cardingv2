@@ -1,13 +1,16 @@
 import { CustomComboBox } from '@/components/CustomComboBox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Employee } from '@/types/employee';
 import type { EmploymentStatus } from '@/types/employmentStatuses';
 import type { Office } from '@/types/office';
-import { router, useForm } from '@inertiajs/react';
-import { Trash2, UploadIcon, XIcon } from 'lucide-react';
+import { router, useForm, usePage } from '@inertiajs/react';
+import { AlertTriangle, Trash2, UploadIcon, UserCheck, XIcon } from 'lucide-react';
 import { useEffect, useRef, useState, type ChangeEventHandler, type FormEventHandler } from 'react';
 import { toast } from 'sonner';
 import { DeleteEmployeeDialog } from './Settings/delete';
@@ -16,12 +19,25 @@ interface EmployeeSettingsProps {
     employee: Employee;
     employmentStatuses: EmploymentStatus[];
     offices: Office[];
+    similarEmployees?: any[];
+    warning?: string;
+    editingEmployeeId?: number | null;
 }
 
-export default function EmployeeSettings({ employee, employmentStatuses, offices }: EmployeeSettingsProps) {
+export default function EmployeeSettings({
+    employee,
+    employmentStatuses,
+    offices,
+    similarEmployees = [],
+    warning,
+    editingEmployeeId,
+}: EmployeeSettingsProps) {
+    const page = usePage();
     const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(employee.image_path || null);
     const photoPreviewUrlRef = useRef<string | null>(employee.image_path || null);
     const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+    const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+    const [pendingUpdate, setPendingUpdate] = useState(false);
 
     const { data, setData, post, errors, processing } = useForm({
         first_name: employee.first_name || '',
@@ -43,6 +59,14 @@ export default function EmployeeSettings({ employee, employmentStatuses, offices
             }
         };
     }, []);
+
+    // Show duplicate warning dialog when similar employees are found
+    useEffect(() => {
+        if (warning && similarEmployees.length > 0 && editingEmployeeId === employee.id) {
+            setShowDuplicateDialog(true);
+            toast.warning('Possible duplicate employees detected. Please review before continuing.');
+        }
+    }, [warning, similarEmployees, editingEmployeeId, employee.id]);
 
     const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0] ?? null;
@@ -99,6 +123,32 @@ export default function EmployeeSettings({ employee, employmentStatuses, offices
             },
             forceFormData: true,
         });
+    };
+
+    const handleConfirmUpdate = () => {
+        setShowDuplicateDialog(false);
+        // Submit the form with force_update flag
+        const formData = new FormData();
+        Object.entries(data).forEach(([key, value]) => {
+            if (value !== null && value !== undefined) {
+                formData.append(key, value as string | Blob);
+            }
+        });
+        formData.append('force_update', 'true');
+
+        router.post(route('employees.update', employee.id), formData, {
+            onSuccess: () => {
+                toast.success('Employee updated successfully');
+            },
+            onError: () => {
+                toast.error('Failed to update employee');
+            },
+        });
+    };
+
+    const handleCancelUpdate = () => {
+        setShowDuplicateDialog(false);
+        toast.info('Employee update cancelled. Please review and try again.');
     };
 
     const officeOptions = offices.map((office) => ({
@@ -264,6 +314,87 @@ export default function EmployeeSettings({ employee, employmentStatuses, offices
             </form>
 
             {openDeleteDialog && <DeleteEmployeeDialog open={openDeleteDialog} onClose={setOpenDeleteDialog} employee={employee} />}
+
+            {/* Duplicate Employee Confirmation Dialog */}
+            <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+                <DialogContent className="bg min-w-5xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-destructive flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5" />
+                            Possible Duplicate Employee Detected
+                        </DialogTitle>
+                        <DialogDescription>
+                            We found other employees with similar names in the database. Please review the list below before proceeding.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4">
+                        <Alert>
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription>
+                                The following employees have names similar to{' '}
+                                <strong>
+                                    {data.first_name} {data.last_name}
+                                </strong>
+                                :
+                            </AlertDescription>
+                        </Alert>
+
+                        <div className="rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Full Name</TableHead>
+                                        <TableHead>Position</TableHead>
+                                        <TableHead>Office</TableHead>
+                                        <TableHead>Status</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {similarEmployees.map((emp) => (
+                                        <TableRow key={emp.id}>
+                                            <TableCell className="font-medium">
+                                                <div className="flex items-center gap-2">
+                                                    <UserCheck className="text-muted-foreground h-4 w-4" />
+                                                    {emp.first_name} {emp.middle_name || ''} {emp.last_name} {emp.suffix || ''}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>{emp.position || 'N/A'}</TableCell>
+                                            <TableCell>{emp.office?.name || 'N/A'}</TableCell>
+                                            <TableCell>{emp.employment_status?.name || 'N/A'}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        <div className="bg-muted rounded-md p-4 text-sm">
+                            <p className="mb-1 font-medium">What would you like to do?</p>
+                            <ul className="text-muted-foreground ml-4 list-disc space-y-1">
+                                <li>
+                                    If this is the <strong>same person</strong>, please cancel and review the existing employee record.
+                                </li>
+                                <li>
+                                    If this is a <strong>different person</strong> with a similar name, click &quot;Continue Anyway&quot; to proceed
+                                    with the update.
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="sm:gap-0">
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={handleCancelUpdate}>
+                                Cancel & Review
+                            </Button>
+                            <Button onClick={handleConfirmUpdate} className="gap-2">
+                                <UserCheck className="h-4 w-4" />
+                                Continue Anyway
+                            </Button>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

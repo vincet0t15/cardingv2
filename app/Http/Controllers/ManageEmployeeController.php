@@ -175,6 +175,9 @@ class ManageEmployeeController extends Controller
             'allClaims' => $allClaims,
             'totalDeductionsAllTime' => $totalDeductionsAllTime,
             'totalClaimsAllTime' => $totalClaimsAllTime,
+            'similarEmployees' => session('similar_employees', []),
+            'warning' => session('warning'),
+            'editingEmployeeId' => session('editing_employee_id'),
         ]);
     }
 

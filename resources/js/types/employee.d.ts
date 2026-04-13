@@ -39,4 +39,5 @@ export type EmployeeCreateRequest = {
     employment_status_id: string | number;
     photo: File | null;
     _method?: string;
+    force_create?: boolean;
 }

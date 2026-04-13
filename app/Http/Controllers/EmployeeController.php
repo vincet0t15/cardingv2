@@ -62,12 +62,51 @@ class EmployeeController extends Controller
         return Inertia::render('employees/create', [
             'employmentStatuses' => $employmentStatuses,
             'offices' => $offices,
+            'similarEmployees' => session('similar_employees', []),
+            'warning' => session('warning'),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $this->authorize('create', Employee::class);
+
+        // Check for duplicate names
+        $firstName = trim($request->input('first_name'));
+        $lastName = trim($request->input('last_name'));
+        $middleName = trim($request->input('middle_name') ?? '');
+
+        // Check if user wants to proceed despite duplicates
+        $forceCreate = $request->input('force_create', false);
+
+        // Find similar employees
+        $similarEmployees = Employee::where(function ($query) use ($firstName, $lastName, $middleName) {
+            // Exact match on first and last name
+            $query->where('first_name', 'LIKE', $firstName)
+                ->where('last_name', 'LIKE', $lastName);
+        })
+            ->orWhere(function ($query) use ($firstName, $lastName) {
+                // Soundex match (similar sounding names)
+                $query->whereRaw('SOUNDEX(first_name) = SOUNDEX(?)', [$firstName])
+                    ->whereRaw('SOUNDEX(last_name) = SOUNDEX(?)', [$lastName]);
+            })
+            ->orWhere(function ($query) use ($firstName, $lastName) {
+                // Partial match (80% similarity)
+                $query->where('first_name', 'LIKE', $firstName . '%')
+                    ->where('last_name', 'LIKE', $lastName . '%');
+            })
+            ->with(['office', 'employmentStatus'])
+            ->limit(10)
+            ->get();
+
+        // If duplicates found and user hasn't confirmed, redirect back with warning
+        if ($similarEmployees->count() > 0 && !$forceCreate) {
+            return redirect()->back()
+                ->withInput()
+                ->with('warning', 'Possible duplicate employees found')
+                ->with('similar_employees', $similarEmployees->toArray());
+        }
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
@@ -115,6 +154,45 @@ class EmployeeController extends Controller
     public function update(Request $request, Employee $employee): RedirectResponse
     {
         $this->authorize('update', $employee);
+
+        // Check for duplicate names (excluding current employee)
+        $firstName = trim($request->input('first_name'));
+        $lastName = trim($request->input('last_name'));
+        $middleName = trim($request->input('middle_name') ?? '');
+
+        // Check if user wants to proceed despite duplicates
+        $forceUpdate = $request->input('force_update', false);
+
+        // Find similar employees (excluding current one)
+        $similarEmployees = Employee::where('id', '!=', $employee->id)
+            ->where(function ($query) use ($firstName, $lastName, $middleName) {
+                // Exact match on first and last name
+                $query->where('first_name', 'LIKE', $firstName)
+                    ->where('last_name', 'LIKE', $lastName);
+            })
+            ->orWhere(function ($query) use ($firstName, $lastName) {
+                // Soundex match (similar sounding names)
+                $query->whereRaw('SOUNDEX(first_name) = SOUNDEX(?)', [$firstName])
+                    ->whereRaw('SOUNDEX(last_name) = SOUNDEX(?)', [$lastName]);
+            })
+            ->orWhere(function ($query) use ($firstName, $lastName) {
+                // Partial match (80% similarity)
+                $query->where('first_name', 'LIKE', $firstName . '%')
+                    ->where('last_name', 'LIKE', $lastName . '%');
+            })
+            ->with(['office', 'employmentStatus'])
+            ->limit(10)
+            ->get();
+
+        // If duplicates found and user hasn't confirmed, redirect back with warning
+        if ($similarEmployees->count() > 0 && !$forceUpdate) {
+            return redirect()->back()
+                ->withInput()
+                ->with('warning', 'Possible duplicate employees found')
+                ->with('similar_employees', $similarEmployees->toArray())
+                ->with('editing_employee_id', $employee->id);
+        }
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
