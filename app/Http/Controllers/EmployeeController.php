@@ -7,6 +7,7 @@ use App\Models\EmploymentStatus;
 use App\Models\Office;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -163,29 +164,23 @@ class EmployeeController extends Controller
         // Check if user wants to proceed despite duplicates
         $forceUpdate = $request->input('force_update', false);
 
-        // Find similar employees (excluding current one)
-        $similarEmployees = Employee::where('id', '!=', $employee->id)
-            ->where(function ($query) use ($firstName, $lastName, $middleName) {
-                // Exact match on first and last name
-                $query->where('first_name', 'LIKE', $firstName)
-                    ->where('last_name', 'LIKE', $lastName);
-            })
-            ->orWhere(function ($query) use ($firstName, $lastName) {
-                // Soundex match (similar sounding names)
-                $query->whereRaw('SOUNDEX(first_name) = SOUNDEX(?)', [$firstName])
-                    ->whereRaw('SOUNDEX(last_name) = SOUNDEX(?)', [$lastName]);
-            })
-            ->orWhere(function ($query) use ($firstName, $lastName) {
-                // Partial match (80% similarity)
-                $query->where('first_name', 'LIKE', $firstName . '%')
-                    ->where('last_name', 'LIKE', $lastName . '%');
-            })
-            ->with(['office', 'employmentStatus'])
-            ->limit(10)
-            ->get();
+        // Only check for EXACT duplicates (same first name, last name, and middle name)
+        $exactDuplicates = Employee::where('id', '!=', $employee->id)
+            ->where('first_name', $firstName)
+            ->where('last_name', $lastName)
+            ->where('middle_name', $middleName)
+            ->count();
 
-        // If duplicates found and user hasn't confirmed, redirect back with warning
-        if ($similarEmployees->count() > 0 && !$forceUpdate) {
+        // If exact duplicates found and user hasn't confirmed, redirect back with warning
+        if ($exactDuplicates > 0 && !$forceUpdate) {
+            $similarEmployees = Employee::where('id', '!=', $employee->id)
+                ->where('first_name', $firstName)
+                ->where('last_name', $lastName)
+                ->where('middle_name', $middleName)
+                ->with(['office', 'employmentStatus'])
+                ->limit(10)
+                ->get();
+
             return redirect()->back()
                 ->withInput()
                 ->with('warning', 'Possible duplicate employees found')
@@ -199,7 +194,7 @@ class EmployeeController extends Controller
             'last_name' => 'required|string|max:255',
             'suffix' => 'nullable|string|max:255',
             'position' => 'nullable|string|max:255',
-            'is_rata_eligible' => 'boolean',
+            'is_rata_eligible' => 'nullable|boolean',
             'employment_status_id' => 'required|exists:employment_statuses,id',
             'office_id' => 'required|exists:offices,id',
             'photo' => ['nullable', 'image', 'max:2048', 'mimes:jpg,jpeg,png,webp'],

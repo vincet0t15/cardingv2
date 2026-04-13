@@ -40,14 +40,14 @@ export default function EmployeeSettings({
     const [pendingUpdate, setPendingUpdate] = useState(false);
 
     const { data, setData, put, errors, processing } = useForm({
-        first_name: employee.first_name || '',
-        middle_name: employee.middle_name || '',
-        last_name: employee.last_name || '',
-        suffix: employee.suffix || '',
-        position: employee.position || '',
-        is_rata_eligible: employee.is_rata_eligible || false,
-        office_id: String(employee.office_id) || '',
-        employment_status_id: String(employee.employment_status_id) || '',
+        first_name: employee.first_name ?? '',
+        middle_name: employee.middle_name ?? '',
+        last_name: employee.last_name ?? '',
+        suffix: employee.suffix ?? '',
+        position: employee.position ?? '',
+        is_rata_eligible: employee.is_rata_eligible ?? false,
+        office_id: employee.office_id ? String(employee.office_id) : '',
+        employment_status_id: employee.employment_status_id ? String(employee.employment_status_id) : '',
         photo: null as File | null,
     });
 
@@ -110,7 +110,25 @@ export default function EmployeeSettings({
 
     const onSubmit: FormEventHandler<HTMLFormElement> = (e) => {
         e.preventDefault();
-        put(route('employees.update', employee.id), {
+
+        // Manually create FormData to ensure all fields are included
+        const formData = new FormData();
+        formData.append('_method', 'PUT'); // Laravel method spoofing
+        formData.append('first_name', data.first_name);
+        formData.append('middle_name', data.middle_name || '');
+        formData.append('last_name', data.last_name);
+        formData.append('suffix', data.suffix || '');
+        formData.append('position', data.position || '');
+        formData.append('is_rata_eligible', data.is_rata_eligible ? '1' : '0');
+        formData.append('employment_status_id', data.employment_status_id);
+        formData.append('office_id', data.office_id);
+
+        if (data.photo) {
+            formData.append('photo', data.photo);
+        }
+
+        // Use POST with _method spoofing instead of PUT for FormData
+        router.post(route('employees.update', employee.id), formData, {
             onSuccess: () => {
                 toast.success('Employee updated successfully');
             },
@@ -119,7 +137,6 @@ export default function EmployeeSettings({
                     toast.error('Please fix the form errors');
                 }
             },
-            forceFormData: true,
         });
     };
 
