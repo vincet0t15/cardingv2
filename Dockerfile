@@ -44,6 +44,9 @@ RUN npm run build \
 # Isang bagsakan na lang para malinis
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache /var/www/public \
     && chmod -R 775 /var/www/storage /var/www/bootstrap/cache /var/www/public
-
+RUN echo "upload_max_filesize=2048M" > /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "post_max_size=2048M" >> /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "memory_limit=2048M" >> /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "max_execution_time=600" >> /usr/local/etc/php/conf.d/uploads.ini
 EXPOSE 9000
 CMD ["php-fpm"]

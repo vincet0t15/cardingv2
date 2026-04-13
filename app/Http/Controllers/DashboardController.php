@@ -298,9 +298,9 @@ class DashboardController extends Controller
                 ];
             });
 
-        // Top 10 Employees with Most Travel Claims (by count)
+        // Top 10 Employees with Most Travel Claims (by amount) - Includes Travel Reimbursement + Meal Allowance
         $mostTravelClaimsQuery = Claim::whereHas('claimType', function ($query) {
-            $query->where('code', 'TRAVEL');
+            $query->whereIn('code', ['TRAVEL', 'MEAL']);
         })->with(['employee.office']);
 
         if ($useFilters) {
