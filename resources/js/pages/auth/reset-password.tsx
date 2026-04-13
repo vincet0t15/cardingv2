@@ -1,32 +1,43 @@
 import { Head, useForm } from '@inertiajs/react';
-import { LoaderCircle } from 'lucide-react';
-import { FormEventHandler } from 'react';
+import { Check, Copy, LoaderCircle } from 'lucide-react';
+import { FormEventHandler, useState } from 'react';
 
 import InputError from '@/components/input-error';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthLayout from '@/layouts/auth-layout';
+import { KeyRound } from 'lucide-react';
 
 interface ResetPasswordProps {
     token: string;
-    email: string;
+    username: string;
 }
 
 interface ResetPasswordForm {
     token: string;
-    email: string;
+    username: string;
     password: string;
     password_confirmation: string;
+    [key: string]: any;
 }
 
-export default function ResetPassword({ token, email }: ResetPasswordProps) {
+export default function ResetPassword({ token, username }: ResetPasswordProps) {
+    const [copied, setCopied] = useState(false);
+
     const { data, setData, post, processing, errors, reset } = useForm<ResetPasswordForm>({
         token: token,
-        email: email,
+        username: username,
         password: '',
         password_confirmation: '',
     });
+
+    const copyToken = () => {
+        navigator.clipboard.writeText(token);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -41,19 +52,45 @@ export default function ResetPassword({ token, email }: ResetPasswordProps) {
 
             <form onSubmit={submit}>
                 <div className="grid gap-6">
+                    {/* Token Display */}
+                    <Alert className="border-amber-200 bg-amber-50">
+                        <KeyRound className="h-4 w-4 text-amber-600" />
+                        <AlertDescription className="text-amber-800">
+                            <div className="mt-1">
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className="text-sm font-medium">Your reset token:</p>
+                                    <Button type="button" variant="outline" size="sm" onClick={copyToken} className="h-7 gap-1 text-xs">
+                                        {copied ? (
+                                            <>
+                                                <Check className="h-3 w-3" />
+                                                Copied!
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Copy className="h-3 w-3" />
+                                                Copy
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                                <code className="mt-2 block rounded bg-amber-100 p-3 font-mono text-xs break-all select-all">{token}</code>
+                            </div>
+                            <p className="mt-2 text-xs">Copy this token and keep it secure. It will expire in 60 minutes.</p>
+                        </AlertDescription>
+                    </Alert>
+
                     <div className="grid gap-2">
-                        <Label htmlFor="email">Email</Label>
+                        <Label htmlFor="username">Username</Label>
                         <Input
-                            id="email"
-                            type="email"
-                            name="email"
-                            autoComplete="email"
-                            value={data.email}
+                            id="username"
+                            type="text"
+                            name="username"
+                            autoComplete="username"
+                            value={data.username}
                             className="mt-1 block w-full"
                             readOnly
-                            onChange={(e) => setData('email', e.target.value)}
                         />
-                        <InputError message={errors.email} className="mt-2" />
+                        <InputError message={errors.username} className="mt-2" />
                     </div>
 
                     <div className="grid gap-2">

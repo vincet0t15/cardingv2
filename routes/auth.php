@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -22,16 +23,16 @@ Route::middleware('guest')->group(function () {
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
-    // Password reset disabled - use username-based auth (no email column)
-    // Admins can reset passwords through Accounts Management
-    // Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
-    //     ->name('password.request');
-    // Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
-    //     ->name('password.email');
-    // Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
-    //     ->name('password.reset');
-    // Route::post('reset-password', [NewPasswordController::class, 'store'])
-    //     ->name('password.store');
+    // Password reset using username (not email)
+    Route::get('forgot-password', [ForgotPasswordController::class, 'create'])
+        ->name('password.request');
+    Route::post('forgot-password', [ForgotPasswordController::class, 'sendResetLink'])
+        ->name('password.email')
+        ->middleware('throttle:5,1');
+    Route::get('reset-password', [ForgotPasswordController::class, 'showResetForm'])
+        ->name('password.reset');
+    Route::post('reset-password', [ForgotPasswordController::class, 'resetPassword'])
+        ->name('password.store');
 });
 
 Route::middleware('auth')->group(function () {
