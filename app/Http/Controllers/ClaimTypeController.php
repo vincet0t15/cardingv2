@@ -10,6 +10,7 @@ class ClaimTypeController extends Controller
 {
     public function index(Request $request)
     {
+        $this->authorize('viewAny', ClaimType::class);
         $search = $request->query('search');
         $claimTypes = ClaimType::query()
             ->when($search, function ($query) use ($search) {
@@ -30,6 +31,7 @@ class ClaimTypeController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', ClaimType::class);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:claim_types,code',
@@ -44,6 +46,7 @@ class ClaimTypeController extends Controller
 
     public function update(Request $request, ClaimType $claimType)
     {
+        $this->authorize('update', $claimType);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:claim_types,code,' . $claimType->id,
@@ -58,6 +61,7 @@ class ClaimTypeController extends Controller
 
     public function destroy(ClaimType $claimType)
     {
+        $this->authorize('delete', $claimType);
         if ($claimType->claims()->exists()) {
             return redirect()->back()->with('error', 'Cannot delete claim type with existing claims');
         }

@@ -3,13 +3,23 @@
 namespace App\Providers;
 
 use App\Models\Claim;
+use App\Models\ClaimType;
+use App\Models\DeductionType;
+use App\Models\DocumentType;
 use App\Models\Employee;
+use App\Models\EmploymentStatus;
+use App\Models\Office;
 use App\Models\Pera;
 use App\Models\Rata;
 use App\Models\Salary;
 use App\Models\Supplier;
 use App\Policies\ClaimPolicy;
+use App\Policies\ClaimTypePolicy;
+use App\Policies\DeductionTypePolicy;
+use App\Policies\DocumentTypePolicy;
 use App\Policies\EmployeePolicy;
+use App\Policies\EmploymentStatusPolicy;
+use App\Policies\OfficePolicy;
 use App\Policies\PeraPolicy;
 use App\Policies\RataPolicy;
 use App\Policies\SalaryPolicy;
@@ -32,5 +42,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Supplier::class, SupplierPolicy::class);
         Gate::policy(Pera::class, PeraPolicy::class);
         Gate::policy(Rata::class, RataPolicy::class);
+        Gate::policy(Office::class, OfficePolicy::class);
+        Gate::policy(EmploymentStatus::class, EmploymentStatusPolicy::class);
+        Gate::policy(DeductionType::class, DeductionTypePolicy::class);
+        Gate::policy(DocumentType::class, DocumentTypePolicy::class);
+        Gate::policy(ClaimType::class, ClaimTypePolicy::class);
     }
 }

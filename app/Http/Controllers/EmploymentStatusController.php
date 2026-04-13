@@ -10,6 +10,7 @@ class EmploymentStatusController extends Controller
 {
     public function index(Request $request)
     {
+        $this->authorize('viewAny', EmploymentStatus::class);
         $search = $request->input('search');
         $employmentStatuses = EmploymentStatus::query()
             ->when($search, function ($query, $search) {
@@ -28,6 +29,7 @@ class EmploymentStatusController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', EmploymentStatus::class);
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:employment_statuses,name',
         ]);
@@ -39,8 +41,9 @@ class EmploymentStatusController extends Controller
 
     public function update(Request $request, EmploymentStatus $employmentStatus)
     {
+        $this->authorize('update', $employmentStatus);
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:employment_statuses,name,'.$employmentStatus->id,
+            'name' => 'required|string|max:255|unique:employment_statuses,name,' . $employmentStatus->id,
         ]);
 
         $employmentStatus->update(['name' => $validated['name']]);
@@ -50,6 +53,7 @@ class EmploymentStatusController extends Controller
 
     public function destroy(EmploymentStatus $employmentStatus)
     {
+        $this->authorize('delete', $employmentStatus);
         if ($employmentStatus->employees()->exists()) {
             return redirect()->back()->with('error', 'Cannot delete employment status that has employees assigned.');
         }

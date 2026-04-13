@@ -17,12 +17,14 @@ class DatabaseSeeder extends Seeder
         $this->call(RoleSeeder::class);
 
         $password = env('ADMIN_DEFAULT_PASSWORD', 'ChangeMe!@2026Secure');
-        $adminUser = User::factory()->create([
-            'name' => 'Zyrus Vince B. Famini',
-            'username' => 'admin',
-            'password' => Hash::make($password),
-            'is_active' => true,
-        ]);
+        $adminUser = User::updateOrCreate(
+            ['username' => 'admin'],
+            [
+                'name' => 'Zyrus Vince B. Famini',
+                'password' => Hash::make($password),
+                'is_active' => true,
+            ]
+        );
 
         $adminUser->assignRole('super admin');
 

@@ -175,38 +175,36 @@ Route::middleware(['auth', 'active'])->group(function () {
     // CLAIMS - Delete
     Route::middleware(['permission:claims.delete'])->delete('manage/employees/{employee}/claims/{claim}', [ClaimController::class, 'destroy'])->name('manage.employees.claims.destroy');
 
-    // SETTINGS - All Configuration (requires settings.manage permission)
-    Route::middleware(['permission:settings.manage'])->prefix('settings')->group(function () {
-        // EMPLOYMENT STATUS
-        Route::get('employment-statuses', [EmploymentStatusController::class, 'index'])->name('employment-statuses.index');
-        Route::post('employment-statuses', [EmploymentStatusController::class, 'store'])->name('employment-statuses.store');
-        Route::put('employment-statuses/{employmentStatus}', [EmploymentStatusController::class, 'update'])->name('employment-statuses.update');
-        Route::delete('employment-statuses/{employmentStatus}', [EmploymentStatusController::class, 'destroy'])->name('employment-statuses.destroy');
+    // SETTINGS - Configuration Modules
+    // EMPLOYMENT STATUS (requires employment_statuses.* permissions)
+    Route::middleware(['permission:employment_statuses.view'])->get('settings/employment-statuses', [EmploymentStatusController::class, 'index'])->name('employment-statuses.index');
+    Route::middleware(['permission:employment_statuses.create'])->post('settings/employment-statuses', [EmploymentStatusController::class, 'store'])->name('employment-statuses.store');
+    Route::middleware(['permission:employment_statuses.edit'])->put('settings/employment-statuses/{employmentStatus}', [EmploymentStatusController::class, 'update'])->name('employment-statuses.update');
+    Route::middleware(['permission:employment_statuses.delete'])->delete('settings/employment-statuses/{employmentStatus}', [EmploymentStatusController::class, 'destroy'])->name('employment-statuses.destroy');
 
-        // OFFICES
-        Route::get('offices', [OfficeController::class, 'index'])->name('offices.index');
-        Route::post('offices', [OfficeController::class, 'store'])->name('offices.store');
-        Route::put('offices/{office}', [OfficeController::class, 'update'])->name('offices.update');
-        Route::delete('offices/{office}', [OfficeController::class, 'destroy'])->name('offices.destroy');
+    // OFFICES (requires offices.* permissions)
+    Route::middleware(['permission:offices.view'])->get('settings/offices', [OfficeController::class, 'index'])->name('offices.index');
+    Route::middleware(['permission:offices.create'])->post('settings/offices', [OfficeController::class, 'store'])->name('offices.store');
+    Route::middleware(['permission:offices.edit'])->put('settings/offices/{office}', [OfficeController::class, 'update'])->name('offices.update');
+    Route::middleware(['permission:offices.delete'])->delete('settings/offices/{office}', [OfficeController::class, 'destroy'])->name('offices.destroy');
 
-        // DEDUCTION TYPES
-        Route::get('deduction-types', [DeductionTypeController::class, 'index'])->name('deduction-types.index');
-        Route::post('deduction-types', [DeductionTypeController::class, 'store'])->name('deduction-types.store');
-        Route::put('deduction-types/{deductionType}', [DeductionTypeController::class, 'update'])->name('deduction-types.update');
-        Route::delete('deduction-types/{deductionType}', [DeductionTypeController::class, 'destroy'])->name('deduction-types.destroy');
+    // DEDUCTION TYPES (requires deduction_types.* permissions)
+    Route::middleware(['permission:deduction_types.view'])->get('settings/deduction-types', [DeductionTypeController::class, 'index'])->name('deduction-types.index');
+    Route::middleware(['permission:deduction_types.create'])->post('settings/deduction-types', [DeductionTypeController::class, 'store'])->name('deduction-types.store');
+    Route::middleware(['permission:deduction_types.edit'])->put('settings/deduction-types/{deductionType}', [DeductionTypeController::class, 'update'])->name('deduction-types.update');
+    Route::middleware(['permission:deduction_types.delete'])->delete('settings/deduction-types/{deductionType}', [DeductionTypeController::class, 'destroy'])->name('deduction-types.destroy');
 
-        // DOCUMENT TYPES
-        Route::get('document-types', [DocumentTypeController::class, 'index'])->name('document-types.index');
-        Route::post('document-types', [DocumentTypeController::class, 'store'])->name('document-types.store');
-        Route::put('document-types/{documentType}', [DocumentTypeController::class, 'update'])->name('document-types.update');
-        Route::delete('document-types/{documentType}', [DocumentTypeController::class, 'destroy'])->name('document-types.destroy');
+    // DOCUMENT TYPES (requires document_types.* permissions)
+    Route::middleware(['permission:document_types.view'])->get('settings/document-types', [DocumentTypeController::class, 'index'])->name('document-types.index');
+    Route::middleware(['permission:document_types.create'])->post('settings/document-types', [DocumentTypeController::class, 'store'])->name('document-types.store');
+    Route::middleware(['permission:document_types.edit'])->put('settings/document-types/{documentType}', [DocumentTypeController::class, 'update'])->name('document-types.update');
+    Route::middleware(['permission:document_types.delete'])->delete('settings/document-types/{documentType}', [DocumentTypeController::class, 'destroy'])->name('document-types.destroy');
 
-        // CLAIM TYPES
-        Route::get('claim-types', [ClaimTypeController::class, 'index'])->name('claim-types.index');
-        Route::post('claim-types', [ClaimTypeController::class, 'store'])->name('claim-types.store');
-        Route::put('claim-types/{claimType}', [ClaimTypeController::class, 'update'])->name('claim-types.update');
-        Route::delete('claim-types/{claimType}', [ClaimTypeController::class, 'destroy'])->name('claim-types.destroy');
-    });
+    // CLAIM TYPES (requires claim_types.* permissions)
+    Route::middleware(['permission:claim_types.view'])->get('settings/claim-types', [ClaimTypeController::class, 'index'])->name('claim-types.index');
+    Route::middleware(['permission:claim_types.create'])->post('settings/claim-types', [ClaimTypeController::class, 'store'])->name('claim-types.store');
+    Route::middleware(['permission:claim_types.edit'])->put('settings/claim-types/{claimType}', [ClaimTypeController::class, 'update'])->name('claim-types.update');
+    Route::middleware(['permission:claim_types.delete'])->delete('settings/claim-types/{claimType}', [ClaimTypeController::class, 'destroy'])->name('claim-types.destroy');
 
     // ACCOUNTS - User Management (requires accounts.manage permission)
     Route::middleware(['permission:accounts.manage'])->get('accounts', [AccountController::class, 'index'])->name('accounts.index');

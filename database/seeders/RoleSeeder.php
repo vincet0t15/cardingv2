@@ -63,9 +63,44 @@ class RoleSeeder extends Seeder
             'deductions.delete',
             'deductions.manage',
 
-            // Settings permissions
+            // Settings permissions (general)
             'settings.view',
             'settings.manage',
+
+            // Offices permissions
+            'offices.view',
+            'offices.create',
+            'offices.edit',
+            'offices.delete',
+            'offices.manage',
+
+            // Employment Status permissions
+            'employment_statuses.view',
+            'employment_statuses.create',
+            'employment_statuses.edit',
+            'employment_statuses.delete',
+            'employment_statuses.manage',
+
+            // Deduction Types permissions
+            'deduction_types.view',
+            'deduction_types.create',
+            'deduction_types.edit',
+            'deduction_types.delete',
+            'deduction_types.manage',
+
+            // Document Types permissions
+            'document_types.view',
+            'document_types.create',
+            'document_types.edit',
+            'document_types.delete',
+            'document_types.manage',
+
+            // Claim Types permissions
+            'claim_types.view',
+            'claim_types.create',
+            'claim_types.edit',
+            'claim_types.delete',
+            'claim_types.manage',
 
             // Accounts permissions
             'accounts.view',

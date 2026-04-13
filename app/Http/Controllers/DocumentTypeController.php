@@ -10,6 +10,7 @@ class DocumentTypeController extends Controller
 {
     public function index(Request $request)
     {
+        $this->authorize('viewAny', DocumentType::class);
         $search = $request->input('search');
 
         $documentTypes = DocumentType::query()
@@ -32,6 +33,7 @@ class DocumentTypeController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', DocumentType::class);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:document_types,code',
@@ -46,9 +48,10 @@ class DocumentTypeController extends Controller
 
     public function update(Request $request, DocumentType $documentType)
     {
+        $this->authorize('update', $documentType);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:document_types,code,'.$documentType->id,
+            'code' => 'required|string|max:50|unique:document_types,code,' . $documentType->id,
             'description' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
@@ -60,6 +63,7 @@ class DocumentTypeController extends Controller
 
     public function destroy(DocumentType $documentType)
     {
+        $this->authorize('delete', $documentType);
         $documentType->delete();
 
         return redirect()->back()->with('success', 'Document type deleted successfully');

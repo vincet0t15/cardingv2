@@ -10,6 +10,7 @@ class DeductionTypeController extends Controller
 {
     public function index(Request $request)
     {
+        $this->authorize('viewAny', DeductionType::class);
         $search = $request->input('search');
 
         $deductionTypes = DeductionType::query()
@@ -31,6 +32,7 @@ class DeductionTypeController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', DeductionType::class);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:deduction_types,code',
@@ -45,9 +47,10 @@ class DeductionTypeController extends Controller
 
     public function update(Request $request, DeductionType $deductionType)
     {
+        $this->authorize('update', $deductionType);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:deduction_types,code,'.$deductionType->id,
+            'code' => 'required|string|max:50|unique:deduction_types,code,' . $deductionType->id,
             'description' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
@@ -59,6 +62,7 @@ class DeductionTypeController extends Controller
 
     public function destroy(DeductionType $deductionType)
     {
+        $this->authorize('delete', $deductionType);
         if ($deductionType->employeeDeductions()->exists()) {
             return redirect()->back()->with('error', 'Cannot delete deduction type that has existing employee deductions.');
         }

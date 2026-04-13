@@ -10,6 +10,7 @@ class OfficeController extends Controller
 {
     public function index(Request $request)
     {
+        $this->authorize('viewAny', Office::class);
         $search = $request->input('search');
         $offices = Office::query()
             ->when($search, function ($query, $search) {
@@ -29,6 +30,7 @@ class OfficeController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorize('create', Office::class);
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:offices,name',
             'code' => 'required|string|max:255|unique:offices,code',
@@ -41,9 +43,10 @@ class OfficeController extends Controller
 
     public function update(Request $request, Office $office)
     {
+        $this->authorize('update', $office);
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:offices,name,'.$office->id,
-            'code' => 'required|string|max:255|unique:offices,code,'.$office->id,
+            'name' => 'required|string|max:255|unique:offices,name,' . $office->id,
+            'code' => 'required|string|max:255|unique:offices,code,' . $office->id,
         ]);
 
         $office->update($validated);
@@ -53,6 +56,7 @@ class OfficeController extends Controller
 
     public function destroy(Request $request, Office $office)
     {
+        $this->authorize('delete', $office);
         if ($office->employees()->exists()) {
             return redirect()->back()->with('error', 'Cannot delete office that has employees assigned.');
         }
