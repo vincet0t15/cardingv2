@@ -28,9 +28,17 @@ class EmployeeDeductionController extends Controller
         $officeId = $request->input('office_id');
         $employmentStatusId = $request->input('employment_status_id');
         $search = $request->input('search');
+        $hasDeductions = $request->input('has_deductions', true); // Default to show only employees with deductions
 
         $employees = Employee::query()
             ->with(['employmentStatus', 'office'])
+            // Only show employees who have deductions for the selected month/year
+            ->when($hasDeductions, function ($query) use ($year, $month) {
+                $query->whereHas('employeeDeductions', function ($q) use ($year, $month) {
+                    $q->where('pay_period_year', $year)
+                        ->where('pay_period_month', $month);
+                });
+            })
             ->when($search, function ($query, $search) {
                 $query->where('first_name', 'like', "%{$search}%")
                     ->orWhere('middle_name', 'like', "%{$search}%")
@@ -54,6 +62,11 @@ class EmployeeDeductionController extends Controller
                 $query->where('effective_date', '<=', now()->setDate($year, $month, 1)->endOfMonth())
                     ->orderBy('effective_date', 'desc');
             }])
+            ->with(['employeeDeductions' => function ($query) use ($year, $month) {
+                $query->where('pay_period_year', $year)
+                    ->where('pay_period_month', $month)
+                    ->orderBy('created_at', 'desc');
+            }])
             ->orderBy('last_name')
             ->get();
 
@@ -72,6 +85,7 @@ class EmployeeDeductionController extends Controller
                 'office_id' => $officeId,
                 'employment_status_id' => $employmentStatusId,
                 'search' => $search,
+                'has_deductions' => $hasDeductions,
             ],
         ]);
     }
@@ -85,9 +99,16 @@ class EmployeeDeductionController extends Controller
         $year = $request->input('year', now()->year);
         $officeId = $request->input('office_id');
         $employmentStatusId = $request->input('employment_status_id');
+        $hasDeductions = $request->input('has_deductions', true);
 
         $employees = Employee::query()
             ->with(['employmentStatus', 'office'])
+            ->when($hasDeductions, function ($query) use ($year, $month) {
+                $query->whereHas('employeeDeductions', function ($q) use ($year, $month) {
+                    $q->where('pay_period_year', $year)
+                        ->where('pay_period_month', $month);
+                });
+            })
             ->when($officeId, function ($query, $officeId) {
                 $query->where('office_id', $officeId);
             })

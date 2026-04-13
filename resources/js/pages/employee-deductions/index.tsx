@@ -3,6 +3,7 @@ import Heading from '@/components/heading';
 import Pagination from '@/components/paginationData';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -53,6 +54,7 @@ interface EmployeeDeductionsProps {
         year: number;
         office_id?: string;
         employment_status_id?: string;
+        has_deductions?: boolean;
     };
 }
 
@@ -68,6 +70,7 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
         search: filters.search || '',
         office_id: filters.office_id || '',
         employment_status_id: filters.employment_status_id || '',
+        has_deductions: filters.has_deductions ?? true,
     });
 
     const {
@@ -108,6 +111,7 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
         if (filterData.search) queryString.search = filterData.search;
         if (filterData.office_id) queryString.office_id = filterData.office_id;
         if (filterData.employment_status_id) queryString.employment_status_id = filterData.employment_status_id;
+        queryString.has_deductions = filterData.has_deductions ? '1' : '0';
 
         router.get(route('employee-deductions.index'), queryString, {
             preserveState: true,
@@ -231,6 +235,17 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
                                 onChange={(e) => setFilterData('search', e.target.value)}
                             />
                             <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50 select-none" />
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="has_deductions"
+                                checked={filterData.has_deductions}
+                                onCheckedChange={(checked) => setFilterData('has_deductions', checked as boolean)}
+                            />
+                            <Label htmlFor="has_deductions" className="cursor-pointer text-sm select-none">
+                                Has deductions only
+                            </Label>
                         </div>
 
                         <Button onClick={handleFilterChange}>Filter</Button>

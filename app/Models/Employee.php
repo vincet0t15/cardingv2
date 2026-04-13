@@ -77,6 +77,14 @@ class Employee extends Model
         return $this->hasMany(EmployeeDeduction::class);
     }
 
+    /**
+     * Alias for deductions relationship
+     */
+    public function employeeDeductions(): HasMany
+    {
+        return $this->hasMany(EmployeeDeduction::class);
+    }
+
     public function claims(): HasMany
     {
         return $this->hasMany(Claim::class);
