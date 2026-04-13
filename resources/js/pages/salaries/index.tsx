@@ -111,6 +111,27 @@ export default function SalariesIndex({ employees, offices, employmentStatuses, 
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <Heading title="Employee Salaries" description="Manage employee salary records with history tracking." />
 
+                {/* Instruction Note */}
+                <div className="rounded-lg border border-teal-200 bg-teal-50 p-4 text-teal-800 dark:border-teal-800 dark:bg-teal-900/20 dark:text-teal-300">
+                    <div className="flex items-start gap-3">
+                        <svg className="mt-0.5 h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                        </svg>
+                        <div className="text-sm">
+                            <p className="mb-1 font-semibold">How to manage Salaries:</p>
+                            <p className="text-teal-700 dark:text-teal-400">
+                                Click on an employee's avatar to view their complete details. Use the action buttons to add salary records or view
+                                history.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-wrap items-center gap-2">
                         <div className="w-[220px]">

@@ -103,7 +103,28 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
             <Head title="Hazard Pay" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto rounded-xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                    <Heading title="Hazard Pay" />
+                    <Heading title="Hazard Pay" description="Manage hazard pay records for employees." />
+                </div>
+
+                {/* Instruction Note */}
+                <div className="rounded-lg border border-teal-200 bg-teal-50 p-4 text-teal-800 dark:border-teal-800 dark:bg-teal-900/20 dark:text-teal-300">
+                    <div className="flex items-start gap-3">
+                        <svg className="mt-0.5 h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                        </svg>
+                        <div className="text-sm">
+                            <p className="mb-1 font-semibold">How to manage Hazard Pay:</p>
+                            <p className="text-teal-700 dark:text-teal-400">
+                                Click on an employee's avatar to view their complete details. Use the action buttons to add hazard pay records or view
+                                history.
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
