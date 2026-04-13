@@ -17,7 +17,7 @@ import type { Office } from '@/types/office';
 import type { PaginatedDataResponse } from '@/types/pagination';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { History, PlusIcon, Printer, Search, User } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -50,38 +50,6 @@ export default function PerasIndex({ employees, offices, employmentStatuses, fil
     const [openAdd, setOpenAdd] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
-    // Auto-apply filters when they change
-    useEffect(() => {
-        const queryString: Record<string, string> = {};
-        if (filterData.search) queryString.search = filterData.search;
-        if (filterData.office_id) queryString.office_id = filterData.office_id;
-        if (filterData.employment_status_id) queryString.employment_status_id = filterData.employment_status_id;
-        // Only include month/year if BOTH are provided
-        if (filterData.month && filterData.year) {
-            queryString.month = filterData.month;
-            queryString.year = filterData.year;
-        }
-
-        // Only reload if filters have changed from initial
-        const hasChanges =
-            filterData.search !== filters.search ||
-            filterData.office_id !== (filters.office_id || '') ||
-            filterData.employment_status_id !== (filters.employment_status_id || '') ||
-            filterData.month !== (filters.month || '') ||
-            filterData.year !== (filters.year || '');
-
-        if (hasChanges) {
-            const debounceTimer = setTimeout(() => {
-                router.get(route('peras.index'), queryString, {
-                    preserveState: true,
-                    preserveScroll: true,
-                });
-            }, 300); // 300ms debounce
-
-            return () => clearTimeout(debounceTimer);
-        }
-    }, [filterData.search, filterData.office_id, filterData.employment_status_id, filterData.month, filterData.year]);
-
     const {
         data: peraData,
         setData: setPeraData,
@@ -97,20 +65,45 @@ export default function PerasIndex({ employees, offices, employmentStatuses, fil
     const officeOptions = offices.map((o) => ({ value: o.id.toString(), label: o.name }));
     const employmentStatusOptions = employmentStatuses.map((s) => ({ value: s.id.toString(), label: s.name }));
 
-    const applyFilters = () => {
+    const applyFilters = (overrides?: Partial<typeof filterData>) => {
+        const merged = { ...filterData, ...overrides };
         const queryString: Record<string, string> = {};
-        if (filterData.search) queryString.search = filterData.search;
-        if (filterData.office_id) queryString.office_id = filterData.office_id;
-        if (filterData.employment_status_id) queryString.employment_status_id = filterData.employment_status_id;
+        if (merged.search) queryString.search = merged.search;
+        if (merged.office_id) queryString.office_id = merged.office_id;
+        if (merged.employment_status_id) queryString.employment_status_id = merged.employment_status_id;
         // Only include month/year if BOTH are provided
-        if (filterData.month && filterData.year) {
-            queryString.month = filterData.month;
-            queryString.year = filterData.year;
+        if (merged.month && merged.year) {
+            queryString.month = merged.month;
+            queryString.year = merged.year;
         }
         router.get(route('peras.index'), queryString, {
             preserveState: true,
             preserveScroll: true,
         });
+    };
+
+    const handleMonthChange = (value: string) => {
+        const newMonth = value || '';
+        setFilterData('month', newMonth);
+        applyFilters({ month: newMonth });
+    };
+
+    const handleYearChange = (value: string) => {
+        const newYear = value || '';
+        setFilterData('year', newYear);
+        applyFilters({ year: newYear });
+    };
+
+    const handleOfficeChange = (value: string) => {
+        const newOfficeId = value || '';
+        setFilterData('office_id', newOfficeId);
+        applyFilters({ office_id: newOfficeId });
+    };
+
+    const handleEmploymentStatusChange = (value: string) => {
+        const newStatusId = value || '';
+        setFilterData('employment_status_id', newStatusId);
+        applyFilters({ employment_status_id: newStatusId });
     };
 
     const handlePrint = () => {
@@ -184,7 +177,7 @@ export default function PerasIndex({ employees, offices, employmentStatuses, fil
                                 items={MONTHS.map((month, index) => ({ value: String(index + 1), label: month }))}
                                 placeholder="All Months"
                                 value={filterData.month || null}
-                                onSelect={(value) => setFilterData('month', value ?? '')}
+                                onSelect={(value) => handleMonthChange(value ?? '')}
                             />
                         </div>
 
@@ -193,7 +186,7 @@ export default function PerasIndex({ employees, offices, employmentStatuses, fil
                                 items={YEARS.map((year) => ({ value: String(year), label: String(year) }))}
                                 placeholder="All Years"
                                 value={filterData.year || null}
-                                onSelect={(value) => setFilterData('year', value ?? '')}
+                                onSelect={(value) => handleYearChange(value ?? '')}
                             />
                         </div>
 
@@ -202,7 +195,7 @@ export default function PerasIndex({ employees, offices, employmentStatuses, fil
                                 items={officeOptions}
                                 placeholder="All Offices"
                                 value={filterData.office_id || null}
-                                onSelect={(value) => setFilterData('office_id', value ?? '')}
+                                onSelect={(value) => handleOfficeChange(value ?? '')}
                             />
                         </div>
 
@@ -211,7 +204,7 @@ export default function PerasIndex({ employees, offices, employmentStatuses, fil
                                 items={employmentStatusOptions}
                                 placeholder="All Status"
                                 value={filterData.employment_status_id || null}
-                                onSelect={(value) => setFilterData('employment_status_id', value ?? '')}
+                                onSelect={(value) => handleEmploymentStatusChange(value ?? '')}
                             />
                         </div>
 

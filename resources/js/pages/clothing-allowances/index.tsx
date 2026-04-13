@@ -16,7 +16,7 @@ import type { Office } from '@/types/office';
 import type { PaginatedDataResponse } from '@/types/pagination';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { History, PlusIcon, Printer, Search, User } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -49,38 +49,6 @@ export default function ClothingAllowancesIndex({ employees, offices, employment
     const [openAdd, setOpenAdd] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
-    // Auto-apply filters when they change
-    useEffect(() => {
-        const queryString: Record<string, string> = {};
-        if (filterData.search) queryString.search = filterData.search;
-        if (filterData.office_id) queryString.office_id = filterData.office_id;
-        if (filterData.employment_status_id) queryString.employment_status_id = filterData.employment_status_id;
-        // Only include month/year if BOTH are provided
-        if (filterData.month && filterData.year) {
-            queryString.month = filterData.month;
-            queryString.year = filterData.year;
-        }
-
-        // Only reload if filters have changed from initial
-        const hasChanges =
-            filterData.search !== filters.search ||
-            filterData.office_id !== (filters.office_id || '') ||
-            filterData.employment_status_id !== (filters.employment_status_id || '') ||
-            filterData.month !== (filters.month || '') ||
-            filterData.year !== (filters.year || '');
-
-        if (hasChanges) {
-            const debounceTimer = setTimeout(() => {
-                router.get(route('clothing-allowances.index'), queryString, {
-                    preserveState: true,
-                    preserveScroll: true,
-                });
-            }, 300); // 300ms debounce
-
-            return () => clearTimeout(debounceTimer);
-        }
-    }, [filterData.search, filterData.office_id, filterData.employment_status_id, filterData.month, filterData.year]);
-
     const {
         data: clothingAllowanceData,
         setData: setClothingAllowanceData,
@@ -96,20 +64,45 @@ export default function ClothingAllowancesIndex({ employees, offices, employment
     const officeOptions = offices.map((o) => ({ value: o.id.toString(), label: o.name }));
     const employmentStatusOptions = employmentStatuses.map((s) => ({ value: s.id.toString(), label: s.name }));
 
-    const applyFilters = () => {
+    const applyFilters = (overrides?: Partial<typeof filterData>) => {
+        const merged = { ...filterData, ...overrides };
         const queryString: Record<string, string> = {};
-        if (filterData.search) queryString.search = filterData.search;
-        if (filterData.office_id) queryString.office_id = filterData.office_id;
-        if (filterData.employment_status_id) queryString.employment_status_id = filterData.employment_status_id;
+        if (merged.search) queryString.search = merged.search;
+        if (merged.office_id) queryString.office_id = merged.office_id;
+        if (merged.employment_status_id) queryString.employment_status_id = merged.employment_status_id;
         // Only include month/year if BOTH are provided
-        if (filterData.month && filterData.year) {
-            queryString.month = filterData.month;
-            queryString.year = filterData.year;
+        if (merged.month && merged.year) {
+            queryString.month = merged.month;
+            queryString.year = merged.year;
         }
         router.get(route('clothing-allowances.index'), queryString, {
             preserveState: true,
             preserveScroll: true,
         });
+    };
+
+    const handleMonthChange = (value: string) => {
+        const newMonth = value || '';
+        setFilterData('month', newMonth);
+        applyFilters({ month: newMonth });
+    };
+
+    const handleYearChange = (value: string) => {
+        const newYear = value || '';
+        setFilterData('year', newYear);
+        applyFilters({ year: newYear });
+    };
+
+    const handleOfficeChange = (value: string) => {
+        const newOfficeId = value || '';
+        setFilterData('office_id', newOfficeId);
+        applyFilters({ office_id: newOfficeId });
+    };
+
+    const handleEmploymentStatusChange = (value: string) => {
+        const newStatusId = value || '';
+        setFilterData('employment_status_id', newStatusId);
+        applyFilters({ employment_status_id: newStatusId });
     };
 
     const handlePrint = () => {
@@ -178,54 +171,64 @@ export default function ClothingAllowancesIndex({ employees, offices, employment
                     </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                    <div className="w-[180px]">
-                        <CustomComboBox
-                            items={MONTHS.map((month, index) => ({ value: String(index + 1), label: month }))}
-                            placeholder="All Months"
-                            value={filterData.month || null}
-                            onSelect={(value) => setFilterData('month', value ?? '')}
-                        />
+                <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="w-[180px]">
+                            <CustomComboBox
+                                items={MONTHS.map((month, index) => ({ value: String(index + 1), label: month }))}
+                                placeholder="All Months"
+                                value={filterData.month || null}
+                                onSelect={(value) => handleMonthChange(value ?? '')}
+                            />
+                        </div>
+
+                        <div className="w-[140px]">
+                            <CustomComboBox
+                                items={YEARS.map((year) => ({ value: String(year), label: String(year) }))}
+                                placeholder="All Years"
+                                value={filterData.year || null}
+                                onSelect={(value) => handleYearChange(value ?? '')}
+                            />
+                        </div>
+
+                        <div className="w-[220px]">
+                            <CustomComboBox
+                                items={officeOptions}
+                                placeholder="All Offices"
+                                value={filterData.office_id || null}
+                                onSelect={(value) => handleOfficeChange(value ?? '')}
+                            />
+                        </div>
+
+                        <div className="w-[200px]">
+                            <CustomComboBox
+                                items={employmentStatusOptions}
+                                placeholder="All Status"
+                                value={filterData.employment_status_id || null}
+                                onSelect={(value) => handleEmploymentStatusChange(value ?? '')}
+                            />
+                        </div>
+
+                        <div className="relative w-full sm:w-[250px]">
+                            <Label htmlFor="search" className="sr-only">
+                                Search
+                            </Label>
+                            <Input
+                                id="search"
+                                placeholder="Search employee..."
+                                className="w-full pl-8"
+                                value={filterData.search}
+                                onChange={(e) => setFilterData('search', e.target.value)}
+                                onKeyDown={handleSearchKeyDown}
+                            />
+                            <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50 select-none" />
+                        </div>
+
+                        <Button variant="outline" onClick={handlePrint}>
+                            <Printer className="mr-2 h-4 w-4" />
+                            Print
+                        </Button>
                     </div>
-                    <div className="w-[140px]">
-                        <CustomComboBox
-                            items={YEARS.map((year) => ({ value: String(year), label: String(year) }))}
-                            placeholder="All Years"
-                            value={filterData.year || null}
-                            onSelect={(value) => setFilterData('year', value ?? '')}
-                        />
-                    </div>
-                    <div className="relative min-w-[200px] flex-1">
-                        <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-                        <Input
-                            value={filterData.search}
-                            onChange={(e) => setFilterData('search', e.target.value)}
-                            onKeyDown={handleSearchKeyDown}
-                            placeholder="Search employees..."
-                            className="pl-9"
-                        />
-                    </div>
-                    <div className="min-w-[200px] flex-1">
-                        <CustomComboBox
-                            items={officeOptions}
-                            value={filterData.office_id}
-                            onSelect={(value) => setFilterData('office_id', value ?? '')}
-                            placeholder="Filter by office"
-                        />
-                    </div>
-                    <div className="min-w-[200px] flex-1">
-                        <CustomComboBox
-                            items={employmentStatusOptions}
-                            value={filterData.employment_status_id}
-                            onSelect={(value) => setFilterData('employment_status_id', value ?? '')}
-                            placeholder="Filter by employment status"
-                        />
-                    </div>
-                    <Button onClick={applyFilters}>Apply Filters</Button>
-                    <Button variant="outline" onClick={handlePrint}>
-                        <Printer className="mr-2 h-4 w-4" />
-                        Print
-                    </Button>
                 </div>
 
                 <div className="bg-card overflow-x-auto overflow-y-hidden rounded-lg border shadow-sm">
