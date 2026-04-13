@@ -135,6 +135,8 @@ function Reports({ employee, allDeductions, allClaims }: ReportsProps) {
     let salary: number;
     let pera: number;
     let rata: number;
+    let hazardPay: number;
+    let clothingAllowance: number;
     let showGrossAndNet: boolean = true;
     let isAllTimeView: boolean = false;
     let isYearlyView: boolean = false;
@@ -143,12 +145,16 @@ function Reports({ employee, allDeductions, allClaims }: ReportsProps) {
         salary = getEffectiveAmount(employee.salaries, parseInt(filterYear), parseInt(filterMonth));
         pera = getEffectiveAmount(employee.peras, parseInt(filterYear), parseInt(filterMonth));
         rata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, parseInt(filterYear), parseInt(filterMonth)) : 0;
+        hazardPay = getEffectiveAmount(employee.hazardPays, parseInt(filterYear), parseInt(filterMonth));
+        clothingAllowance = getEffectiveAmount(employee.clothingAllowances, parseInt(filterYear), parseInt(filterMonth));
         showGrossAndNet = true; // Specific period - calculations make sense
     } else if (filterYear) {
         // Year only - sum ALL records within that year
         salary = sumCompensationForYear(employee.salaries, parseInt(filterYear));
         pera = sumCompensationForYear(employee.peras, parseInt(filterYear));
         rata = employee.is_rata_eligible ? sumCompensationForYear(employee.ratas, parseInt(filterYear)) : 0;
+        hazardPay = sumCompensationForYear(employee.hazardPays, parseInt(filterYear));
+        clothingAllowance = sumCompensationForYear(employee.clothingAllowances, parseInt(filterYear));
         showGrossAndNet = true;
         isYearlyView = true;
     } else {
@@ -156,11 +162,13 @@ function Reports({ employee, allDeductions, allClaims }: ReportsProps) {
         salary = sumCompensation(employee.salaries);
         pera = sumCompensation(employee.peras);
         rata = employee.is_rata_eligible ? sumCompensation(employee.ratas) : 0;
+        hazardPay = sumCompensation(employee.hazardPays);
+        clothingAllowance = sumCompensation(employee.clothingAllowances);
         showGrossAndNet = true; // Now we can show gross/net for all-time view
         isAllTimeView = true;
     }
 
-    const grossPay = salary + pera + rata;
+    const grossPay = salary + pera + rata + hazardPay + clothingAllowance;
     const netPay = grossPay - totalAllDeductions;
 
     const hasActiveFilters = filterMonth || filterYear;
@@ -303,7 +311,9 @@ function Reports({ employee, allDeductions, allClaims }: ReportsProps) {
                             const periodSalary = getEffectiveAmount(employee.salaries, period.year, period.month);
                             const periodPera = getEffectiveAmount(employee.peras, period.year, period.month);
                             const periodRata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, period.year, period.month) : 0;
-                            const periodGrossPay = periodSalary + periodPera + periodRata;
+                            const periodHazardPay = getEffectiveAmount(employee.hazardPays, period.year, period.month);
+                            const periodClothingAllowance = getEffectiveAmount(employee.clothingAllowances, period.year, period.month);
+                            const periodGrossPay = periodSalary + periodPera + periodRata + periodHazardPay + periodClothingAllowance;
                             const periodNetPay = periodGrossPay - period.total;
 
                             return (
@@ -354,27 +364,28 @@ function Reports({ employee, allDeductions, allClaims }: ReportsProps) {
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 divide-x border-t">
-                                            {employee.is_rata_eligible ? (
-                                                <>
-                                                    <div className="grid grid-cols-2">
-                                                        <div className="text-muted-foreground px-4 py-2 text-sm">RATA</div>
-                                                        <div className="px-4 py-2 text-right text-sm font-medium">+{formatCurrency(periodRata)}</div>
-                                                    </div>
-                                                    <div className="grid grid-cols-2 bg-blue-50">
-                                                        <div className="px-4 py-2 text-sm font-medium text-blue-800">Gross Pay</div>
-                                                        <div className="px-4 py-2 text-right font-bold text-blue-800">
-                                                            {formatCurrency(periodGrossPay)}
-                                                        </div>
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <div className="col-span-2 grid grid-cols-2 bg-blue-50">
-                                                    <div className="px-4 py-2 text-sm font-medium text-blue-800">Gross Pay</div>
-                                                    <div className="px-4 py-2 text-right font-bold text-blue-800">
-                                                        {formatCurrency(periodGrossPay)}
-                                                    </div>
+                                            <div className="grid grid-cols-2">
+                                                <div className="text-muted-foreground px-4 py-2 text-sm">RATA</div>
+                                                <div className="px-4 py-2 text-right text-sm font-medium">
+                                                    {employee.is_rata_eligible ? `+${formatCurrency(periodRata)}` : '-'}
                                                 </div>
-                                            )}
+                                            </div>
+                                            <div className="grid grid-cols-2">
+                                                <div className="text-muted-foreground px-4 py-2 text-sm">Hazard Pay</div>
+                                                <div className="px-4 py-2 text-right text-sm font-medium">+{formatCurrency(periodHazardPay)}</div>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 divide-x border-t">
+                                            <div className="grid grid-cols-2">
+                                                <div className="text-muted-foreground px-4 py-2 text-sm">Clothing Allow.</div>
+                                                <div className="px-4 py-2 text-right text-sm font-medium">
+                                                    +{formatCurrency(periodClothingAllowance)}
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 bg-blue-50">
+                                                <div className="px-4 py-2 text-sm font-medium text-blue-800">Gross Pay</div>
+                                                <div className="px-4 py-2 text-right font-bold text-blue-800">{formatCurrency(periodGrossPay)}</div>
+                                            </div>
                                         </div>
                                         <div className="grid grid-cols-2 divide-x border-t">
                                             <div className="grid grid-cols-2 bg-red-50">

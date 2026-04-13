@@ -8,6 +8,8 @@ export interface PayrollEmployee extends Employee {
     current_salary: number;
     current_pera: number;
     current_rata: number;
+    current_hazard_pay: number;
+    current_clothing_allowance: number;
     total_deductions: number;
     gross_pay: number;
     net_pay: number;

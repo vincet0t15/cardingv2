@@ -113,6 +113,8 @@ export default function PayrollIndex({ employees, offices, employmentStatuses, f
     const getTotalSalary = () => employees.data.reduce((sum, e) => sum + Number(e.current_salary), 0);
     const getTotalPera = () => employees.data.reduce((sum, e) => sum + Number(e.current_pera), 0);
     const getTotalRata = () => employees.data.reduce((sum, e) => sum + Number(e.current_rata), 0);
+    const getTotalHazardPay = () => employees.data.reduce((sum, e) => sum + Number(e.current_hazard_pay || 0), 0);
+    const getTotalClothingAllowance = () => employees.data.reduce((sum, e) => sum + Number(e.current_clothing_allowance || 0), 0);
     const getTotalGross = () => employees.data.reduce((sum, e) => sum + Number(e.gross_pay), 0);
     const getTotalDeductions = () => employees.data.reduce((sum, e) => sum + Number(e.total_deductions), 0);
     const getTotalNet = () => employees.data.reduce((sum, e) => sum + Number(e.net_pay), 0);
@@ -278,6 +280,8 @@ export default function PayrollIndex({ employees, offices, employmentStatuses, f
                                 <TableHead className="text-primary text-right font-bold">Salary</TableHead>
                                 <TableHead className="text-primary text-right font-bold">PERA</TableHead>
                                 <TableHead className="text-primary text-right font-bold">RATA</TableHead>
+                                <TableHead className="text-primary text-right font-bold">Hazard Pay</TableHead>
+                                <TableHead className="text-primary text-right font-bold">Clothing Allow.</TableHead>
                                 <TableHead className="text-primary text-right font-bold">Gross Pay</TableHead>
                                 <TableHead className="text-primary text-right font-bold">Deductions</TableHead>
                                 <TableHead className="text-primary text-right font-bold">Net Pay</TableHead>
@@ -326,6 +330,8 @@ export default function PayrollIndex({ employees, offices, employmentStatuses, f
                                         <TableCell className="text-right">
                                             {employee.is_rata_eligible ? formatCurrency(employee.current_rata) : '-'}
                                         </TableCell>
+                                        <TableCell className="text-right">{formatCurrency(employee.current_hazard_pay || 0)}</TableCell>
+                                        <TableCell className="text-right">{formatCurrency(employee.current_clothing_allowance || 0)}</TableCell>
                                         <TableCell className="text-right font-medium">{formatCurrency(employee.gross_pay)}</TableCell>
                                         <TableCell className="text-right text-red-600">{formatCurrency(employee.total_deductions)}</TableCell>
                                         <TableCell className="text-right font-bold text-green-600 dark:text-green-400">

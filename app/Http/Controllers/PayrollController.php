@@ -55,6 +55,14 @@ class PayrollController extends Controller
                 $query->where('effective_date', '<=', now()->setDate($year, $calculationMonth, 1)->endOfMonth())
                     ->orderBy('effective_date', 'desc');
             }])
+            ->with(['hazardPays' => function ($query) use ($year, $calculationMonth) {
+                $query->where('effective_date', '<=', now()->setDate($year, $calculationMonth, 1)->endOfMonth())
+                    ->orderBy('effective_date', 'desc');
+            }])
+            ->with(['clothingAllowances' => function ($query) use ($year, $calculationMonth) {
+                $query->where('effective_date', '<=', now()->setDate($year, $calculationMonth, 1)->endOfMonth())
+                    ->orderBy('effective_date', 'desc');
+            }])
             ->with(['deductions' => function ($query) use ($calculationMonth, $year) {
                 $query->where('pay_period_month', $calculationMonth)
                     ->where('pay_period_year', $year)
@@ -70,6 +78,8 @@ class PayrollController extends Controller
             $employee->current_salary = $payroll['salary'];
             $employee->current_pera = $payroll['pera'];
             $employee->current_rata = $payroll['rata'];
+            $employee->current_hazard_pay = $payroll['hazard_pay'];
+            $employee->current_clothing_allowance = $payroll['clothing_allowance'];
             $employee->total_deductions = $payroll['total_deductions'];
             $employee->gross_pay = $payroll['gross_pay'];
             $employee->net_pay = $payroll['net_pay'];
@@ -296,6 +306,8 @@ class PayrollController extends Controller
                 'salary' => 0,
                 'pera' => 0,
                 'rata' => 0,
+                'hazard_pay' => 0,
+                'clothing_allowance' => 0,
                 'gross_pay' => 0,
                 'deductions' => 0,
                 'net_pay' => 0,
@@ -305,15 +317,17 @@ class PayrollController extends Controller
                 $salary = $this->payrollService->getEffectiveAmount($employee->salaries, $year, $monthNum);
                 $pera = $this->payrollService->getEffectiveAmount($employee->peras, $year, $monthNum);
                 $rata = $employee->is_rata_eligible ? $this->payrollService->getEffectiveAmount($employee->ratas, $year, $monthNum) : 0;
+                $hazardPay = $this->payrollService->getEffectiveAmount($employee->hazardPays, $year, $monthNum);
+                $clothingAllowance = $this->payrollService->getEffectiveAmount($employee->clothingAllowances, $year, $monthNum);
                 $deductions = $employee->deductions()
                     ->where('pay_period_month', $monthNum)
                     ->where('pay_period_year', $year)
                     ->sum('amount');
 
-                $grossPay = $salary + $pera + $rata;
+                $grossPay = $salary + $pera + $rata + $hazardPay + $clothingAllowance;
                 $netPay = $grossPay - $deductions;
 
-                if ($salary > 0 || $pera > 0 || $rata > 0 || $deductions > 0) {
+                if ($salary > 0 || $pera > 0 || $rata > 0 || $hazardPay > 0 || $clothingAllowance > 0 || $deductions > 0) {
                     $monthEmployees[] = [
                         'id' => $employee->id,
                         'name' => $employee->last_name . ', ' . $employee->first_name . ' ' . $employee->middle_name,
@@ -322,6 +336,8 @@ class PayrollController extends Controller
                         'salary' => $salary,
                         'pera' => $pera,
                         'rata' => $rata,
+                        'hazard_pay' => $hazardPay,
+                        'clothing_allowance' => $clothingAllowance,
                         'gross_pay' => $grossPay,
                         'deductions' => $deductions,
                         'net_pay' => $netPay,
@@ -330,6 +346,8 @@ class PayrollController extends Controller
                     $totals['salary'] += $salary;
                     $totals['pera'] += $pera;
                     $totals['rata'] += $rata;
+                    $totals['hazard_pay'] += $hazardPay;
+                    $totals['clothing_allowance'] += $clothingAllowance;
                     $totals['gross_pay'] += $grossPay;
                     $totals['deductions'] += $deductions;
                     $totals['net_pay'] += $netPay;

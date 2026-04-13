@@ -16,7 +16,7 @@ class PayrollService
 
         $effectiveRecord = $history
             ->sortByDesc('effective_date')
-            ->first(fn ($record) => $record->effective_date <= $periodEnd);
+            ->first(fn($record) => $record->effective_date <= $periodEnd);
 
         if (! $effectiveRecord) {
             $effectiveRecord = $history->sortBy('effective_date')->first();
@@ -30,18 +30,22 @@ class PayrollService
         $salary = $this->getEffectiveAmount($employee->salaries, $year, $month);
         $pera = $this->getEffectiveAmount($employee->peras, $year, $month);
         $rata = $employee->is_rata_eligible ? $this->getEffectiveAmount($employee->ratas, $year, $month) : 0;
+        $hazardPay = $this->getEffectiveAmount($employee->hazardPays, $year, $month);
+        $clothingAllowance = $this->getEffectiveAmount($employee->clothingAllowances, $year, $month);
 
         $totalDeductions = (float) $employee->deductions
             ->where('pay_period_month', $month)
             ->where('pay_period_year', $year)
             ->sum('amount');
-        $grossPay = $salary + $pera + $rata;
+        $grossPay = $salary + $pera + $rata + $hazardPay + $clothingAllowance;
         $netPay = $grossPay - $totalDeductions;
 
         return [
             'salary' => $salary,
             'pera' => $pera,
             'rata' => $rata,
+            'hazard_pay' => $hazardPay,
+            'clothing_allowance' => $clothingAllowance,
             'total_deductions' => $totalDeductions,
             'gross_pay' => $grossPay,
             'net_pay' => $netPay,

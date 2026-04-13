@@ -266,6 +266,18 @@ export default function EmployeePrintReport({
                                             <td className="border border-black p-2 text-right">
                                                 {employee.is_rata_eligible ? formatCurrency(rata) + (isAllTimeView || isYearlyView ? ' *' : '') : '-'}
                                             </td>
+                                            <td className="border border-black p-2 font-bold">Hazard Pay</td>
+                                            <td className="border border-black p-2 text-right">
+                                                {formatCurrency(hazardPay)}
+                                                {(isAllTimeView || isYearlyView) && ' *'}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td className="border border-black p-2 font-bold">Clothing Allowance</td>
+                                            <td className="border border-black p-2 text-right">
+                                                {formatCurrency(clothingAllowance)}
+                                                {(isAllTimeView || isYearlyView) && ' *'}
+                                            </td>
                                             <td className="border border-black p-2 font-bold">Gross Pay</td>
                                             <td className="border border-black p-2 text-right font-medium">
                                                 {formatCurrency(grossPay)}

@@ -10,6 +10,8 @@ type EmployeeData = {
     salary: number;
     pera: number;
     rata: number;
+    hazard_pay: number;
+    clothing_allowance: number;
     gross_pay: number;
     deductions: number;
     net_pay: number;
@@ -23,6 +25,8 @@ type MonthlyData = {
         salary: number;
         pera: number;
         rata: number;
+        hazard_pay: number;
+        clothing_allowance: number;
         gross_pay: number;
         deductions: number;
         net_pay: number;
@@ -59,11 +63,13 @@ export default function PrintPayrollReport({ year, monthlyData, office }: Props)
             salary: acc.salary + month.totals.salary,
             pera: acc.pera + month.totals.pera,
             rata: acc.rata + month.totals.rata,
+            hazard_pay: acc.hazard_pay + month.totals.hazard_pay,
+            clothing_allowance: acc.clothing_allowance + month.totals.clothing_allowance,
             gross_pay: acc.gross_pay + month.totals.gross_pay,
             deductions: acc.deductions + month.totals.deductions,
             net_pay: acc.net_pay + month.totals.net_pay,
         }),
-        { salary: 0, pera: 0, rata: 0, gross_pay: 0, deductions: 0, net_pay: 0 },
+        { salary: 0, pera: 0, rata: 0, hazard_pay: 0, clothing_allowance: 0, gross_pay: 0, deductions: 0, net_pay: 0 },
     );
 
     return (
@@ -152,6 +158,8 @@ export default function PrintPayrollReport({ year, monthlyData, office }: Props)
                                                         <th className="w-20 border border-black px-1 py-0.5 text-right">Salary</th>
                                                         <th className="w-16 border border-black px-1 py-0.5 text-right">PERA</th>
                                                         <th className="w-16 border border-black px-1 py-0.5 text-right">RATA</th>
+                                                        <th className="w-16 border border-black px-1 py-0.5 text-right">Hazard</th>
+                                                        <th className="w-16 border border-black px-1 py-0.5 text-right">Clothing</th>
                                                         <th className="w-20 border border-black px-1 py-0.5 text-right">Gross</th>
                                                         <th className="w-20 border border-black px-1 py-0.5 text-right">Deductions</th>
                                                         <th className="w-20 border border-black px-1 py-0.5 text-right">Net Pay</th>
@@ -160,7 +168,7 @@ export default function PrintPayrollReport({ year, monthlyData, office }: Props)
                                                 <tbody>
                                                     {monthData.employees.length === 0 ? (
                                                         <tr>
-                                                            <td colSpan={9} className="border border-black px-1 py-1 text-center italic">
+                                                            <td colSpan={11} className="border border-black px-1 py-1 text-center italic">
                                                                 No employees for this period.
                                                             </td>
                                                         </tr>
@@ -179,6 +187,12 @@ export default function PrintPayrollReport({ year, monthlyData, office }: Props)
                                                                     </td>
                                                                     <td className="border border-black px-1 py-0.5 text-right">
                                                                         {employee.rata > 0 ? formatCurrency(employee.rata) : '-'}
+                                                                    </td>
+                                                                    <td className="border border-black px-1 py-0.5 text-right">
+                                                                        {formatCurrency(employee.hazard_pay)}
+                                                                    </td>
+                                                                    <td className="border border-black px-1 py-0.5 text-right">
+                                                                        {formatCurrency(employee.clothing_allowance)}
                                                                     </td>
                                                                     <td className="border border-black px-1 py-0.5 text-right font-medium">
                                                                         {formatCurrency(employee.gross_pay)}
@@ -204,6 +218,12 @@ export default function PrintPayrollReport({ year, monthlyData, office }: Props)
                                                                 </td>
                                                                 <td className="border border-black px-1 py-0.5 text-right">
                                                                     {formatCurrency(monthData.totals.rata)}
+                                                                </td>
+                                                                <td className="border border-black px-1 py-0.5 text-right">
+                                                                    {formatCurrency(monthData.totals.hazard_pay)}
+                                                                </td>
+                                                                <td className="border border-black px-1 py-0.5 text-right">
+                                                                    {formatCurrency(monthData.totals.clothing_allowance)}
                                                                 </td>
                                                                 <td className="border border-black px-1 py-0.5 text-right">
                                                                     {formatCurrency(monthData.totals.gross_pay)}
