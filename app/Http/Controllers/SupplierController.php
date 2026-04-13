@@ -42,6 +42,7 @@ class SupplierController extends Controller
         $this->authorize('create', Supplier::class);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'owner_name' => 'nullable|string|max:255',
             'address' => 'nullable|string',
             'contact_number' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
@@ -62,6 +63,7 @@ class SupplierController extends Controller
         $this->authorize('update', $supplier);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'owner_name' => 'nullable|string|max:255',
             'address' => 'nullable|string',
             'contact_number' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',

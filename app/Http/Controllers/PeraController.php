@@ -20,6 +20,7 @@ class PeraController extends Controller
         $employmentStatusId = $request->input('employment_status_id');
 
         $employees = Employee::query()
+            ->has('peras') // Only show employees who have PERA records
             ->when($search, function ($query, $search) {
                 $query->where('first_name', 'like', "%{$search}%")
                     ->orWhere('middle_name', 'like', "%{$search}%")

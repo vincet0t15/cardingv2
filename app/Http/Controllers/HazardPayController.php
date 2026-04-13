@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\EmploymentStatus;
 use App\Models\HazardPay;
-use App\Models\SourceOfFundCode;
+use App\Models\Office;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -19,6 +20,7 @@ class HazardPayController extends Controller
         $employmentStatusId = $request->input('employment_status_id');
 
         $employees = Employee::query()
+            ->has('hazardPays') // Only show employees who have hazard pay records
             ->when($search, function ($query, $search) {
                 $query->where('first_name', 'like', "%{$search}%")
                     ->orWhere('middle_name', 'like', "%{$search}%")
@@ -35,11 +37,13 @@ class HazardPayController extends Controller
             ->paginate(50)
             ->withQueryString();
 
-        $sourceOfFundCodes = SourceOfFundCode::where('status', true)->orderBy('code')->get();
+        $offices = Office::orderBy('name')->get();
+        $employmentStatuses = EmploymentStatus::orderBy('name')->get();
 
         return Inertia::render('hazard-pays/index', [
             'employees' => $employees,
-            'sourceOfFundCodes' => $sourceOfFundCodes,
+            'offices' => $offices,
+            'employmentStatuses' => $employmentStatuses,
             'filters' => [
                 'search' => $search,
                 'office_id' => $officeId,

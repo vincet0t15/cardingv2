@@ -21,6 +21,7 @@ class RataController extends Controller
 
         $employees = Employee::query()
             ->where('is_rata_eligible', true)
+            ->has('ratas') // Only show employees who have RATA records
             ->when($search, function ($query, $search) {
                 $query->where('first_name', 'like', "%{$search}%")
                     ->orWhere('middle_name', 'like', "%{$search}%")

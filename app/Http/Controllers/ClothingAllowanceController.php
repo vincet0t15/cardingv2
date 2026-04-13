@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\ClothingAllowance;
 use App\Models\Employee;
-use App\Models\SourceOfFundCode;
+use App\Models\EmploymentStatus;
+use App\Models\Office;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -19,6 +20,7 @@ class ClothingAllowanceController extends Controller
         $employmentStatusId = $request->input('employment_status_id');
 
         $employees = Employee::query()
+            ->has('clothingAllowances') // Only show employees who have clothing allowance records
             ->when($search, function ($query, $search) {
                 $query->where('first_name', 'like', "%{$search}%")
                     ->orWhere('middle_name', 'like', "%{$search}%")
@@ -35,11 +37,13 @@ class ClothingAllowanceController extends Controller
             ->paginate(50)
             ->withQueryString();
 
-        $sourceOfFundCodes = SourceOfFundCode::where('status', true)->orderBy('code')->get();
+        $offices = Office::orderBy('name')->get();
+        $employmentStatuses = EmploymentStatus::orderBy('name')->get();
 
         return Inertia::render('clothing-allowances/index', [
             'employees' => $employees,
-            'sourceOfFundCodes' => $sourceOfFundCodes,
+            'offices' => $offices,
+            'employmentStatuses' => $employmentStatuses,
             'filters' => [
                 'search' => $search,
                 'office_id' => $officeId,

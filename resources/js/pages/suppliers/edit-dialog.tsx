@@ -16,6 +16,7 @@ interface EditSupplierDialogProps {
 export function EditSupplierDialog({ supplier, onClose }: EditSupplierDialogProps) {
     const { data, setData, put, processing, errors, reset } = useForm<{
         name: string;
+        owner_name: string;
         address: string;
         contact_number: string;
         email: string;
@@ -23,6 +24,7 @@ export function EditSupplierDialog({ supplier, onClose }: EditSupplierDialogProp
         is_active: boolean;
     }>({
         name: '',
+        owner_name: '',
         address: '',
         contact_number: '',
         email: '',
@@ -34,6 +36,7 @@ export function EditSupplierDialog({ supplier, onClose }: EditSupplierDialogProp
         if (supplier) {
             setData({
                 name: supplier.name,
+                owner_name: supplier.owner_name || '',
                 address: supplier.address || '',
                 contact_number: supplier.contact_number || '',
                 email: supplier.email || '',
@@ -66,6 +69,16 @@ export function EditSupplierDialog({ supplier, onClose }: EditSupplierDialogProp
                         <Label htmlFor="edit_name">Supplier Name *</Label>
                         <Input id="edit_name" value={data.name} onChange={(e) => setData('name', e.target.value)} required />
                         {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="edit_owner_name">Owner Name</Label>
+                        <Input
+                            id="edit_owner_name"
+                            value={data.owner_name}
+                            onChange={(e) => setData('owner_name', e.target.value)}
+                            placeholder="Enter owner name"
+                        />
                     </div>
 
                     <div className="space-y-2">

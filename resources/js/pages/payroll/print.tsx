@@ -252,6 +252,12 @@ export default function PrintPayrollReport({ year, monthlyData, office }: Props)
                                                 <td className="border border-black p-1 text-right">Salary: {formatCurrency(grandTotals.salary)}</td>
                                                 <td className="border border-black p-1 text-right">PERA: {formatCurrency(grandTotals.pera)}</td>
                                                 <td className="border border-black p-1 text-right">RATA: {formatCurrency(grandTotals.rata)}</td>
+                                                <td className="border border-black p-1 text-right">
+                                                    Hazard: {formatCurrency(grandTotals.hazard_pay)}
+                                                </td>
+                                                <td className="border border-black p-1 text-right">
+                                                    Clothing: {formatCurrency(grandTotals.clothing_allowance)}
+                                                </td>
                                                 <td className="border border-black p-1 text-right">Gross: {formatCurrency(grandTotals.gross_pay)}</td>
                                                 <td className="border border-black p-1 text-right text-red-600">
                                                     Deductions: {formatCurrency(grandTotals.deductions)}

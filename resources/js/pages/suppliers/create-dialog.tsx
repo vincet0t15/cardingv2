@@ -15,6 +15,7 @@ interface CreateSupplierDialogProps {
 export function CreateSupplierDialog({ open, onClose }: CreateSupplierDialogProps) {
     const { data, setData, post, processing, errors, reset } = useForm<{
         name: string;
+        owner_name: string;
         address: string;
         contact_number: string;
         email: string;
@@ -22,6 +23,7 @@ export function CreateSupplierDialog({ open, onClose }: CreateSupplierDialogProp
         is_active: boolean;
     }>({
         name: '',
+        owner_name: '',
         address: '',
         contact_number: '',
         email: '',
@@ -62,6 +64,16 @@ export function CreateSupplierDialog({ open, onClose }: CreateSupplierDialogProp
                             required
                         />
                         {errors.name && <p className="text-sm text-red-500">{errors.name}</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="owner_name">Owner Name</Label>
+                        <Input
+                            id="owner_name"
+                            value={data.owner_name}
+                            onChange={(e) => setData('owner_name', e.target.value)}
+                            placeholder="Enter owner name"
+                        />
                     </div>
 
                     <div className="space-y-2">

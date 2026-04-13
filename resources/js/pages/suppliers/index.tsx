@@ -70,6 +70,7 @@ export default function Suppliers({ suppliers, filters }: Props) {
                         <TableHeader className="bg-muted/50">
                             <TableRow>
                                 <TableHead>Supplier Name</TableHead>
+                                <TableHead>Owner Name</TableHead>
                                 <TableHead>Address</TableHead>
                                 <TableHead>Contact Number</TableHead>
                                 <TableHead>Email</TableHead>
@@ -81,7 +82,7 @@ export default function Suppliers({ suppliers, filters }: Props) {
                         <TableBody>
                             {suppliers.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-muted-foreground py-8 text-center">
+                                    <TableCell colSpan={8} className="text-muted-foreground py-8 text-center">
                                         No suppliers found. Click "Add Supplier" to create one.
                                     </TableCell>
                                 </TableRow>
@@ -96,6 +97,7 @@ export default function Suppliers({ suppliers, filters }: Props) {
                                                 {supplier.name}
                                             </Link>
                                         </TableCell>
+                                        <TableCell className="text-muted-foreground">{supplier.owner_name || '-'}</TableCell>
                                         <TableCell className="text-muted-foreground max-w-xs truncate">{supplier.address || '-'}</TableCell>
                                         <TableCell>{supplier.contact_number || '-'}</TableCell>
                                         <TableCell>{supplier.email || '-'}</TableCell>

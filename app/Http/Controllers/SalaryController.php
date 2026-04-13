@@ -21,6 +21,7 @@ class SalaryController extends Controller
         $employmentStatusId = $request->input('employment_status_id');
 
         $employees = Employee::query()
+            ->has('salaries') // Only show employees who have salary records
             ->when($search, function ($query, $search) {
                 $query->where('first_name', 'like', "%{$search}%")
                     ->orWhere('middle_name', 'like', "%{$search}%")
