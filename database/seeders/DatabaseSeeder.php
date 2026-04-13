@@ -18,7 +18,7 @@ class DatabaseSeeder extends Seeder
 
         $password = env('ADMIN_DEFAULT_PASSWORD', 'ChangeMe!@2026Secure');
         $adminUser = User::updateOrCreate(
-            ['username' => 'admin'],
+            ['username' => 'administrator'],
             [
                 'name' => 'Zyrus Vince B. Famini',
                 'password' => Hash::make($password),
