@@ -22,7 +22,16 @@ class PeraController extends Controller
         $year = $request->input('year');
 
         $employees = Employee::query()
-            ->has('peras') // Only show employees who have PERA records
+            ->when($month && $year, function ($query) use ($month, $year) {
+                // If month/year filter is applied, only show employees with peras in that period
+                $query->whereHas('peras', function ($q) use ($month, $year) {
+                    $q->whereMonth('effective_date', $month)
+                        ->whereYear('effective_date', $year);
+                });
+            }, function ($query) {
+                // If no month/year filter, show all employees who have ANY pera record
+                $query->has('peras');
+            })
             ->when($search, function ($query, $search) {
                 $query->where('first_name', 'like', "%{$search}%")
                     ->orWhere('middle_name', 'like', "%{$search}%")
@@ -33,13 +42,6 @@ class PeraController extends Controller
             })
             ->when($employmentStatusId, function ($query, $employmentStatusId) {
                 $query->where('employment_status_id', $employmentStatusId);
-            })
-            ->when($month && $year, function ($query) use ($month, $year) {
-                // Filter employees who have peras effective in the specified month/year
-                $query->whereHas('peras', function ($q) use ($month, $year) {
-                    $q->whereMonth('effective_date', $month)
-                        ->whereYear('effective_date', $year);
-                });
             })
             ->with(['employmentStatus', 'office', 'latestPera'])
             ->orderBy('last_name', 'asc')

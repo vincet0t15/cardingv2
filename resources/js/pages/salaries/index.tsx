@@ -15,9 +15,9 @@ import type { EmploymentStatus } from '@/types/employmentStatuses';
 import type { FilterProps } from '@/types/filter';
 import type { Office } from '@/types/office';
 import type { PaginatedDataResponse } from '@/types/pagination';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { History, PlusIcon, Printer, Search, User } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -50,6 +50,39 @@ export default function SalariesIndex({ employees, offices, employmentStatuses, 
 
     const [openAdd, setOpenAdd] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+
+    // Auto-apply filters when they change
+    const { props } = usePage();
+    useEffect(() => {
+        const queryString: Record<string, string> = {};
+        if (filterData.search) queryString.search = filterData.search;
+        if (filterData.office_id) queryString.office_id = filterData.office_id;
+        if (filterData.employment_status_id) queryString.employment_status_id = filterData.employment_status_id;
+        // Only include month/year if BOTH are provided
+        if (filterData.month && filterData.year) {
+            queryString.month = filterData.month;
+            queryString.year = filterData.year;
+        }
+
+        // Only reload if filters have changed from initial
+        const hasChanges =
+            filterData.search !== filters.search ||
+            filterData.office_id !== (filters.office_id || '') ||
+            filterData.employment_status_id !== (filters.employment_status_id || '') ||
+            filterData.month !== (filters.month || '') ||
+            filterData.year !== (filters.year || '');
+
+        if (hasChanges) {
+            const debounceTimer = setTimeout(() => {
+                router.get(route('salaries.index'), queryString, {
+                    preserveState: true,
+                    preserveScroll: true,
+                });
+            }, 300); // 300ms debounce
+
+            return () => clearTimeout(debounceTimer);
+        }
+    }, [filterData.search, filterData.office_id, filterData.employment_status_id, filterData.month, filterData.year]);
 
     const {
         data: salaryData,

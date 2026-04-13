@@ -22,7 +22,16 @@ class HazardPayController extends Controller
         $year = $request->input('year');
 
         $employees = Employee::query()
-            ->has('hazardPays') // Only show employees who have hazard pay records
+            ->when($month && $year, function ($query) use ($month, $year) {
+                // If month/year filter is applied, only show employees with hazard pays in that period
+                $query->whereHas('hazardPays', function ($q) use ($month, $year) {
+                    $q->whereMonth('effective_date', $month)
+                        ->whereYear('effective_date', $year);
+                });
+            }, function ($query) {
+                // If no month/year filter, show all employees who have ANY hazard pay record
+                $query->has('hazardPays');
+            })
             ->when($search, function ($query, $search) {
                 $query->where('first_name', 'like', "%{$search}%")
                     ->orWhere('middle_name', 'like', "%{$search}%")
@@ -33,13 +42,6 @@ class HazardPayController extends Controller
             })
             ->when($employmentStatusId, function ($query, $employmentStatusId) {
                 $query->where('employment_status_id', $employmentStatusId);
-            })
-            ->when($month && $year, function ($query) use ($month, $year) {
-                // Filter employees who have hazard pays effective in the specified month/year
-                $query->whereHas('hazardPays', function ($q) use ($month, $year) {
-                    $q->whereMonth('effective_date', $month)
-                        ->whereYear('effective_date', $year);
-                });
             })
             ->with(['employmentStatus', 'office', 'latestHazardPay'])
             ->orderBy('last_name', 'asc')

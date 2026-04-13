@@ -23,7 +23,16 @@ class RataController extends Controller
 
         $employees = Employee::query()
             ->where('is_rata_eligible', true)
-            ->has('ratas') // Only show employees who have RATA records
+            ->when($month && $year, function ($query) use ($month, $year) {
+                // If month/year filter is applied, only show employees with ratas in that period
+                $query->whereHas('ratas', function ($q) use ($month, $year) {
+                    $q->whereMonth('effective_date', $month)
+                        ->whereYear('effective_date', $year);
+                });
+            }, function ($query) {
+                // If no month/year filter, show all employees who have ANY rata record
+                $query->has('ratas');
+            })
             ->when($search, function ($query, $search) {
                 $query->where('first_name', 'like', "%{$search}%")
                     ->orWhere('middle_name', 'like', "%{$search}%")
@@ -34,13 +43,6 @@ class RataController extends Controller
             })
             ->when($employmentStatusId, function ($query, $employmentStatusId) {
                 $query->where('employment_status_id', $employmentStatusId);
-            })
-            ->when($month && $year, function ($query) use ($month, $year) {
-                // Filter employees who have ratas effective in the specified month/year
-                $query->whereHas('ratas', function ($q) use ($month, $year) {
-                    $q->whereMonth('effective_date', $month)
-                        ->whereYear('effective_date', $year);
-                });
             })
             ->with(['employmentStatus', 'office', 'latestRata'])
             ->orderBy('last_name', 'asc')

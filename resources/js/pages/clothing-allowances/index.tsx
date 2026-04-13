@@ -16,7 +16,7 @@ import type { Office } from '@/types/office';
 import type { PaginatedDataResponse } from '@/types/pagination';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { History, PlusIcon, Printer, Search, User } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -49,6 +49,38 @@ export default function ClothingAllowancesIndex({ employees, offices, employment
     const [openAdd, setOpenAdd] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
+    // Auto-apply filters when they change
+    useEffect(() => {
+        const queryString: Record<string, string> = {};
+        if (filterData.search) queryString.search = filterData.search;
+        if (filterData.office_id) queryString.office_id = filterData.office_id;
+        if (filterData.employment_status_id) queryString.employment_status_id = filterData.employment_status_id;
+        // Only include month/year if BOTH are provided
+        if (filterData.month && filterData.year) {
+            queryString.month = filterData.month;
+            queryString.year = filterData.year;
+        }
+
+        // Only reload if filters have changed from initial
+        const hasChanges =
+            filterData.search !== filters.search ||
+            filterData.office_id !== (filters.office_id || '') ||
+            filterData.employment_status_id !== (filters.employment_status_id || '') ||
+            filterData.month !== (filters.month || '') ||
+            filterData.year !== (filters.year || '');
+
+        if (hasChanges) {
+            const debounceTimer = setTimeout(() => {
+                router.get(route('clothing-allowances.index'), queryString, {
+                    preserveState: true,
+                    preserveScroll: true,
+                });
+            }, 300); // 300ms debounce
+
+            return () => clearTimeout(debounceTimer);
+        }
+    }, [filterData.search, filterData.office_id, filterData.employment_status_id, filterData.month, filterData.year]);
+
     const {
         data: clothingAllowanceData,
         setData: setClothingAllowanceData,
@@ -69,8 +101,11 @@ export default function ClothingAllowancesIndex({ employees, offices, employment
         if (filterData.search) queryString.search = filterData.search;
         if (filterData.office_id) queryString.office_id = filterData.office_id;
         if (filterData.employment_status_id) queryString.employment_status_id = filterData.employment_status_id;
-        if (filterData.month) queryString.month = filterData.month;
-        if (filterData.year) queryString.year = filterData.year;
+        // Only include month/year if BOTH are provided
+        if (filterData.month && filterData.year) {
+            queryString.month = filterData.month;
+            queryString.year = filterData.year;
+        }
         router.get(route('clothing-allowances.index'), queryString, {
             preserveState: true,
             preserveScroll: true,

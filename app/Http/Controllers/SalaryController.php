@@ -23,7 +23,16 @@ class SalaryController extends Controller
         $year = $request->input('year');
 
         $employees = Employee::query()
-            ->has('salaries') // Only show employees who have salary records
+            ->when($month && $year, function ($query) use ($month, $year) {
+                // If month/year filter is applied, only show employees with salaries in that period
+                $query->whereHas('salaries', function ($q) use ($month, $year) {
+                    $q->whereMonth('effective_date', $month)
+                        ->whereYear('effective_date', $year);
+                });
+            }, function ($query) {
+                // If no month/year filter, show all employees who have ANY salary record
+                $query->has('salaries');
+            })
             ->when($search, function ($query, $search) {
                 $query->where('first_name', 'like', "%{$search}%")
                     ->orWhere('middle_name', 'like', "%{$search}%")
@@ -34,13 +43,6 @@ class SalaryController extends Controller
             })
             ->when($employmentStatusId, function ($query, $employmentStatusId) {
                 $query->where('employment_status_id', $employmentStatusId);
-            })
-            ->when($month && $year, function ($query) use ($month, $year) {
-                // Filter employees who have salaries effective in the specified month/year
-                $query->whereHas('salaries', function ($q) use ($month, $year) {
-                    $q->whereMonth('effective_date', $month)
-                        ->whereYear('effective_date', $year);
-                });
             })
             ->with(['employmentStatus', 'office', 'latestSalary'])
             ->orderBy('last_name', 'asc')
