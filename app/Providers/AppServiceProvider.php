@@ -4,10 +4,12 @@ namespace App\Providers;
 
 use App\Models\Claim;
 use App\Models\ClaimType;
+use App\Models\ClothingAllowance;
 use App\Models\DeductionType;
 use App\Models\DocumentType;
 use App\Models\Employee;
 use App\Models\EmploymentStatus;
+use App\Models\HazardPay;
 use App\Models\Office;
 use App\Models\Pera;
 use App\Models\Rata;
@@ -15,10 +17,12 @@ use App\Models\Salary;
 use App\Models\Supplier;
 use App\Policies\ClaimPolicy;
 use App\Policies\ClaimTypePolicy;
+use App\Policies\ClothingAllowancePolicy;
 use App\Policies\DeductionTypePolicy;
 use App\Policies\DocumentTypePolicy;
 use App\Policies\EmployeePolicy;
 use App\Policies\EmploymentStatusPolicy;
+use App\Policies\HazardPayPolicy;
 use App\Policies\OfficePolicy;
 use App\Policies\PeraPolicy;
 use App\Policies\RataPolicy;
@@ -47,5 +51,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(DeductionType::class, DeductionTypePolicy::class);
         Gate::policy(DocumentType::class, DocumentTypePolicy::class);
         Gate::policy(ClaimType::class, ClaimTypePolicy::class);
+        Gate::policy(HazardPay::class, HazardPayPolicy::class);
+        Gate::policy(ClothingAllowance::class, ClothingAllowancePolicy::class);
     }
 }

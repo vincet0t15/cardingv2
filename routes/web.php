@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\BackupController;
+use App\Http\Controllers\ClothingAllowanceController;
 use App\Http\Controllers\ClaimController;
 use App\Http\Controllers\ClaimTypeController;
 use App\Http\Controllers\DashboardController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\EmployeeSourceOfFundController;
 use App\Http\Controllers\EmploymentStatusController;
 use App\Http\Controllers\EmploymentTypeReportController;
 use App\Http\Controllers\GeneralFundController;
+use App\Http\Controllers\HazardPayController;
 use App\Http\Controllers\ManageEmployeeController;
 use App\Http\Controllers\OfficeController;
 use App\Http\Controllers\PayrollController;
@@ -142,6 +144,24 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware(['permission:ratas.create'])->post('ratas', [RataController::class, 'store'])->name('ratas.store');
     Route::middleware(['permission:ratas.edit'])->put('ratas/{rata}', [RataController::class, 'update'])->name('ratas.update');
     Route::middleware(['permission:ratas.delete'])->delete('ratas/{rata}', [RataController::class, 'destroy'])->name('ratas.destroy');
+
+    // HAZARD PAY - Full CRUD (requires hazard_pays.* permissions)
+    Route::middleware(['permission:hazard_pays.view'])->prefix('hazard-pays')->group(function () {
+        Route::get('/', [HazardPayController::class, 'index'])->name('hazard-pays.index');
+        Route::get('history/{employee}', [HazardPayController::class, 'history'])->name('hazard-pays.history');
+    });
+    Route::middleware(['permission:hazard_pays.create'])->post('hazard-pays', [HazardPayController::class, 'store'])->name('hazard-pays.store');
+    Route::middleware(['permission:hazard_pays.edit'])->put('hazard-pays/{hazardPay}', [HazardPayController::class, 'update'])->name('hazard-pays.update');
+    Route::middleware(['permission:hazard_pays.delete'])->delete('hazard-pays/{hazardPay}', [HazardPayController::class, 'destroy'])->name('hazard-pays.destroy');
+
+    // CLOTHING ALLOWANCE - Full CRUD (requires clothing_allowances.* permissions)
+    Route::middleware(['permission:clothing_allowances.view'])->prefix('clothing-allowances')->group(function () {
+        Route::get('/', [ClothingAllowanceController::class, 'index'])->name('clothing-allowances.index');
+        Route::get('history/{employee}', [ClothingAllowanceController::class, 'history'])->name('clothing-allowances.history');
+    });
+    Route::middleware(['permission:clothing_allowances.create'])->post('clothing-allowances', [ClothingAllowanceController::class, 'store'])->name('clothing-allowances.store');
+    Route::middleware(['permission:clothing_allowances.edit'])->put('clothing-allowances/{clothingAllowance}', [ClothingAllowanceController::class, 'update'])->name('clothing-allowances.update');
+    Route::middleware(['permission:clothing_allowances.delete'])->delete('clothing-allowances/{clothingAllowance}', [ClothingAllowanceController::class, 'destroy'])->name('clothing-allowances.destroy');
 
     // EMPLOYEE DEDUCTIONS - Full CRUD (requires deductions.manage permission)
     Route::middleware(['permission:deductions.manage'])->prefix('employee-deductions')->group(function () {

@@ -1,0 +1,325 @@
+import { DatePicker } from '@/components/custom-date-picker';
+import { CustomComboBox } from '@/components/CustomComboBox';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import type { ClothingAllowance } from '@/types/clothing-allowance';
+import type { Employee } from '@/types/employee';
+import { router, useForm } from '@inertiajs/react';
+import { CalendarIcon, PencilIcon, Plus, Trash2, TrendingUp } from 'lucide-react';
+import { useEffect, useState, type FormEventHandler } from 'react';
+import { toast } from 'sonner';
+
+interface CompensationClothingAllowanceProps {
+    employee: Employee;
+    sourceOfFundCodes?: { id: number; code: string; description: string | null; status: boolean }[];
+}
+
+function AddClothingAllowanceDialog({
+    open,
+    onClose,
+    employee,
+    sourceOfFundCodes,
+}: {
+    open: boolean;
+    onClose: () => void;
+    employee: Employee;
+    sourceOfFundCodes?: { id: number; code: string; description: string | null; status: boolean }[];
+}) {
+    const { data, setData, post, processing, reset } = useForm({
+        employee_id: employee.id,
+        amount: '',
+        effective_date: new Date().toISOString().split('T')[0],
+        source_of_fund_code_id: null as number | null,
+    });
+
+    const onSubmit: FormEventHandler<HTMLFormElement> = (e) => {
+        e.preventDefault();
+        post(route('clothing-allowances.store'), {
+            onSuccess: () => {
+                toast.success('Clothing Allowance added successfully');
+                reset();
+                onClose();
+            },
+            onError: () => toast.error('Failed to add Clothing Allowance.'),
+        });
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onClose}>
+            <DialogContent className="max-w-md">
+                <form onSubmit={onSubmit}>
+                    <DialogHeader>
+                        <DialogTitle>Add Clothing Allowance</DialogTitle>
+                        <DialogDescription>Enter the clothing allowance amount and effective date.</DialogDescription>
+                    </DialogHeader>
+                    <div className="mt-4 space-y-4">
+                        <div className="flex flex-col gap-1">
+                            <Label>Amount (₱)</Label>
+                            <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={data.amount}
+                                onChange={(e) => setData('amount', e.target.value)}
+                                required
+                            />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <Label>Effective Date</Label>
+                            <DatePicker value={data.effective_date} onChange={(value) => setData('effective_date', value)} />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <Label>Source of Fund Code (Optional)</Label>
+                            <CustomComboBox
+                                items={
+                                    sourceOfFundCodes?.map((fund) => ({
+                                        value: fund.id.toString(),
+                                        label: `${fund.code} - ${fund.description || 'No description'}`,
+                                    })) || []
+                                }
+                                placeholder="Select source of fund..."
+                                value={data.source_of_fund_code_id?.toString() || null}
+                                onSelect={(value) => setData('source_of_fund_code_id', value ? parseInt(value) : null)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter className="mt-6">
+                        <DialogClose asChild>
+                            <Button type="button" variant="outline">
+                                Cancel
+                            </Button>
+                        </DialogClose>
+                        <Button type="submit" disabled={processing}>
+                            {processing ? 'Saving...' : 'Save Clothing Allowance'}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function EditClothingAllowanceDialog({
+    open,
+    onClose,
+    clothingAllowance,
+    sourceOfFundCodes,
+}: {
+    open: boolean;
+    onClose: () => void;
+    clothingAllowance: ClothingAllowance;
+    sourceOfFundCodes?: { id: number; code: string; description: string | null; status: boolean }[];
+}) {
+    const { data, setData, put, processing, reset } = useForm({
+        amount: String(clothingAllowance.amount),
+        effective_date: clothingAllowance.effective_date,
+        source_of_fund_code_id: clothingAllowance.source_of_fund_code?.id || (null as number | null),
+    });
+
+    useEffect(() => {
+        reset();
+    }, [clothingAllowance]);
+
+    const onSubmit: FormEventHandler<HTMLFormElement> = (e) => {
+        e.preventDefault();
+        put(route('clothing-allowances.update', clothingAllowance.id), {
+            onSuccess: () => {
+                toast.success('Clothing Allowance updated successfully');
+                onClose();
+            },
+            onError: () => toast.error('Failed to update Clothing Allowance.'),
+        });
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onClose}>
+            <DialogContent className="max-w-md">
+                <form onSubmit={onSubmit}>
+                    <DialogHeader>
+                        <DialogTitle>Edit Clothing Allowance</DialogTitle>
+                        <DialogDescription>Update the clothing allowance amount and effective date.</DialogDescription>
+                    </DialogHeader>
+                    <div className="mt-4 space-y-4">
+                        <div className="flex flex-col gap-1">
+                            <Label>Amount (₱)</Label>
+                            <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={data.amount}
+                                onChange={(e) => setData('amount', e.target.value)}
+                                required
+                            />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <Label>Effective Date</Label>
+                            <DatePicker value={data.effective_date} onChange={(value) => setData('effective_date', value)} />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <Label>Source of Fund Code (Optional)</Label>
+                            <CustomComboBox
+                                items={
+                                    sourceOfFundCodes?.map((fund) => ({
+                                        value: fund.id.toString(),
+                                        label: `${fund.code} - ${fund.description || 'No description'}`,
+                                    })) || []
+                                }
+                                placeholder="Select source of fund..."
+                                value={data.source_of_fund_code_id?.toString() || null}
+                                onSelect={(value) => setData('source_of_fund_code_id', value ? parseInt(value) : null)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter className="mt-6">
+                        <DialogClose asChild>
+                            <Button type="button" variant="outline">
+                                Cancel
+                            </Button>
+                        </DialogClose>
+                        <Button type="submit" disabled={processing}>
+                            {processing ? 'Saving...' : 'Update Clothing Allowance'}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+const formatCurrency = (amount: number | undefined) => {
+    if (!amount) return '₱0.00';
+    return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(amount);
+};
+
+const formatDate = (date: string) => new Date(date).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+
+export function CompensationClothingAllowance({ employee, sourceOfFundCodes }: CompensationClothingAllowanceProps) {
+    const [openDialog, setOpenDialog] = useState(false);
+    const [editDialog, setEditDialog] = useState<{ open: boolean; clothingAllowance: ClothingAllowance | null }>({
+        open: false,
+        clothingAllowance: null,
+    });
+    const clothingAllowances: ClothingAllowance[] = employee.clothingAllowances ?? [];
+    const current = employee.latest_clothing_allowance;
+
+    const handleDelete = (clothingAllowance: ClothingAllowance) => {
+        if (confirm('Are you sure you want to delete this clothing allowance record?')) {
+            router.delete(route('clothing-allowances.destroy', clothingAllowance.id), {
+                onSuccess: () => toast.success('Clothing Allowance record deleted successfully'),
+                onError: () => toast.error('Failed to delete clothing allowance record'),
+            });
+        }
+    };
+
+    const handleEdit = (clothingAllowance: ClothingAllowance) => {
+        setEditDialog({ open: true, clothingAllowance });
+    };
+
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-end">
+                <Button onClick={() => setOpenDialog(true)}>
+                    <Plus className="h-4 w-4" />
+                    Add Clothing Allowance
+                </Button>
+            </div>
+
+            {/* Current Clothing Allowance */}
+            {current && (
+                <div className="overflow-hidden rounded-lg border bg-gradient-to-br from-blue-50 to-white shadow-sm">
+                    <div className="border-b bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+                        <div className="flex items-center gap-2 text-white">
+                            <TrendingUp className="h-5 w-5" />
+                            <h3 className="text-sm font-semibold tracking-wide uppercase">Current Clothing Allowance</h3>
+                        </div>
+                    </div>
+                    <div className="px-6 py-5">
+                        <div className="flex items-baseline justify-between">
+                            <div>
+                                <p className="text-muted-foreground text-xs">Effective Date</p>
+                                <p className="mt-1 font-medium text-slate-900">{formatDate(current.effective_date)}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-muted-foreground text-xs">Amount</p>
+                                <p className="text-3xl font-bold text-blue-600">{formatCurrency(current.amount)}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* History */}
+            {clothingAllowances.length > 0 ? (
+                <div className="overflow-hidden rounded-lg border shadow-sm">
+                    <div className="border-b bg-slate-50 px-6 py-4">
+                        <h3 className="text-sm font-semibold">Clothing Allowance History</h3>
+                    </div>
+                    <div className="p-0">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="bg-slate-50">
+                                    <TableHead className="font-semibold">Amount</TableHead>
+                                    <TableHead className="font-semibold">Effective Date</TableHead>
+                                    <TableHead className="text-right font-semibold">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {clothingAllowances.map((ca, i) => (
+                                    <TableRow key={ca.id} className={i === 0 ? 'font-semibold' : ''}>
+                                        <TableCell>{formatCurrency(ca.amount)}</TableCell>
+                                        <TableCell className="text-muted-foreground text-sm">{formatDate(ca.effective_date)}</TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex justify-end gap-1">
+                                                <Button variant="ghost" size="icon" onClick={() => handleEdit(ca)} className="h-8 w-8">
+                                                    <PencilIcon className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleDelete(ca)}
+                                                    className="h-8 w-8 text-red-600 hover:text-red-700"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </div>
+            ) : (
+                <div className="text-muted-foreground rounded-lg border py-10 text-center">
+                    <CalendarIcon className="mx-auto mb-2 h-10 w-10 opacity-20" />
+                    <p className="text-sm">No clothing allowance records yet.</p>
+                </div>
+            )}
+
+            {openDialog && (
+                <AddClothingAllowanceDialog
+                    open={openDialog}
+                    onClose={() => setOpenDialog(false)}
+                    employee={employee}
+                    sourceOfFundCodes={sourceOfFundCodes}
+                />
+            )}
+            {editDialog.open && editDialog.clothingAllowance && (
+                <EditClothingAllowanceDialog
+                    open={editDialog.open}
+                    onClose={() => setEditDialog({ open: false, clothingAllowance: null })}
+                    clothingAllowance={editDialog.clothingAllowance}
+                    sourceOfFundCodes={sourceOfFundCodes}
+                />
+            )}
+        </div>
+    );
+}
+
+export default CompensationClothingAllowance;

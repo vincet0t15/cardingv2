@@ -3,6 +3,8 @@ import type { Office } from "./office";
 import type { Salary } from "./salary";
 import type { Pera } from "./pera";
 import type { Rata } from "./rata";
+import type { HazardPay } from "./hazard-pay";
+import type { ClothingAllowance } from "./clothing-allowance";
 import type { EmployeeDeduction } from "./employeeDeduction";
 
 export interface Employee {
@@ -22,10 +24,14 @@ export interface Employee {
     salaries?: Salary[];
     peras?: Pera[];
     ratas?: Rata[];
+    hazardPays?: HazardPay[];
+    clothingAllowances?: ClothingAllowance[];
     deductions?: EmployeeDeduction[];
     latest_salary?: Salary;
     latest_pera?: Pera;
     latest_rata?: Rata;
+    latest_hazard_pay?: HazardPay;
+    latest_clothing_allowance?: ClothingAllowance;
 }
 
 export type EmployeeCreateRequest = {

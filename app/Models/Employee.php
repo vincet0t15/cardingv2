@@ -62,6 +62,16 @@ class Employee extends Model
         return $this->hasMany(Rata::class);
     }
 
+    public function hazardPays(): HasMany
+    {
+        return $this->hasMany(HazardPay::class);
+    }
+
+    public function clothingAllowances(): HasMany
+    {
+        return $this->hasMany(ClothingAllowance::class);
+    }
+
     public function deductions(): HasMany
     {
         return $this->hasMany(EmployeeDeduction::class);
@@ -94,6 +104,22 @@ class Employee extends Model
     public function latestRata(): HasOne
     {
         return $this->hasOne(Rata::class)->latestOfMany('effective_date');
+    }
+
+    /**
+     * Get the latest Hazard Pay record
+     */
+    public function latestHazardPay(): HasOne
+    {
+        return $this->hasOne(HazardPay::class)->latestOfMany('effective_date');
+    }
+
+    /**
+     * Get the latest Clothing Allowance record
+     */
+    public function latestClothingAllowance(): HasOne
+    {
+        return $this->hasOne(ClothingAllowance::class)->latestOfMany('effective_date');
     }
 
     public static function boot()

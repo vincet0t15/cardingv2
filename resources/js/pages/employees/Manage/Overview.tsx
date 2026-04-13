@@ -4,7 +4,7 @@ import { Separator } from '@/components/ui/separator';
 import type { Claim } from '@/types/claim';
 import type { Employee } from '@/types/employee';
 import type { EmployeeDeduction } from '@/types/employeeDeduction';
-import { Building2, CalendarDays, CoinsIcon, CreditCard, DollarSign, Receipt, TrendingDown, User } from 'lucide-react';
+import { Building2, CalendarDays, CoinsIcon, CreditCard, DollarSign, HardHat, Receipt, Shirt, TrendingDown, User } from 'lucide-react';
 
 interface OverviewProps {
     employee: Employee;
@@ -43,7 +43,9 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
     const grossPay =
         Number(employee.latest_salary?.amount ?? 0) +
         Number(employee.latest_pera?.amount ?? 0) +
-        (employee.is_rata_eligible ? Number(employee.latest_rata?.amount ?? 0) : 0);
+        (employee.is_rata_eligible ? Number(employee.latest_rata?.amount ?? 0) : 0) +
+        Number(employee.latest_hazard_pay?.amount ?? 0) +
+        Number(employee.latest_clothing_allowance?.amount ?? 0);
     const netThisMonth = grossPay - currentMonthDeductionTotal;
 
     // Calculate employment duration
@@ -63,7 +65,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
             {/* Compensation Summary Cards */}
             <div>
                 <h3 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">Current Compensation</h3>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Basic Salary</CardTitle>
@@ -106,17 +108,48 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         </CardContent>
                     </Card>
 
-                    <Card className="border-emerald-200 bg-emerald-50">
+                    <Card>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-emerald-800">Est. Gross Pay</CardTitle>
-                            <CoinsIcon className="h-4 w-4 text-emerald-600" />
+                            <CardTitle className="text-sm font-medium">Hazard Pay</CardTitle>
+                            <HardHat className="text-muted-foreground h-4 w-4" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-emerald-700">{formatCurrency(grossPay)}</div>
-                            <p className="mt-1 text-xs text-emerald-600">Salary + PERA{employee.is_rata_eligible ? ' + RATA' : ''}</p>
+                            <div className="text-2xl font-bold">{formatCurrency(employee.latest_hazard_pay?.amount)}</div>
+                            <p className="text-muted-foreground mt-1 text-xs">Effective {formatDate(employee.latest_hazard_pay?.effective_date)}</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                            <CardTitle className="text-sm font-medium">Clothing Allow.</CardTitle>
+                            <Shirt className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatCurrency(employee.latest_clothing_allowance?.amount)}</div>
+                            <p className="text-muted-foreground mt-1 text-xs">
+                                Effective {formatDate(employee.latest_clothing_allowance?.effective_date)}
+                            </p>
                         </CardContent>
                     </Card>
                 </div>
+            </div>
+
+            {/* Est. Gross Pay Card */}
+            <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-1">
+                <Card className="border-emerald-200 bg-emerald-50">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium text-emerald-800">Est. Gross Pay</CardTitle>
+                        <CoinsIcon className="h-4 w-4 text-emerald-600" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-3xl font-bold text-emerald-700">{formatCurrency(grossPay)}</div>
+                        <p className="mt-1 text-xs text-emerald-600">
+                            Salary + PERA{employee.is_rata_eligible ? ' + RATA' : ''}
+                            {employee.latest_hazard_pay?.amount ? ' + Hazard Pay' : ''}
+                            {employee.latest_clothing_allowance?.amount ? ' + Clothing Allowance' : ''}
+                        </p>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* This Month & All-time Stats */}

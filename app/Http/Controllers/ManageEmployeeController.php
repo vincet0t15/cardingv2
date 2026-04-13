@@ -30,6 +30,8 @@ class ManageEmployeeController extends Controller
             'latestSalary',
             'latestPera',
             'latestRata',
+            'latestHazardPay',
+            'latestClothingAllowance',
             'salaries' => function ($query) {
                 $query->orderBy('effective_date', 'desc')
                     ->with('sourceOfFundCode');
@@ -39,6 +41,14 @@ class ManageEmployeeController extends Controller
             },
             'ratas' => function ($query) {
                 $query->orderBy('effective_date', 'desc');
+            },
+            'hazardPays' => function ($query) {
+                $query->orderBy('effective_date', 'desc')
+                    ->with('sourceOfFundCode');
+            },
+            'clothingAllowances' => function ($query) {
+                $query->orderBy('effective_date', 'desc')
+                    ->with('sourceOfFundCode');
             },
         ]);
 

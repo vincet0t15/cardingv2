@@ -125,6 +125,8 @@ export default function EmployeePrintReport({
     let salary: number;
     let pera: number;
     let rata: number;
+    let hazardPay: number;
+    let clothingAllowance: number;
     let showGrossAndNet: boolean = true;
     let isAllTimeView: boolean = false;
     let isYearlyView: boolean = false;
@@ -133,12 +135,16 @@ export default function EmployeePrintReport({
         salary = getEffectiveAmount(employee.salaries, parseInt(filterYear), parseInt(filterMonth));
         pera = getEffectiveAmount(employee.peras, parseInt(filterYear), parseInt(filterMonth));
         rata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, parseInt(filterYear), parseInt(filterMonth)) : 0;
+        hazardPay = getEffectiveAmount(employee.hazardPays, parseInt(filterYear), parseInt(filterMonth));
+        clothingAllowance = getEffectiveAmount(employee.clothingAllowances, parseInt(filterYear), parseInt(filterMonth));
         showGrossAndNet = true; // Specific period - calculations make sense
     } else if (filterYear) {
         // Year only - sum ALL records within that year
         salary = sumCompensationForYear(employee.salaries, parseInt(filterYear));
         pera = sumCompensationForYear(employee.peras, parseInt(filterYear));
         rata = employee.is_rata_eligible ? sumCompensationForYear(employee.ratas, parseInt(filterYear)) : 0;
+        hazardPay = sumCompensationForYear(employee.hazardPays, parseInt(filterYear));
+        clothingAllowance = sumCompensationForYear(employee.clothingAllowances, parseInt(filterYear));
         showGrossAndNet = true;
         isYearlyView = true;
     } else {
@@ -146,11 +152,13 @@ export default function EmployeePrintReport({
         salary = sumCompensation(employee.salaries);
         pera = sumCompensation(employee.peras);
         rata = employee.is_rata_eligible ? sumCompensation(employee.ratas) : 0;
+        hazardPay = sumCompensation(employee.hazardPays);
+        clothingAllowance = sumCompensation(employee.clothingAllowances);
         showGrossAndNet = true; // Now we can show gross/net for all-time view
         isAllTimeView = true;
     }
 
-    const grossPay = salary + pera + rata;
+    const grossPay = salary + pera + rata + hazardPay + clothingAllowance;
     const netPay = grossPay - totalAllDeductions;
 
     const currentDate = new Date().toLocaleDateString('en-PH', {

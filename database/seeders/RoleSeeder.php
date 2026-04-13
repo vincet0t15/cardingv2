@@ -40,6 +40,18 @@ class RoleSeeder extends Seeder
             'ratas.edit',
             'ratas.delete',
 
+            // Hazard Pay permissions
+            'hazard_pays.view',
+            'hazard_pays.create',
+            'hazard_pays.edit',
+            'hazard_pays.delete',
+
+            // Clothing Allowance permissions
+            'clothing_allowances.view',
+            'clothing_allowances.create',
+            'clothing_allowances.edit',
+            'clothing_allowances.delete',
+
             // Payroll permissions
             'payroll.view',
             'payroll.export',
