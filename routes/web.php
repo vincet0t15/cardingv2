@@ -121,6 +121,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     // SALARIES - Full CRUD (requires salaries.* permissions)
     Route::middleware(['permission:salaries.view'])->prefix('salaries')->group(function () {
         Route::get('/', [SalaryController::class, 'index'])->name('salaries.index');
+        Route::get('print', [SalaryController::class, 'print'])->name('salaries.print');
         Route::get('history/{employee}', [SalaryController::class, 'history'])->name('salaries.history');
     });
     Route::middleware(['permission:salaries.create'])->post('salaries', [SalaryController::class, 'store'])->name('salaries.store');
@@ -130,6 +131,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     // PERA - Full CRUD (requires peras.* permissions)
     Route::middleware(['permission:peras.view'])->prefix('peras')->group(function () {
         Route::get('/', [PeraController::class, 'index'])->name('peras.index');
+        Route::get('print', [PeraController::class, 'print'])->name('peras.print');
         Route::get('history/{employee}', [PeraController::class, 'history'])->name('peras.history');
     });
     Route::middleware(['permission:peras.create'])->post('peras', [PeraController::class, 'store'])->name('peras.store');
@@ -139,6 +141,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     // RATA - Full CRUD (requires ratas.* permissions)
     Route::middleware(['permission:ratas.view'])->prefix('ratas')->group(function () {
         Route::get('/', [RataController::class, 'index'])->name('ratas.index');
+        Route::get('print', [RataController::class, 'print'])->name('ratas.print');
         Route::get('history/{employee}', [RataController::class, 'history'])->name('ratas.history');
     });
     Route::middleware(['permission:ratas.create'])->post('ratas', [RataController::class, 'store'])->name('ratas.store');
@@ -148,6 +151,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     // HAZARD PAY - Full CRUD (requires hazard_pays.* permissions)
     Route::middleware(['permission:hazard_pays.view'])->prefix('hazard-pays')->group(function () {
         Route::get('/', [HazardPayController::class, 'index'])->name('hazard-pays.index');
+        Route::get('print', [HazardPayController::class, 'print'])->name('hazard-pays.print');
         Route::get('history/{employee}', [HazardPayController::class, 'history'])->name('hazard-pays.history');
     });
     Route::middleware(['permission:hazard_pays.create'])->post('hazard-pays', [HazardPayController::class, 'store'])->name('hazard-pays.store');
@@ -157,6 +161,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     // CLOTHING ALLOWANCE - Full CRUD (requires clothing_allowances.* permissions)
     Route::middleware(['permission:clothing_allowances.view'])->prefix('clothing-allowances')->group(function () {
         Route::get('/', [ClothingAllowanceController::class, 'index'])->name('clothing-allowances.index');
+        Route::get('print', [ClothingAllowanceController::class, 'print'])->name('clothing-allowances.print');
         Route::get('history/{employee}', [ClothingAllowanceController::class, 'history'])->name('clothing-allowances.history');
     });
     Route::middleware(['permission:clothing_allowances.create'])->post('clothing-allowances', [ClothingAllowanceController::class, 'store'])->name('clothing-allowances.store');

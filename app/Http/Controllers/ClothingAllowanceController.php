@@ -18,6 +18,8 @@ class ClothingAllowanceController extends Controller
         $search = $request->input('search');
         $officeId = $request->input('office_id');
         $employmentStatusId = $request->input('employment_status_id');
+        $month = $request->input('month');
+        $year = $request->input('year');
 
         $employees = Employee::query()
             ->has('clothingAllowances') // Only show employees who have clothing allowance records
@@ -31,6 +33,13 @@ class ClothingAllowanceController extends Controller
             })
             ->when($employmentStatusId, function ($query, $employmentStatusId) {
                 $query->where('employment_status_id', $employmentStatusId);
+            })
+            ->when($month && $year, function ($query) use ($month, $year) {
+                // Filter employees who have clothing allowances effective in the specified month/year
+                $query->whereHas('clothingAllowances', function ($q) use ($month, $year) {
+                    $q->whereMonth('effective_date', $month)
+                        ->whereYear('effective_date', $year);
+                });
             })
             ->with(['employmentStatus', 'office', 'latestClothingAllowance'])
             ->orderBy('last_name', 'asc')
@@ -48,7 +57,39 @@ class ClothingAllowanceController extends Controller
                 'search' => $search,
                 'office_id' => $officeId,
                 'employment_status_id' => $employmentStatusId,
+                'month' => $month,
+                'year' => $year,
             ],
+        ]);
+    }
+
+    public function print(Request $request)
+    {
+        $this->authorize('viewAny', ClothingAllowance::class);
+        $month = $request->input('month');
+        $year = $request->input('year');
+
+        $employees = Employee::query()
+            ->has('clothingAllowances')
+            ->when($month && $year, function ($query) use ($month, $year) {
+                $query->whereHas('clothingAllowances', function ($q) use ($month, $year) {
+                    $q->whereMonth('effective_date', $month)
+                        ->whereYear('effective_date', $year);
+                });
+            })
+            ->with(['office', 'latestClothingAllowance'])
+            ->orderBy('last_name', 'asc')
+            ->get();
+
+        $totalClothingAllowance = $employees->sum(function ($employee) {
+            return $employee->latest_clothing_allowance ? (float) $employee->latest_clothing_allowance->amount : 0;
+        });
+
+        return Inertia::render('clothing-allowances/print', [
+            'employees' => $employees,
+            'month' => $month,
+            'year' => $year,
+            'totalClothingAllowance' => $totalClothingAllowance,
         ]);
     }
 

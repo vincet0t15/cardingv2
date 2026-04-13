@@ -19,6 +19,8 @@ class SalaryController extends Controller
         $search = $request->input('search');
         $officeId = $request->input('office_id');
         $employmentStatusId = $request->input('employment_status_id');
+        $month = $request->input('month');
+        $year = $request->input('year');
 
         $employees = Employee::query()
             ->has('salaries') // Only show employees who have salary records
@@ -32,6 +34,13 @@ class SalaryController extends Controller
             })
             ->when($employmentStatusId, function ($query, $employmentStatusId) {
                 $query->where('employment_status_id', $employmentStatusId);
+            })
+            ->when($month && $year, function ($query) use ($month, $year) {
+                // Filter employees who have salaries effective in the specified month/year
+                $query->whereHas('salaries', function ($q) use ($month, $year) {
+                    $q->whereMonth('effective_date', $month)
+                        ->whereYear('effective_date', $year);
+                });
             })
             ->with(['employmentStatus', 'office', 'latestSalary'])
             ->orderBy('last_name', 'asc')
@@ -51,7 +60,39 @@ class SalaryController extends Controller
                 'search' => $search,
                 'office_id' => $officeId,
                 'employment_status_id' => $employmentStatusId,
+                'month' => $month,
+                'year' => $year,
             ],
+        ]);
+    }
+
+    public function print(Request $request)
+    {
+        $this->authorize('viewAny', Salary::class);
+        $month = $request->input('month');
+        $year = $request->input('year');
+
+        $employees = Employee::query()
+            ->has('salaries')
+            ->when($month && $year, function ($query) use ($month, $year) {
+                $query->whereHas('salaries', function ($q) use ($month, $year) {
+                    $q->whereMonth('effective_date', $month)
+                        ->whereYear('effective_date', $year);
+                });
+            })
+            ->with(['office', 'latestSalary'])
+            ->orderBy('last_name', 'asc')
+            ->get();
+
+        $totalSalary = $employees->sum(function ($employee) {
+            return $employee->latest_salary ? (float) $employee->latest_salary->amount : 0;
+        });
+
+        return Inertia::render('salaries/print', [
+            'employees' => $employees,
+            'month' => $month,
+            'year' => $year,
+            'totalSalary' => $totalSalary,
         ]);
     }
 

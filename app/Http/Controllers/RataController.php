@@ -18,6 +18,8 @@ class RataController extends Controller
         $search = $request->input('search');
         $officeId = $request->input('office_id');
         $employmentStatusId = $request->input('employment_status_id');
+        $month = $request->input('month');
+        $year = $request->input('year');
 
         $employees = Employee::query()
             ->where('is_rata_eligible', true)
@@ -32,6 +34,13 @@ class RataController extends Controller
             })
             ->when($employmentStatusId, function ($query, $employmentStatusId) {
                 $query->where('employment_status_id', $employmentStatusId);
+            })
+            ->when($month && $year, function ($query) use ($month, $year) {
+                // Filter employees who have ratas effective in the specified month/year
+                $query->whereHas('ratas', function ($q) use ($month, $year) {
+                    $q->whereMonth('effective_date', $month)
+                        ->whereYear('effective_date', $year);
+                });
             })
             ->with(['employmentStatus', 'office', 'latestRata'])
             ->orderBy('last_name', 'asc')
@@ -49,7 +58,39 @@ class RataController extends Controller
                 'search' => $search,
                 'office_id' => $officeId,
                 'employment_status_id' => $employmentStatusId,
+                'month' => $month,
+                'year' => $year,
             ],
+        ]);
+    }
+
+    public function print(Request $request)
+    {
+        $this->authorize('viewAny', Rata::class);
+        $month = $request->input('month');
+        $year = $request->input('year');
+
+        $employees = Employee::query()
+            ->has('ratas')
+            ->when($month && $year, function ($query) use ($month, $year) {
+                $query->whereHas('ratas', function ($q) use ($month, $year) {
+                    $q->whereMonth('effective_date', $month)
+                        ->whereYear('effective_date', $year);
+                });
+            })
+            ->with(['office', 'latestRata'])
+            ->orderBy('last_name', 'asc')
+            ->get();
+
+        $totalRata = $employees->sum(function ($employee) {
+            return $employee->latest_rata ? (float) $employee->latest_rata->amount : 0;
+        });
+
+        return Inertia::render('ratas/print', [
+            'employees' => $employees,
+            'month' => $month,
+            'year' => $year,
+            'totalRata' => $totalRata,
         ]);
     }
 

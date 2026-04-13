@@ -16,8 +16,13 @@ import type { FilterProps } from '@/types/filter';
 import type { Office } from '@/types/office';
 import type { PaginatedDataResponse } from '@/types/pagination';
 import { Head, router, useForm } from '@inertiajs/react';
-import { History, PlusIcon, Search, User } from 'lucide-react';
+import { History, PlusIcon, Printer, Search, User } from 'lucide-react';
 import { useState } from 'react';
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -31,7 +36,7 @@ interface SalariesProps {
     offices: Office[];
     employmentStatuses: EmploymentStatus[];
     sourceOfFundCodes: { id: number; code: string; description: string | null; status: boolean }[];
-    filters: FilterProps & { office_id?: string; employment_status_id?: string };
+    filters: FilterProps & { office_id?: string; employment_status_id?: string; month?: string; year?: string };
 }
 
 export default function SalariesIndex({ employees, offices, employmentStatuses, sourceOfFundCodes, filters }: SalariesProps) {
@@ -39,6 +44,8 @@ export default function SalariesIndex({ employees, offices, employmentStatuses, 
         search: filters.search || '',
         office_id: filters.office_id || '',
         employment_status_id: filters.employment_status_id || '',
+        month: filters.month || '',
+        year: filters.year || '',
     });
 
     const [openAdd, setOpenAdd] = useState(false);
@@ -69,10 +76,19 @@ export default function SalariesIndex({ employees, offices, employmentStatuses, 
         if (filterData.search) queryString.search = filterData.search;
         if (filterData.office_id) queryString.office_id = filterData.office_id;
         if (filterData.employment_status_id) queryString.employment_status_id = filterData.employment_status_id;
+        if (filterData.month) queryString.month = filterData.month;
+        if (filterData.year) queryString.year = filterData.year;
         router.get(route('salaries.index'), queryString, {
             preserveState: true,
             preserveScroll: true,
         });
+    };
+
+    const handlePrint = () => {
+        const params = new URLSearchParams();
+        if (filterData.month) params.append('month', filterData.month);
+        if (filterData.year) params.append('year', filterData.year);
+        window.open(`/salaries/print?${params.toString()}`, '_blank');
     };
 
     const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -134,6 +150,24 @@ export default function SalariesIndex({ employees, offices, employmentStatuses, 
 
                 <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-wrap items-center gap-2">
+                        <div className="w-[180px]">
+                            <CustomComboBox
+                                items={MONTHS.map((month, index) => ({ value: String(index + 1), label: month }))}
+                                placeholder="All Months"
+                                value={filterData.month || null}
+                                onSelect={(value) => setFilterData('month', value ?? '')}
+                            />
+                        </div>
+
+                        <div className="w-[140px]">
+                            <CustomComboBox
+                                items={YEARS.map((year) => ({ value: String(year), label: String(year) }))}
+                                placeholder="All Years"
+                                value={filterData.year || null}
+                                onSelect={(value) => setFilterData('year', value ?? '')}
+                            />
+                        </div>
+
                         <div className="w-[220px]">
                             <CustomComboBox
                                 items={officeOptions}
@@ -166,6 +200,11 @@ export default function SalariesIndex({ employees, offices, employmentStatuses, 
                             />
                             <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50 select-none" />
                         </div>
+
+                        <Button variant="outline" onClick={handlePrint}>
+                            <Printer className="mr-2 h-4 w-4" />
+                            Print
+                        </Button>
                     </div>
                 </div>
 
@@ -247,6 +286,13 @@ export default function SalariesIndex({ employees, offices, employmentStatuses, 
                 </div>
 
                 <Pagination data={employees} />
+
+                <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={handlePrint}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        Print Report
+                    </Button>
+                </div>
 
                 {/* Add Salary Dialog */}
                 <Dialog open={openAdd} onOpenChange={setOpenAdd}>

@@ -18,6 +18,8 @@ class PeraController extends Controller
         $search = $request->input('search');
         $officeId = $request->input('office_id');
         $employmentStatusId = $request->input('employment_status_id');
+        $month = $request->input('month');
+        $year = $request->input('year');
 
         $employees = Employee::query()
             ->has('peras') // Only show employees who have PERA records
@@ -31,6 +33,13 @@ class PeraController extends Controller
             })
             ->when($employmentStatusId, function ($query, $employmentStatusId) {
                 $query->where('employment_status_id', $employmentStatusId);
+            })
+            ->when($month && $year, function ($query) use ($month, $year) {
+                // Filter employees who have peras effective in the specified month/year
+                $query->whereHas('peras', function ($q) use ($month, $year) {
+                    $q->whereMonth('effective_date', $month)
+                        ->whereYear('effective_date', $year);
+                });
             })
             ->with(['employmentStatus', 'office', 'latestPera'])
             ->orderBy('last_name', 'asc')
@@ -48,7 +57,39 @@ class PeraController extends Controller
                 'search' => $search,
                 'office_id' => $officeId,
                 'employment_status_id' => $employmentStatusId,
+                'month' => $month,
+                'year' => $year,
             ],
+        ]);
+    }
+
+    public function print(Request $request)
+    {
+        $this->authorize('viewAny', Pera::class);
+        $month = $request->input('month');
+        $year = $request->input('year');
+
+        $employees = Employee::query()
+            ->has('peras')
+            ->when($month && $year, function ($query) use ($month, $year) {
+                $query->whereHas('peras', function ($q) use ($month, $year) {
+                    $q->whereMonth('effective_date', $month)
+                        ->whereYear('effective_date', $year);
+                });
+            })
+            ->with(['office', 'latestPera'])
+            ->orderBy('last_name', 'asc')
+            ->get();
+
+        $totalPera = $employees->sum(function ($employee) {
+            return $employee->latest_pera ? (float) $employee->latest_pera->amount : 0;
+        });
+
+        return Inertia::render('peras/print', [
+            'employees' => $employees,
+            'month' => $month,
+            'year' => $year,
+            'totalPera' => $totalPera,
         ]);
     }
 

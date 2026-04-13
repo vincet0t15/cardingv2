@@ -18,6 +18,8 @@ class HazardPayController extends Controller
         $search = $request->input('search');
         $officeId = $request->input('office_id');
         $employmentStatusId = $request->input('employment_status_id');
+        $month = $request->input('month');
+        $year = $request->input('year');
 
         $employees = Employee::query()
             ->has('hazardPays') // Only show employees who have hazard pay records
@@ -31,6 +33,13 @@ class HazardPayController extends Controller
             })
             ->when($employmentStatusId, function ($query, $employmentStatusId) {
                 $query->where('employment_status_id', $employmentStatusId);
+            })
+            ->when($month && $year, function ($query) use ($month, $year) {
+                // Filter employees who have hazard pays effective in the specified month/year
+                $query->whereHas('hazardPays', function ($q) use ($month, $year) {
+                    $q->whereMonth('effective_date', $month)
+                        ->whereYear('effective_date', $year);
+                });
             })
             ->with(['employmentStatus', 'office', 'latestHazardPay'])
             ->orderBy('last_name', 'asc')
@@ -48,7 +57,39 @@ class HazardPayController extends Controller
                 'search' => $search,
                 'office_id' => $officeId,
                 'employment_status_id' => $employmentStatusId,
+                'month' => $month,
+                'year' => $year,
             ],
+        ]);
+    }
+
+    public function print(Request $request)
+    {
+        $this->authorize('viewAny', HazardPay::class);
+        $month = $request->input('month');
+        $year = $request->input('year');
+
+        $employees = Employee::query()
+            ->has('hazardPays')
+            ->when($month && $year, function ($query) use ($month, $year) {
+                $query->whereHas('hazardPays', function ($q) use ($month, $year) {
+                    $q->whereMonth('effective_date', $month)
+                        ->whereYear('effective_date', $year);
+                });
+            })
+            ->with(['office', 'latestHazardPay'])
+            ->orderBy('last_name', 'asc')
+            ->get();
+
+        $totalHazardPay = $employees->sum(function ($employee) {
+            return $employee->latest_hazard_pay ? (float) $employee->latest_hazard_pay->amount : 0;
+        });
+
+        return Inertia::render('hazard-pays/print', [
+            'employees' => $employees,
+            'month' => $month,
+            'year' => $year,
+            'totalHazardPay' => $totalHazardPay,
         ]);
     }
 
