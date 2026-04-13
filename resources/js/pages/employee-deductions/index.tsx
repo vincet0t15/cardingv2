@@ -44,10 +44,12 @@ const MONTHS = [
     { value: 12, label: 'December' },
 ];
 
-// Dynamic year range: current year - 5 to current year + 5
+// Dynamic year range: fixed start year (2020) to current year + 5
 const currentYear = new Date().getFullYear();
-const YEARS = Array.from({ length: 11 }, (_, i) => {
-    const year = currentYear - 5 + i;
+const startYear = 2020; // Fixed starting year
+const endYear = currentYear + 5; // Always extends 5 years into the future
+const YEARS = Array.from({ length: endYear - startYear + 1 }, (_, i) => {
+    const year = startYear + i;
     return { value: year.toString(), label: year.toString() };
 });
 
