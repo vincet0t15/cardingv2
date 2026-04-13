@@ -39,7 +39,7 @@ export default function EmployeeSettings({
     const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
     const [pendingUpdate, setPendingUpdate] = useState(false);
 
-    const { data, setData, post, errors, processing } = useForm({
+    const { data, setData, put, errors, processing } = useForm({
         first_name: employee.first_name || '',
         middle_name: employee.middle_name || '',
         last_name: employee.last_name || '',
@@ -49,7 +49,6 @@ export default function EmployeeSettings({
         office_id: String(employee.office_id) || '',
         employment_status_id: String(employee.employment_status_id) || '',
         photo: null as File | null,
-        _method: 'PUT',
     });
 
     useEffect(() => {
@@ -111,8 +110,7 @@ export default function EmployeeSettings({
 
     const onSubmit: FormEventHandler<HTMLFormElement> = (e) => {
         e.preventDefault();
-
-        post(route('employees.update', employee.id), {
+        put(route('employees.update', employee.id), {
             onSuccess: () => {
                 toast.success('Employee updated successfully');
             },

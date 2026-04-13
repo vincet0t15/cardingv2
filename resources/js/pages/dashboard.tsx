@@ -495,7 +495,7 @@ export default function Dashboard({
                                 </Button>
                             </div>
                             <CardDescription>
-                                Employees with highest travel expenses for {months.find((m) => m.value === filterData.month)?.label || 'Current'}{' '}
+                                Employees with highest travel claim amounts for {months.find((m) => m.value === filterData.month)?.label || 'Current'}{' '}
                                 {filterData.year}
                             </CardDescription>
                         </CardHeader>

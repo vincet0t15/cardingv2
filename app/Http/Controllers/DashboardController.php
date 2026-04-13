@@ -311,7 +311,7 @@ class DashboardController extends Controller
         $mostTravelClaims = $mostTravelClaimsQuery->selectRaw('employee_id, COUNT(*) as travel_count, SUM(amount) as total_travel_amount')
             ->groupBy('employee_id')
             ->with(['employee.office'])
-            ->orderByDesc('travel_count')
+            ->orderByDesc('total_travel_amount')
             ->limit(10)
             ->get()
             ->map(function ($item) {
