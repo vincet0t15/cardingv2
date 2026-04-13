@@ -44,6 +44,13 @@ const MONTHS = [
     { value: 12, label: 'December' },
 ];
 
+// Dynamic year range: current year - 5 to current year + 5
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: 11 }, (_, i) => {
+    const year = currentYear - 5 + i;
+    return { value: year.toString(), label: year.toString() };
+});
+
 interface EmployeeDeductionsProps {
     employees: PaginatedDataResponse<Employee>;
     deductionTypes: DeductionType[];
@@ -201,13 +208,14 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
                             />
                         </div>
 
-                        <Input
-                            type="number"
-                            className="w-[100px]"
-                            value={filterData.year}
-                            onChange={(e) => setFilterData('year', parseInt(e.target.value))}
-                            placeholder="Year"
-                        />
+                        <div className="w-[120px]">
+                            <CustomComboBox
+                                items={YEARS}
+                                placeholder="Select Year"
+                                value={filterData.year.toString()}
+                                onSelect={(value) => setFilterData('year', value ? parseInt(value) : currentYear)}
+                            />
+                        </div>
 
                         <div className="w-[220px]">
                             <CustomComboBox

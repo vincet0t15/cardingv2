@@ -295,7 +295,6 @@ export default function PayrollIndex({ employees, offices, employmentStatuses, f
                                                 </div>
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-sm">{employee.employment_status?.name || '—'}</TableCell>
                                         <TableCell className="text-right font-medium">{formatCurrency(employee.current_salary)}</TableCell>
                                         <TableCell className="text-right">{formatCurrency(employee.current_pera)}</TableCell>
                                         <TableCell className="text-right">
@@ -312,7 +311,7 @@ export default function PayrollIndex({ employees, offices, employmentStatuses, f
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="py-8 text-center text-gray-500">
+                                    <TableCell colSpan={9} className="py-8 text-center text-gray-500">
                                         No employees found.
                                     </TableCell>
                                 </TableRow>
