@@ -41,7 +41,7 @@ class BackupController extends Controller
             ];
 
             foreach ($possiblePaths as $path) {
-                $mysqldump = $path.'\mysqldump.exe';
+                $mysqldump = $path . '\mysqldump.exe';
                 if (File::exists($mysqldump)) {
                     return $path;
                 }
@@ -78,6 +78,7 @@ class BackupController extends Controller
                 'per_page' => $backups['per_page'],
                 'total' => $backups['total'],
             ],
+
             'databaseName' => $dbConfig['database'],
         ]);
     }
@@ -103,7 +104,7 @@ class BackupController extends Controller
                 copy($sqlitePath, $backupPath);
                 $fileSize = File::size($backupPath);
 
-                return back()->with('success', 'Backup created successfully! ('.$this->formatFileSize($fileSize).')');
+                return back()->with('success', 'Backup created successfully! (' . $this->formatFileSize($fileSize) . ')');
             }
 
             if (! in_array($connection, ['mysql', 'mariadb'])) {
@@ -131,7 +132,7 @@ class BackupController extends Controller
                 if (! $mysqldump) {
                     $mysqlPath = $this->getMySqlPath();
                     if ($mysqlPath) {
-                        $mysqldump = $mysqlPath.DIRECTORY_SEPARATOR.'mysqldump'.(PHP_OS === 'WINNT' ? '.exe' : '');
+                        $mysqldump = $mysqlPath . DIRECTORY_SEPARATOR . 'mysqldump' . (PHP_OS === 'WINNT' ? '.exe' : '');
                     }
                 }
 
@@ -139,7 +140,7 @@ class BackupController extends Controller
                     throw new \Exception('mysqldump not found. Please ensure MySQL is installed and in PATH, or configure DOCKER_MYSQL_CONTAINER in .env for Docker mode.');
                 }
 
-                $pass = $dbConfig['password'] ? '-p'.$dbConfig['password'] : '';
+                $pass = $dbConfig['password'] ? '-p' . $dbConfig['password'] : '';
                 $command = sprintf(
                     'cmd /c "%s -h%s -P%s -u%s %s --single-transaction --quick --lock-tables=false %s -r %s"',
                     $mysqldump,
@@ -152,7 +153,7 @@ class BackupController extends Controller
                 );
                 exec($command, $output, $returnCode);
                 if ($returnCode !== 0) {
-                    throw new \Exception('mysqldump failed with code: '.$returnCode);
+                    throw new \Exception('mysqldump failed with code: ' . $returnCode);
                 }
             }
 
@@ -166,13 +167,13 @@ class BackupController extends Controller
                 throw new \Exception('Backup file is empty - check database credentials');
             }
 
-            return back()->with('success', 'Backup created successfully! ('.$this->formatFileSize($fileSize).')');
+            return back()->with('success', 'Backup created successfully! (' . $this->formatFileSize($fileSize) . ')');
         } catch (ProcessFailedException $e) {
-            Log::error('Backup process failed: '.$e->getMessage());
+            Log::error('Backup process failed: ' . $e->getMessage());
 
-            return back()->with('error', 'Backup failed: '.$e->getProcess()->getErrorOutput());
+            return back()->with('error', 'Backup failed: ' . $e->getProcess()->getErrorOutput());
         } catch (\Exception $e) {
-            Log::error('Backup failed: '.$e->getMessage());
+            Log::error('Backup failed: ' . $e->getMessage());
 
             return back()->with('error', $e->getMessage());
         }
@@ -212,7 +213,7 @@ class BackupController extends Controller
 
         try {
             $file = $request->file('backup_file');
-            $fileName = time().'_'.$file->getClientOriginalName();
+            $fileName = time() . '_' . $file->getClientOriginalName();
 
             $path = storage_path("app/temp/{$fileName}");
             File::ensureDirectoryExists(storage_path('app/temp'));
@@ -270,7 +271,7 @@ class BackupController extends Controller
             if (! $mysql) {
                 $mysqlPath = $this->getMySqlPath();
                 if ($mysqlPath) {
-                    $mysql = $mysqlPath.DIRECTORY_SEPARATOR.'mysql'.(PHP_OS === 'WINNT' ? '.exe' : '');
+                    $mysql = $mysqlPath . DIRECTORY_SEPARATOR . 'mysql' . (PHP_OS === 'WINNT' ? '.exe' : '');
                 }
             }
 
@@ -278,7 +279,7 @@ class BackupController extends Controller
                 throw new \Exception('mysql not found. Please ensure MySQL is installed and in PATH, or configure DOCKER_MYSQL_CONTAINER in .env for Docker mode.');
             }
 
-            $pass = $dbConfig['password'] ? '-p'.$dbConfig['password'] : '';
+            $pass = $dbConfig['password'] ? '-p' . $dbConfig['password'] : '';
             $command = sprintf(
                 'cmd /c "%s -h%s -P%s -u%s %s %s < %s"',
                 $mysql,
@@ -291,7 +292,7 @@ class BackupController extends Controller
             );
             exec($command, $output, $returnCode);
             if ($returnCode !== 0) {
-                throw new \Exception('mysql restore failed with code: '.$returnCode);
+                throw new \Exception('mysql restore failed with code: ' . $returnCode);
             }
         }
     }
@@ -364,6 +365,6 @@ class BackupController extends Controller
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
         $i = floor(log($bytes, 1024));
 
-        return round($bytes / pow(1024, $i), 2).' '.$units[$i];
+        return round($bytes / pow(1024, $i), 2) . ' ' . $units[$i];
     }
 }
