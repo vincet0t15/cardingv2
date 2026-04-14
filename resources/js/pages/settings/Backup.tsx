@@ -73,9 +73,13 @@ export default function Backup({ backups, pagination, databaseName }: BackupProp
     const handleCreateBackup = () => {
         createForm.post(route('settings.backup.create'), {
             preserveScroll: true,
-            onSuccess: (response: { props: FlashProps }) => {
-                toast.success(response.props.flash?.success);
+            onSuccess: () => {
+                toast.success('Backup created successfully!');
                 setShowCreateConfirm(false);
+                router.reload({ only: ['backups'] });
+            },
+            onError: () => {
+                toast.error('Failed to create backup');
             },
         });
     };
@@ -111,21 +115,15 @@ export default function Backup({ backups, pagination, databaseName }: BackupProp
     const handleRestoreConfirm = () => {
         restoreForm.post(route('settings.backup.restore'), {
             preserveScroll: true,
-            onSuccess: (response: { props: FlashProps }) => {
-                if (response.props.flash?.success) {
-                    toast.success(response.props.flash.success);
-                } else if (response.props.flash?.error) {
-                    toast.error(response.props.flash.error);
-                    return; // Don't close dialog or reload on error
-                }
+            onSuccess: () => {
+                toast.success('Database restored successfully!');
                 setShowRestoreDialog(false);
                 setTimeout(() => {
                     window.location.reload();
                 }, 1000);
             },
-            onError: (errors) => {
-                console.error('Restore errors:', errors);
-                toast.error('Failed to restore database. Please check the logs.');
+            onError: () => {
+                toast.error('Failed to restore database');
             },
         });
     };
@@ -140,22 +138,16 @@ export default function Backup({ backups, pagination, databaseName }: BackupProp
         uploadForm.post(route('settings.backup.upload-restore'), {
             forceFormData: true,
             preserveScroll: true,
-            onSuccess: (response: { props: FlashProps }) => {
-                if (response.props.flash?.success) {
-                    toast.success(response.props.flash.success);
-                } else if (response.props.flash?.error) {
-                    toast.error(response.props.flash.error);
-                    return; // Don't close dialog or reload on error
-                }
+            onSuccess: () => {
+                toast.success('Database restored successfully!');
                 setShowUploadDialog(false);
                 uploadForm.reset();
                 setTimeout(() => {
                     window.location.reload();
                 }, 1000);
             },
-            onError: (errors) => {
-                console.error('Upload restore errors:', errors);
-                toast.error('Failed to restore from uploaded file. Please check the logs.');
+            onError: () => {
+                toast.error('Failed to restore from uploaded file');
             },
         });
     };

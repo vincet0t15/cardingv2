@@ -45,9 +45,33 @@ class BackupController extends Controller
                     return $path;
                 }
             }
+        } else {
+            $linuxPaths = [
+                '/usr/bin',
+                '/usr/local/bin',
+                '/www/server/mysql/bin',
+                '/opt/mysql/bin',
+            ];
+
+            foreach ($linuxPaths as $path) {
+                $mysqldump = $path.'/mysqldump';
+                if (File::exists($mysqldump)) {
+                    return $path;
+                }
+            }
         }
 
         return '';
+    }
+
+    private function isDocker(): bool
+    {
+        return env('APP_ENV') === 'docker' || getenv('DOCKER_CONTAINER') || file_exists('/.dockerenv');
+    }
+
+    private function getDockerContainer(): string
+    {
+        return env('DOCKER_MYSQL_CONTAINER', 'mysql');
     }
 
     private function getDbConfig(): array
@@ -110,26 +134,45 @@ class BackupController extends Controller
                 throw new \Exception("Unsupported database connection: {$connection}");
             }
 
-            $mysqldump = $this->getMySqlPath().DIRECTORY_SEPARATOR.'mysqldump'.(PHP_OS === 'WINNT' ? '.exe' : '');
+            if ($this->isDocker()) {
+                $container = $this->getDockerContainer();
+                $command = sprintf(
+                    'docker exec %s mysqldump -u%s -p%s --single-transaction --quick --lock-tables=false %s',
+                    $container,
+                    $dbConfig['username'],
+                    $dbConfig['password'],
+                    $dbConfig['database']
+                );
+                $returnCode = 0;
+                $output = [];
+                exec($command, $output, $returnCode);
+                if ($returnCode !== 0) {
+                    throw new \Exception('Docker mysqldump failed with code: '.$returnCode);
+                }
+                File::put($backupPath, implode("\n", $output));
+            } else {
+                $mysqldump = $this->getMySqlPath().DIRECTORY_SEPARATOR.'mysqldump'.(PHP_OS === 'WINNT' ? '.exe' : '');
 
-            if (! File::exists($mysqldump)) {
-                throw new \Exception('mysqldump not found at: '.$mysqldump);
-            }
+                if (! File::exists($mysqldump)) {
+                    throw new \Exception('mysqldump not found at: '.$mysqldump);
+                }
 
-            $pass = $dbConfig['password'] ? '-p'.$dbConfig['password'] : '';
-            $command = sprintf(
-                'cmd /c "%s -h%s -P%s -u%s %s --single-transaction --quick --lock-tables=false %s -r %s"',
-                $mysqldump,
-                $dbConfig['host'],
-                $dbConfig['port'],
-                $dbConfig['username'],
-                $pass,
-                $dbConfig['database'],
-                $backupPath
-            );
-            exec($command, $output, $returnCode);
-            if ($returnCode !== 0) {
-                throw new \Exception('mysqldump failed with code: '.$returnCode.' Output: '.implode("\n", $output));
+                $pass = $dbConfig['password'] ? '-p'.$dbConfig['password'] : '';
+                $command = sprintf(
+                    '"%s" -h%s -P%s -u%s %s --single-transaction --quick --lock-tables=false %s -r "%s"',
+                    $mysqldump,
+                    $dbConfig['host'],
+                    $dbConfig['port'],
+                    $dbConfig['username'],
+                    $pass,
+                    $dbConfig['database'],
+                    $backupPath
+                );
+                $returnCode = 0;
+                system($command, $returnCode);
+                if ($returnCode !== 0) {
+                    throw new \Exception('mysqldump failed with code: '.$returnCode);
+                }
             }
 
             if (! File::exists($backupPath)) {
@@ -225,26 +268,45 @@ class BackupController extends Controller
         }
 
         $dbConfig = $this->getDbConfig();
-        $mysql = $this->getMySqlPath().DIRECTORY_SEPARATOR.'mysql'.(PHP_OS === 'WINNT' ? '.exe' : '');
 
-        if (! File::exists($mysql)) {
-            throw new \Exception('mysql not found at: '.$mysql);
-        }
+        if ($this->isDocker()) {
+            $container = $this->getDockerContainer();
+            $command = sprintf(
+                'docker exec -i %s mysql -u%s -p%s %s < %s',
+                $container,
+                $dbConfig['username'],
+                $dbConfig['password'],
+                $dbConfig['database'],
+                $filePath
+            );
+            $returnCode = 0;
+            exec($command, $output, $returnCode);
+            if ($returnCode !== 0) {
+                throw new \Exception('Docker mysql restore failed with code: '.$returnCode);
+            }
+        } else {
+            $mysql = $this->getMySqlPath().DIRECTORY_SEPARATOR.'mysql'.(PHP_OS === 'WINNT' ? '.exe' : '');
 
-        $pass = $dbConfig['password'] ? '-p'.$dbConfig['password'] : '';
-        $command = sprintf(
-            'cmd /c "%s -h%s -P%s -u%s %s %s < %s"',
-            $mysql,
-            $dbConfig['host'],
-            $dbConfig['port'],
-            $dbConfig['username'],
-            $pass,
-            $dbConfig['database'],
-            $filePath
-        );
-        exec($command, $output, $returnCode);
-        if ($returnCode !== 0) {
-            throw new \Exception('mysql restore failed with code: '.$returnCode.' Output: '.implode("\n", $output));
+            if (! File::exists($mysql)) {
+                throw new \Exception('mysql not found at: '.$mysql);
+            }
+
+            $pass = $dbConfig['password'] ? '-p'.$dbConfig['password'] : '';
+            $command = sprintf(
+                '"%s" -h%s -P%s -u%s %s %s < "%s"',
+                $mysql,
+                $dbConfig['host'],
+                $dbConfig['port'],
+                $dbConfig['username'],
+                $pass,
+                $dbConfig['database'],
+                $filePath
+            );
+            $returnCode = 0;
+            system($command, $returnCode);
+            if ($returnCode !== 0) {
+                throw new \Exception('mysql restore failed with code: '.$returnCode);
+            }
         }
     }
 
