@@ -135,8 +135,7 @@ export default function AddDeductionPage({ employee, deductionTypes, takenPeriod
         post(route('manage.employees.deductions.store', employee.id), {
             onSuccess: () => {
                 toast.success('Deductions saved successfully');
-                // Navigate back to employee manage page
-                router.get(route('manage.employees.index', employee.id));
+                reset();
             },
             onError: (errors) => {
                 const firstError = Object.values(errors)[0];

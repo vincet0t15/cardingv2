@@ -209,6 +209,7 @@ class EmployeeDeductionController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+
         $validated = $request->validate([
             'employee_id' => 'required|exists:employees,id',
             'salary_id' => 'nullable|exists:salaries,id',
