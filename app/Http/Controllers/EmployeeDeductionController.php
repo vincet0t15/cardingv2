@@ -22,7 +22,7 @@ class EmployeeDeductionController extends Controller
 
     public function index(Request $request): Response
     {
-        $month = $request->input('month', now()->month);
+        $month = $request->input('month'); // Can be null for "All Months"
         $year = $request->input('year', now()->year);
         $officeId = $request->input('office_id');
         $employmentStatusId = $request->input('employment_status_id');
@@ -31,11 +31,14 @@ class EmployeeDeductionController extends Controller
 
         $employees = Employee::query()
             ->with(['employmentStatus', 'office'])
-            // Only show employees who have deductions for the selected month/year
+            // Only show employees who have deductions for the selected period
             ->when($hasDeductions, function ($query) use ($year, $month) {
                 $query->whereHas('employeeDeductions', function ($q) use ($year, $month) {
-                    $q->where('pay_period_year', $year)
-                        ->where('pay_period_month', $month);
+                    $q->where('pay_period_year', $year);
+                    // Only filter by month if it's provided (not "All Months")
+                    if ($month) {
+                        $q->where('pay_period_month', $month);
+                    }
                 });
             })
             ->when($search, function ($query, $search) {
@@ -61,18 +64,24 @@ class EmployeeDeductionController extends Controller
             ->with(['ratas' => function ($query) {
                 $query->orderBy('effective_date', 'desc');
             }])
-            // Load deductions for the selected month/year
+            // Load deductions for the selected month/year (or all months)
             ->with(['employeeDeductions' => function ($query) use ($year, $month) {
                 $query->where('pay_period_year', $year)
-                    ->where('pay_period_month', $month)
                     ->with('deductionType')
                     ->orderBy('created_at', 'desc');
+                // Only filter by month if it's provided
+                if ($month) {
+                    $query->where('pay_period_month', $month);
+                }
             }])
             // Also load as 'deductions' for frontend compatibility
             ->with(['deductions' => function ($query) use ($year, $month) {
                 $query->where('pay_period_year', $year)
-                    ->where('pay_period_month', $month)
                     ->orderBy('created_at', 'desc');
+                // Only filter by month if it's provided
+                if ($month) {
+                    $query->where('pay_period_month', $month);
+                }
             }])
             ->orderBy('last_name')
             ->get();
@@ -204,7 +213,7 @@ class EmployeeDeductionController extends Controller
         // Get taken periods for this employee
         $takenPeriods = EmployeeDeduction::where('employee_id', $employeeId)
             ->get()
-            ->map(fn ($d) => "{$d->pay_period_year}-{$d->pay_period_month}")
+            ->map(fn($d) => "{$d->pay_period_year}-{$d->pay_period_month}")
             ->toArray();
 
         return Inertia::render('employee-deductions/AddDeduction', [
@@ -326,7 +335,7 @@ class EmployeeDeductionController extends Controller
             $message .= " Skipped {$skipped} duplicate(s).";
         }
         if (count($errors) > 0) {
-            $message .= ' '.count($errors).' error(s) occurred.';
+            $message .= ' ' . count($errors) . ' error(s) occurred.';
         }
 
         return redirect()->back()->with('success', $message);
