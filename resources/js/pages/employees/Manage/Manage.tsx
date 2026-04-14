@@ -129,27 +129,43 @@ export default function EmployeeManagePage({
                 </Button>
 
                 {/* --- PROFESSIONAL HEADER SECTION --- */}
-                <header className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-                    <div className="flex items-center gap-5">
-                        <Avatar className="border-background h-24 w-24 rounded-2xl border-4 shadow-xl">
+                <header className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50 p-6 dark:border-blue-800 dark:from-blue-900/10 dark:to-purple-900/10">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+                        <Avatar className="h-24 w-24 border-4 border-white shadow-lg dark:border-gray-800">
                             <AvatarImage src={employee.image_path} alt={employee.last_name} className="object-cover" />
-                            <AvatarFallback className="rounded-2xl bg-slate-100 text-xl">{getInitials()}</AvatarFallback>
+                            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-3xl font-bold text-white">
+                                {getInitials()}
+                            </AvatarFallback>
                         </Avatar>
-                        <div className="space-y-1">
-                            <div className="flex items-center gap-3">
-                                <h1 className="text-3xl font-bold tracking-tight text-slate-900 uppercase">
-                                    {employee.last_name}, {employee.first_name} {employee.middle_name} {employee.suffix}
+                        <div className="flex-1 space-y-3">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <h1 className="text-3xl font-bold tracking-tight uppercase">
+                                    {employee.last_name}, {employee.first_name}
                                 </h1>
-                                <Badge className="rounded-full border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100">
+                                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
                                     {employee.employment_status?.name}
                                 </Badge>
                             </div>
-                            <p className="flex items-center gap-2 font-medium text-slate-500">
-                                {employee.position} <span className="text-slate-300">•</span> {employee.office?.name}
-                            </p>
-                            <div className="pt-1">
-                                <span className="text-2xl font-bold text-slate-900">{formatCurrency(employee.latest_salary?.amount)}</span>
-                                <span className="ml-1 text-sm text-slate-500">/ month</span>
+                            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
+                                <span className="font-medium">{employee.position}</span>
+                                <span className="text-slate-300">•</span>
+                                <span>{employee.office?.name}</span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3">
+                                <div>
+                                    <span className="text-2xl font-bold text-slate-900">{formatCurrency(employee.latest_salary?.amount)}</span>
+                                    <span className="ml-1 text-sm text-slate-500">/ month</span>
+                                </div>
+                                {employee.latest_hazard_pay?.amount && (
+                                    <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700">
+                                        +{formatCurrency(employee.latest_hazard_pay.amount)} Hazard
+                                    </Badge>
+                                )}
+                                {employee.latest_clothing_allowance?.amount && (
+                                    <Badge variant="outline" className="border-pink-200 bg-pink-50 text-pink-700">
+                                        +{formatCurrency(employee.latest_clothing_allowance.amount)} Clothing
+                                    </Badge>
+                                )}
                             </div>
                         </div>
                     </div>

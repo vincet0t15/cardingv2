@@ -57,19 +57,23 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
 
     // Salary history (last 3 changes)
 
-    // Full name with suffix
-    const fullName = `${employee.last_name}, ${employee.first_name} ${employee.middle_name} ${employee.suffix || ''}`.trim();
-
     return (
         <div className="space-y-6">
-            {/* Compensation Summary Cards */}
+            {/* Compensation Summary */}
             <div>
-                <h3 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">Current Compensation</h3>
+                <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">Current Compensation</h3>
+                    <Badge variant="outline" className="text-xs">
+                        Gross: {formatCurrency(grossPay)}
+                    </Badge>
+                </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                    <Card>
+                    <Card className="transition-shadow hover:shadow-md">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Basic Salary</CardTitle>
-                            <CoinsIcon className="text-muted-foreground h-4 w-4" />
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                                <CoinsIcon className="h-4 w-4 text-blue-600" />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{formatCurrency(employee.latest_salary?.amount)}</div>
@@ -77,10 +81,12 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="transition-shadow hover:shadow-md">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">PERA</CardTitle>
-                            <CreditCard className="text-muted-foreground h-4 w-4" />
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
+                                <CreditCard className="h-4 w-4 text-green-600" />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{formatCurrency(employee.latest_pera?.amount)}</div>
@@ -88,10 +94,12 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="transition-shadow hover:shadow-md">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">RATA</CardTitle>
-                            <CreditCard className="text-muted-foreground h-4 w-4" />
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                                <CreditCard className="h-4 w-4 text-purple-600" />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             {employee.is_rata_eligible ? (
@@ -108,10 +116,12 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="transition-shadow hover:shadow-md">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Hazard Pay</CardTitle>
-                            <HardHat className="text-muted-foreground h-4 w-4" />
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/30">
+                                <HardHat className="h-4 w-4 text-orange-600" />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{formatCurrency(employee.latest_hazard_pay?.amount)}</div>
@@ -119,10 +129,12 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="transition-shadow hover:shadow-md">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Clothing Allow.</CardTitle>
-                            <Shirt className="text-muted-foreground h-4 w-4" />
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-pink-100 dark:bg-pink-900/30">
+                                <Shirt className="h-4 w-4 text-pink-600" />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{formatCurrency(employee.latest_clothing_allowance?.amount)}</div>
@@ -152,16 +164,18 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                 </Card>
             </div>
 
-            {/* This Month & All-time Stats */}
+            {/* This Month Activity */}
             <div>
                 <h3 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">
                     {MONTHS[currentMonth - 1]} {currentYear} Activity
                 </h3>
                 <div className="grid gap-4 sm:grid-cols-3">
-                    <Card>
+                    <Card className="transition-shadow hover:shadow-md">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Deductions This Month</CardTitle>
-                            <TrendingDown className="text-muted-foreground h-4 w-4" />
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30">
+                                <TrendingDown className="h-4 w-4 text-red-600" />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-red-600">{formatCurrency(currentMonthDeductionTotal)}</div>
@@ -171,10 +185,12 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="transition-shadow hover:shadow-md">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Claims This Month</CardTitle>
-                            <Receipt className="text-muted-foreground h-4 w-4" />
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
+                                <Receipt className="h-4 w-4 text-green-600" />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-green-600">{formatCurrency(currentMonthClaimsTotal)}</div>
@@ -184,68 +200,85 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         </CardContent>
                     </Card>
 
-                    <Card className="border-blue-200 bg-blue-50">
+                    <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 transition-shadow hover:shadow-md dark:from-blue-900/10 dark:to-indigo-900/10">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium text-blue-800">Est. Net This Month</CardTitle>
-                            <CoinsIcon className="h-4 w-4 text-blue-600" />
+                            <CardTitle className="text-sm font-medium text-blue-800">Est. Net Pay</CardTitle>
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-200 dark:bg-blue-900/50">
+                                <CoinsIcon className="h-4 w-4 text-blue-600" />
+                            </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-blue-700">{formatCurrency(netThisMonth)}</div>
-                            <p className="mt-1 text-xs text-blue-600">Gross minus deductions</p>
+                            <div className="text-3xl font-bold text-blue-700">{formatCurrency(netThisMonth)}</div>
+                            <p className="mt-1 text-xs text-blue-600">Gross pay minus deductions</p>
                         </CardContent>
                     </Card>
                 </div>
             </div>
 
-            {/* All-time totals & Employment Info */}
+            {/* All-time Summary & Employment Details */}
             <div className="grid gap-6 lg:grid-cols-2">
                 {/* All-time totals */}
-                <Card>
+                <Card className="transition-shadow hover:shadow-md">
                     <CardHeader>
-                        <CardTitle className="text-base">All-Time Summary</CardTitle>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <CalendarDays className="h-5 w-5 text-blue-600" />
+                            All-Time Summary
+                        </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-sm">
-                                <TrendingDown className="h-4 w-4 text-red-500" />
-                                <span className="text-muted-foreground">Total Deductions</span>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between rounded-lg bg-red-50 p-3 dark:bg-red-900/10">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30">
+                                    <TrendingDown className="h-5 w-5 text-red-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium">Total Deductions</p>
+                                    <p className="text-muted-foreground text-xs">All-time deductions</p>
+                                </div>
                             </div>
-                            <span className="font-semibold text-red-600">{formatCurrency(totalDeductionsAllTime)}</span>
+                            <span className="text-xl font-bold text-red-600">{formatCurrency(totalDeductionsAllTime)}</span>
                         </div>
-                        <Separator />
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-sm">
-                                <Receipt className="h-4 w-4 text-green-500" />
-                                <span className="text-muted-foreground">Total Claims</span>
+                        <div className="flex items-center justify-between rounded-lg bg-green-50 p-3 dark:bg-green-900/10">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
+                                    <Receipt className="h-5 w-5 text-green-600" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-medium">Total Claims</p>
+                                    <p className="text-muted-foreground text-xs">All-time claims</p>
+                                </div>
                             </div>
-                            <span className="font-semibold text-green-600">{formatCurrency(totalClaimsAllTime)}</span>
+                            <span className="text-xl font-bold text-green-600">{formatCurrency(totalClaimsAllTime)}</span>
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Employment Details */}
-                <Card>
+                <Card className="transition-shadow hover:shadow-md">
                     <CardHeader>
-                        <CardTitle className="text-base">Employment Details</CardTitle>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <User className="h-5 w-5 text-blue-600" />
+                            Employment Details
+                        </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                             <div className="flex items-center gap-2 text-sm">
                                 <User className="text-muted-foreground h-4 w-4" />
                                 <span className="text-muted-foreground">Position</span>
                             </div>
-                            <span className="text-sm font-medium">{employee.position}</span>
+                            <span className="text-sm font-semibold">{employee.position}</span>
                         </div>
                         <Separator />
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                             <div className="flex items-center gap-2 text-sm">
                                 <Building2 className="text-muted-foreground h-4 w-4" />
                                 <span className="text-muted-foreground">Office</span>
                             </div>
-                            <span className="text-sm font-medium">{employee.office?.name ?? '—'}</span>
+                            <span className="text-sm font-semibold">{employee.office?.name ?? '—'}</span>
                         </div>
                         <Separator />
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                             <div className="flex items-center gap-2 text-sm">
                                 <CalendarDays className="text-muted-foreground h-4 w-4" />
                                 <span className="text-muted-foreground">Status</span>
@@ -255,17 +288,17 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                             </Badge>
                         </div>
                         <Separator />
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                             <div className="flex items-center gap-2 text-sm">
-                                <CoinsIcon className="text-muted-foreground h-4 w-4" />
+                                <DollarSign className="text-muted-foreground h-4 w-4" />
                                 <span className="text-muted-foreground">RATA Eligible</span>
                             </div>
                             <Badge variant={employee.is_rata_eligible ? 'default' : 'secondary'}>{employee.is_rata_eligible ? 'Yes' : 'No'}</Badge>
                         </div>
                         <Separator />
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                             <div className="flex items-center gap-2 text-sm">
-                                <DollarSign className="text-muted-foreground h-4 w-4" />
+                                <CoinsIcon className="text-muted-foreground h-4 w-4" />
                                 <span className="text-muted-foreground">Source of Fund</span>
                             </div>
                             <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">
