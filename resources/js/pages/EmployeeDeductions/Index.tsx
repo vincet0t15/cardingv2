@@ -11,7 +11,7 @@ import type { BreadcrumbItem } from '@/types';
 import type { EmploymentStatus } from '@/types/employmentStatuses';
 import type { Office } from '@/types/office';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Printer, Search, User, Users } from 'lucide-react';
+import { Printer, Search, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 const MONTHS = [
@@ -272,12 +272,6 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                         <Button variant="outline" onClick={handleReset}>
                             Reset
                         </Button>
-                        <Link href={route('employee-deductions.bulk-add-page')}>
-                            <Button>
-                                <Users className="mr-2 h-4 w-4" />
-                                Bulk Add
-                            </Button>
-                        </Link>
                     </div>
                 </div>
 

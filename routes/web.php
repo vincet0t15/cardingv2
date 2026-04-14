@@ -173,11 +173,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/', [EmployeeDeductionController::class, 'index'])->name('employee-deductions.index');
         Route::get('/print', [EmployeeDeductionController::class, 'print'])->name('employee-deductions.print');
         Route::get('/add', [EmployeeDeductionController::class, 'create'])->name('employee-deductions.create');
-        Route::get('/bulk-add', [EmployeeDeductionController::class, 'bulkAddPage'])->name('employee-deductions.bulk-add-page');
         Route::post('/', [EmployeeDeductionController::class, 'store'])->name('employee-deductions.store');
-        Route::post('bulk-store', [EmployeeDeductionController::class, 'bulkStore'])->name('employee-deductions.bulk-store');
-        Route::post('bulk-update', [EmployeeDeductionController::class, 'bulkUpdate'])->name('employee-deductions.bulk-update');
-        Route::post('bulk-destroy', [EmployeeDeductionController::class, 'bulkDestroy'])->name('employee-deductions.bulk-destroy');
         Route::put('{employeeDeduction}', [EmployeeDeductionController::class, 'update'])->name('employee-deductions.update');
         Route::delete('{employeeDeduction}', [EmployeeDeductionController::class, 'destroy'])->name('employee-deductions.destroy');
     });
