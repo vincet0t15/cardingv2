@@ -3,6 +3,7 @@ import Heading from '@/components/heading';
 import Pagination from '@/components/paginationData';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +16,7 @@ import type { FilterProps } from '@/types/filter';
 import type { Office } from '@/types/office';
 import type { PaginatedDataResponse } from '@/types/pagination';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { History, PlusIcon, Printer, Search, User } from 'lucide-react';
+import { HardHat, History, PlusIcon, Printer, Search, TrendingUp, User } from 'lucide-react';
 import { useState } from 'react';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -161,8 +162,50 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Hazard Pay" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto rounded-xl p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <Heading title="Hazard Pay" description="Manage hazard pay records for employees." />
+                <Heading title="Hazard Pay" description="Manage hazard pay records for employees." />
+
+                {/* Summary Cards */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
+                            <User className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatNumber(totalEmployees)}</div>
+                            <p className="text-muted-foreground text-xs">{employeesWithHazard} with Hazard Pay</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Hazard Pay</CardTitle>
+                            <HardHat className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatCurrency(totalHazard)}</div>
+                            <p className="text-muted-foreground text-xs">Monthly total</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Average Hazard Pay</CardTitle>
+                            <HardHat className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatCurrency(averageHazard)}</div>
+                            <p className="text-muted-foreground text-xs">Per employee</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Highest Hazard Pay</CardTitle>
+                            <TrendingUp className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatCurrency(highestHazard)}</div>
+                            <p className="text-muted-foreground text-xs">Maximum</p>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 {/* Instruction Note */}
@@ -239,7 +282,7 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
                             <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50 select-none" />
                         </div>
 
-                        <Button variant="outline" onClick={handlePrint}>
+                        <Button variant="outline" onClick={handlePrint} className="transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20">
                             <Printer className="mr-2 h-4 w-4" />
                             Print
                         </Button>
@@ -250,7 +293,7 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow className="hover:bg-transparent">
-                                <TableHead className="min-w-[200px]">Employee</TableHead>
+                                <TableHead className="w-[500px] min-w-[200px]">Employee</TableHead>
                                 <TableHead className="min-w-[140px]">Current Hazard Pay</TableHead>
                                 <TableHead className="min-w-[150px]">Effective Date</TableHead>
                                 <TableHead className="min-w-[100px] text-right">Actions</TableHead>
@@ -259,10 +302,13 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
                         <TableBody>
                             {employees.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="py-8 text-center">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <User className="text-muted-foreground h-12 w-12" />
-                                            <p className="text-muted-foreground">No employees with hazard pay found.</p>
+                                    <TableCell colSpan={4} className="py-12">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <HardHat className="text-muted-foreground h-16 w-16" />
+                                            <p className="text-muted-foreground text-lg font-semibold">No employees with hazard pay found.</p>
+                                            <p className="text-muted-foreground text-sm">
+                                                {filterData.search ? 'Try adjusting your search' : 'No employees available'}
+                                            </p>
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -303,16 +349,28 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <Link href={route('employees.show', employee.id)}>
-                                                    <Button variant="outline" size="sm">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                                    >
                                                         View
                                                     </Button>
                                                 </Link>
                                                 <Link href={route('hazard-pays.history', employee.id)}>
-                                                    <Button variant="outline" size="sm">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                                    >
                                                         <History className="h-4 w-4" />
                                                     </Button>
                                                 </Link>
-                                                <Button size="sm" onClick={() => handleOpenAdd(employee)}>
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => handleOpenAdd(employee)}
+                                                    className="transition-colors hover:bg-green-600"
+                                                >
                                                     <PlusIcon className="h-4 w-4" />
                                                 </Button>
                                             </div>
