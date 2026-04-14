@@ -21,14 +21,14 @@ class PayrollController extends Controller
 
     public function index(Request $request): Response
     {
-        $month = $request->input('month', now()->month);
+        $month = $request->input('month'); // Can be null or 0 for "All Months"
         $year = $request->input('year', now()->year);
         $officeId = $request->input('office_id');
         $search = $request->input('search');
         $employmentStatusId = $request->input('employment_status_id');
 
-        // If month is 0 (All Months), use 12 (December) for calculation purposes
-        $calculationMonth = ($month == 0) ? 12 : $month;
+        // If month is provided and not 0, use it for calculation; otherwise use 12 (December) as default
+        $calculationMonth = ($month && $month != 0) ? $month : 12;
 
         $employees = Employee::query()
             ->with(['employmentStatus', 'office'])

@@ -13,8 +13,9 @@ import type { EmploymentStatus } from '@/types/employmentStatuses';
 import type { Office } from '@/types/office';
 import type { PaginatedDataResponse } from '@/types/pagination';
 import type { PayrollEmployee } from '@/types/payroll';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { Coins, MinusCircle, Printer, Search, User, Wallet } from 'lucide-react';
+import { useEffect } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -62,12 +63,26 @@ interface PayrollIndexProps {
 }
 
 export default function PayrollIndex({ employees, offices, employmentStatuses, filters }: PayrollIndexProps) {
+    const { url } = usePage();
+
+    // Get initial filters from URL or defaults
+    const getInitialFilters = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        return {
+            month: urlParams.get('month') || String(filters.month || 0),
+            year: urlParams.get('year') || String(filters.year || currentYear),
+            office_id: urlParams.get('office_id') || (filters.office_id ? String(filters.office_id) : ''),
+            employment_status_id: urlParams.get('employment_status_id') || (filters.employment_status_id ? String(filters.employment_status_id) : ''),
+            search: urlParams.get('search') || filters.search || '',
+        };
+    };
+
     const { data: filterData, setData: setFilterData } = useForm({
-        month: filters.month,
-        year: filters.year,
-        office_id: filters.office_id?.toString() || '',
-        employment_status_id: filters.employment_status_id?.toString() || '',
-        search: filters.search || '',
+        month: getInitialFilters().month,
+        year: getInitialFilters().year,
+        office_id: getInitialFilters().office_id,
+        employment_status_id: getInitialFilters().employment_status_id,
+        search: getInitialFilters().search,
     });
 
     const officeOptions = offices.map((office) => ({
@@ -85,13 +100,38 @@ export default function PayrollIndex({ employees, offices, employmentStatuses, f
         label: m.label,
     }));
 
-    const handleFilterChange = () => {
-        const queryString: Record<string, string | number> = {};
-        if (filterData.month) queryString.month = filterData.month;
-        if (filterData.year) queryString.year = filterData.year;
-        if (filterData.office_id) queryString.office_id = filterData.office_id;
-        if (filterData.employment_status_id) queryString.employment_status_id = filterData.employment_status_id;
-        if (filterData.search) queryString.search = filterData.search;
+    // Auto-apply filters when they change
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            applyFilters();
+        }, 300); // 300ms debounce
+
+        return () => clearTimeout(timeoutId);
+    }, [filterData.month, filterData.year, filterData.office_id, filterData.employment_status_id, filterData.search]);
+
+    const applyFilters = () => {
+        const queryString: Record<string, string | null> = {
+            month: filterData.month || null,
+            year: filterData.year || null,
+            office_id: filterData.office_id || null,
+            employment_status_id: filterData.employment_status_id || null,
+            search: filterData.search || null,
+        };
+
+        // Update URL
+        const url = new URL(window.location.href);
+        if (queryString.month && queryString.month !== '0') url.searchParams.set('month', queryString.month);
+        else url.searchParams.delete('month');
+        if (queryString.year) url.searchParams.set('year', queryString.year);
+        else url.searchParams.delete('year');
+        if (queryString.office_id) url.searchParams.set('office_id', queryString.office_id);
+        else url.searchParams.delete('office_id');
+        if (queryString.employment_status_id) url.searchParams.set('employment_status_id', queryString.employment_status_id);
+        else url.searchParams.delete('employment_status_id');
+        if (queryString.search) url.searchParams.set('search', queryString.search);
+        else url.searchParams.delete('search');
+
+        window.history.pushState({}, '', url.toString());
 
         router.get(route('payroll.index'), queryString, {
             preserveState: true,
@@ -141,12 +181,12 @@ export default function PayrollIndex({ employees, offices, employmentStatuses, f
                 {/* Filters */}
                 <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-wrap items-center gap-2">
-                        <div className="w-[160px]">
+                        <div className="w-[150px]">
                             <CustomComboBox
                                 items={monthOptions}
-                                placeholder="Select Month"
-                                value={filterData.month.toString()}
-                                onSelect={(value) => setFilterData('month', value ? parseInt(value) : 0)}
+                                placeholder="All Months"
+                                value={filterData.month}
+                                onSelect={(value) => setFilterData('month', value || '0')}
                             />
                         </div>
 
@@ -154,8 +194,8 @@ export default function PayrollIndex({ employees, offices, employmentStatuses, f
                             <CustomComboBox
                                 items={YEARS}
                                 placeholder="Select Year"
-                                value={filterData.year ? String(filterData.year) : null}
-                                onSelect={(value) => setFilterData('year', value ? parseInt(value) : currentYear)}
+                                value={filterData.year}
+                                onSelect={(value) => setFilterData('year', value || String(currentYear))}
                             />
                         </div>
 
@@ -186,8 +226,6 @@ export default function PayrollIndex({ employees, offices, employmentStatuses, f
                             />
                             <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50 select-none" />
                         </div>
-
-                        <Button onClick={handleFilterChange}>Filter</Button>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
