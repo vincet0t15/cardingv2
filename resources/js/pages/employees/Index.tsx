@@ -30,11 +30,28 @@ interface Props {
     filters: FilterProps & { office_id?: string; employment_status_id?: string };
 }
 export default function Employees({ employees, offices, employmentStatuses, filters }: Props) {
-    const { data, setData } = useForm({
-        search: filters.search || '',
-        office_id: filters.office_id || '',
-        employment_status_id: filters.employment_status_id || '',
-    });
+    // Initialize filters from URL or sessionStorage
+    const getInitialFilters = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+
+        // Check if there are saved filters in sessionStorage (when coming back from employee page)
+        const savedFilters = sessionStorage.getItem('employeesFilters');
+        if (savedFilters && !urlParams.has('search')) {
+            const parsed = JSON.parse(savedFilters);
+            // Clear sessionStorage after using it
+            sessionStorage.removeItem('employeesFilters');
+            return parsed;
+        }
+
+        // Otherwise use URL params or default filters
+        return {
+            search: urlParams.get('search') || filters.search || '',
+            office_id: urlParams.get('office_id') || filters.office_id || '',
+            employment_status_id: urlParams.get('employment_status_id') || filters.employment_status_id || '',
+        };
+    };
+
+    const { data, setData } = useForm(getInitialFilters());
 
     const applyFilters = (overrides?: Partial<typeof data>) => {
         const merged = { ...data, ...overrides };
@@ -42,6 +59,19 @@ export default function Employees({ employees, offices, employmentStatuses, filt
         if (merged.search) queryString.search = merged.search;
         if (merged.office_id) queryString.office_id = merged.office_id;
         if (merged.employment_status_id) queryString.employment_status_id = merged.employment_status_id;
+
+        // Update URL with current filters
+        const url = new URL(window.location.href);
+        if (merged.search) url.searchParams.set('search', merged.search);
+        else url.searchParams.delete('search');
+        if (merged.office_id) url.searchParams.set('office_id', merged.office_id);
+        else url.searchParams.delete('office_id');
+        if (merged.employment_status_id) url.searchParams.set('employment_status_id', merged.employment_status_id);
+        else url.searchParams.delete('employment_status_id');
+
+        // Update browser history
+        window.history.pushState({}, '', url.toString());
+
         router.get(route('employees.index'), queryString, {
             preserveState: true,
             preserveScroll: true,
@@ -167,6 +197,10 @@ export default function Employees({ employees, offices, employmentStatuses, filt
                                                 href={route('manage.employees.index', employee.id)}
                                                 className="group relative flex cursor-pointer items-center gap-2"
                                                 title={`View details of ${employee.first_name} ${employee.last_name}`}
+                                                onClick={() => {
+                                                    // Save current filters to sessionStorage before navigating
+                                                    sessionStorage.setItem('employeesFilters', JSON.stringify(data));
+                                                }}
                                             >
                                                 <div className="relative">
                                                     <Avatar className="h-12 w-12 border-2 border-slate-200 shadow-sm transition-all hover:border-green-800 hover:shadow-md dark:border-slate-700 dark:hover:border-green-500">

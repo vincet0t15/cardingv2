@@ -73,14 +73,31 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
     const [selectedDeduction, setSelectedDeduction] = useState<EmployeeDeduction | null>(null);
 
-    const { data: filterData, setData: setFilterData } = useForm({
-        month: filters.month,
-        year: filters.year,
-        search: filters.search || '',
-        office_id: filters.office_id || '',
-        employment_status_id: filters.employment_status_id || '',
-        has_deductions: filters.has_deductions ?? true,
-    });
+    // Initialize filters from URL, sessionStorage, or props
+    const getInitialFilters = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+
+        // Check if there are saved filters in sessionStorage (when coming back from employee page)
+        const savedFilters = sessionStorage.getItem('employeeDeductionsFilters');
+        if (savedFilters && !urlParams.has('month')) {
+            const parsed = JSON.parse(savedFilters);
+            // Clear sessionStorage after using it
+            sessionStorage.removeItem('employeeDeductionsFilters');
+            return parsed;
+        }
+
+        // Otherwise use URL params or default filters
+        return {
+            month: parseInt(urlParams.get('month') || String(filters.month)),
+            year: parseInt(urlParams.get('year') || String(filters.year)),
+            search: urlParams.get('search') || filters.search || '',
+            office_id: urlParams.get('office_id') || filters.office_id || '',
+            employment_status_id: urlParams.get('employment_status_id') || filters.employment_status_id || '',
+            has_deductions: urlParams.get('has_deductions') === 'false' ? false : (filters.has_deductions ?? true),
+        };
+    };
+
+    const { data: filterData, setData: setFilterData } = useForm(getInitialFilters());
 
     const {
         data: addData,
@@ -121,6 +138,21 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
         if (filterData.office_id) queryString.office_id = filterData.office_id;
         if (filterData.employment_status_id) queryString.employment_status_id = filterData.employment_status_id;
         queryString.has_deductions = filterData.has_deductions ? '1' : '0';
+
+        // Update URL with current filters
+        const url = new URL(window.location.href);
+        url.searchParams.set('month', filterData.month.toString());
+        url.searchParams.set('year', filterData.year.toString());
+        if (filterData.search) url.searchParams.set('search', filterData.search);
+        else url.searchParams.delete('search');
+        if (filterData.office_id) url.searchParams.set('office_id', filterData.office_id);
+        else url.searchParams.delete('office_id');
+        if (filterData.employment_status_id) url.searchParams.set('employment_status_id', filterData.employment_status_id);
+        else url.searchParams.delete('employment_status_id');
+        url.searchParams.set('has_deductions', filterData.has_deductions.toString());
+
+        // Update browser history
+        window.history.pushState({}, '', url.toString());
 
         router.get(route('employee-deductions.index'), queryString, {
             preserveState: true,
@@ -265,6 +297,7 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
                         <TableHeader className="bg-muted/50">
                             <TableRow>
                                 <TableHead className="text-primary font-bold">Employee</TableHead>
+                                <TableHead className="text-primary font-bold">Monthly Salary</TableHead>
                                 <TableHead className="text-primary font-bold">Deductions</TableHead>
                                 <TableHead className="text-primary text-right font-bold">Total Deductions</TableHead>
                             </TableRow>
@@ -276,7 +309,11 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 <button
-                                                    onClick={() => router.get(route('manage.employees.index', employee.id))}
+                                                    onClick={() => {
+                                                        // Save current filters to sessionStorage before navigating
+                                                        sessionStorage.setItem('employeeDeductionsFilters', JSON.stringify(filterData));
+                                                        router.get(route('manage.employees.index', employee.id));
+                                                    }}
                                                     className="group relative cursor-pointer"
                                                     title={`View details of ${employee.first_name} ${employee.last_name}`}
                                                 >
@@ -317,6 +354,14 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
                                                     <span className="text-muted-foreground text-xs"> {employee.office?.name}</span>
                                                 </div>
                                             </div>
+                                        </TableCell>
+
+                                        <TableCell>
+                                            {employee.latest_salary ? (
+                                                <div className="text-right font-medium">{formatCurrency(Number(employee.latest_salary.amount))}</div>
+                                            ) : (
+                                                <span className="text-muted-foreground italic">-</span>
+                                            )}
                                         </TableCell>
 
                                         <TableCell>

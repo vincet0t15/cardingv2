@@ -40,8 +40,19 @@ const YEARS = Array.from({ length: endYear - startYear + 1 }, (_, i) => {
 
 interface Salary {
     id: number;
-    basic_salary: number;
-    monthly_salary: number;
+    amount: number;
+    effective_date: string;
+}
+
+interface DeductionType {
+    id: number;
+    name: string;
+}
+
+interface EmployeeDeduction {
+    id: number;
+    amount: number;
+    deduction_type?: DeductionType;
 }
 
 interface IndexProps {
@@ -56,7 +67,7 @@ interface IndexProps {
         employment_status: EmploymentStatus | null;
         office: Office | null;
         salaries: Salary[];
-        monthly_salary?: number;
+        employee_deductions?: EmployeeDeduction[];
     }[];
     offices: Office[];
     employmentStatuses: EmploymentStatus[];
@@ -112,12 +123,12 @@ export default function Index({ employees, offices, employmentStatuses, filters 
         }
     };
 
-    const getLatestSalary = (salary: Salary | undefined, monthlySalary?: number) => {
-        return salary?.basic_salary || monthlySalary || 0;
+    const getLatestSalary = (salary: Salary | undefined) => {
+        return salary?.amount || 0;
     };
 
-    const getTotalDeductions = () => {
-        return 0;
+    const getTotalDeductions = (deductions: any[]) => {
+        return deductions?.reduce((sum, d) => sum + Number(d.amount || 0), 0) || 0;
     };
 
     return (
@@ -283,12 +294,15 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                                         </TableCell>
                                         <TableCell className="text-right font-medium">
                                             ₱
-                                            {getLatestSalary(employee.salaries?.[0], employee.monthly_salary).toLocaleString('en-PH', {
+                                            {getLatestSalary(employee.salaries?.[0]).toLocaleString('en-PH', {
                                                 minimumFractionDigits: 2,
                                             })}
                                         </TableCell>
                                         <TableCell className="text-right font-medium">
-                                            ₱{getTotalDeductions().toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                            ₱
+                                            {getTotalDeductions(employee.employee_deductions as any[])?.toLocaleString('en-PH', {
+                                                minimumFractionDigits: 2,
+                                            })}
                                         </TableCell>
                                     </TableRow>
                                 ))

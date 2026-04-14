@@ -32,6 +32,7 @@ export interface Employee {
     latest_rata?: Rata;
     latest_hazard_pay?: HazardPay;
     latest_clothing_allowance?: ClothingAllowance;
+
 }
 
 export type EmployeeCreateRequest = {

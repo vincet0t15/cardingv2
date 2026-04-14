@@ -13,7 +13,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EmployeeDeductionController extends Controller
 {
@@ -50,19 +49,27 @@ class EmployeeDeductionController extends Controller
             ->when($employmentStatusId, function ($query, $employmentStatusId) {
                 $query->where('employment_status_id', $employmentStatusId);
             })
-            ->with(['salaries' => function ($query) use ($year, $month) {
-                $query->where('effective_date', '<=', now()->setDate($year, $month, 1)->endOfMonth())
-                    ->orderBy('effective_date', 'desc');
+            // Load latest salary, pera, rata for display
+            ->with(['latestSalary', 'latestPera', 'latestRata'])
+            // Load all compensation history (ordered by date)
+            ->with(['salaries' => function ($query) {
+                $query->orderBy('effective_date', 'desc');
             }])
-            ->with(['peras' => function ($query) use ($year, $month) {
-                $query->where('effective_date', '<=', now()->setDate($year, $month, 1)->endOfMonth())
-                    ->orderBy('effective_date', 'desc');
+            ->with(['peras' => function ($query) {
+                $query->orderBy('effective_date', 'desc');
             }])
-            ->with(['ratas' => function ($query) use ($year, $month) {
-                $query->where('effective_date', '<=', now()->setDate($year, $month, 1)->endOfMonth())
-                    ->orderBy('effective_date', 'desc');
+            ->with(['ratas' => function ($query) {
+                $query->orderBy('effective_date', 'desc');
             }])
+            // Load deductions for the selected month/year
             ->with(['employeeDeductions' => function ($query) use ($year, $month) {
+                $query->where('pay_period_year', $year)
+                    ->where('pay_period_month', $month)
+                    ->with('deductionType')
+                    ->orderBy('created_at', 'desc');
+            }])
+            // Also load as 'deductions' for frontend compatibility
+            ->with(['deductions' => function ($query) use ($year, $month) {
                 $query->where('pay_period_year', $year)
                     ->where('pay_period_month', $month)
                     ->orderBy('created_at', 'desc');
@@ -176,7 +183,7 @@ class EmployeeDeductionController extends Controller
     {
         $employeeId = $request->input('employee_id');
 
-        if (!$employeeId) {
+        if (! $employeeId) {
             abort(404, 'Employee ID is required');
         }
 
@@ -197,7 +204,7 @@ class EmployeeDeductionController extends Controller
         // Get taken periods for this employee
         $takenPeriods = EmployeeDeduction::where('employee_id', $employeeId)
             ->get()
-            ->map(fn($d) => "{$d->pay_period_year}-{$d->pay_period_month}")
+            ->map(fn ($d) => "{$d->pay_period_year}-{$d->pay_period_month}")
             ->toArray();
 
         return Inertia::render('employee-deductions/AddDeduction', [
@@ -293,6 +300,7 @@ class EmployeeDeductionController extends Controller
 
             if ($exists) {
                 $skipped++;
+
                 continue;
             }
 
@@ -318,7 +326,7 @@ class EmployeeDeductionController extends Controller
             $message .= " Skipped {$skipped} duplicate(s).";
         }
         if (count($errors) > 0) {
-            $message .= " " . count($errors) . " error(s) occurred.";
+            $message .= ' '.count($errors).' error(s) occurred.';
         }
 
         return redirect()->back()->with('success', $message);
