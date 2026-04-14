@@ -8,15 +8,67 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\ExecutableFinder;
+use Symfony\Component\Process\Process;
 
 class BackupController extends Controller
 {
-    /**
-     * Display backup management page
-     */
+    private function getMySqlPath(): string
+    {
+        $executableFinder = new ExecutableFinder;
+
+        $mysqlPath = $executableFinder->find('mysql');
+        if ($mysqlPath) {
+            return dirname($mysqlPath);
+        }
+
+        $mysqldumpPath = $executableFinder->find('mysqldump');
+        if ($mysqldumpPath) {
+            return dirname($mysqldumpPath);
+        }
+
+        if (PHP_OS === 'WINNT') {
+            $possiblePaths = [
+                'C:\laragon\bin\mysql\current\bin',
+                'C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin',
+                'C:\laragon\bin\mysql\mysql-8.4.2-winx64\bin',
+                'C:\laragon\bin\mysql\mysql-8.4.1-winx64\bin',
+                'C:\laragon\bin\mysql\mysql-8.4.0-winx64\bin',
+                'C:\laragon\bin\mysql\mysql-8.3-winx64\bin',
+                'C:\laragon\bin\mysql\mysql-8.0-winx64\bin',
+                'C:\xampp\mysql\bin',
+            ];
+
+            foreach ($possiblePaths as $path) {
+                $mysqldump = $path.'\mysqldump.exe';
+                if (File::exists($mysqldump)) {
+                    return $path;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    private function getDbConfig(): array
+    {
+        $connection = config('database.default');
+        $config = config("database.connections.{$connection}");
+
+        return [
+            'host' => $config['host'] ?? '127.0.0.1',
+            'port' => $config['port'] ?? '3306',
+            'database' => $config['database'] ?? '',
+            'username' => $config['username'] ?? 'root',
+            'password' => $config['password'] ?? '',
+        ];
+    }
+
     public function index(Request $request)
     {
         $backups = $this->getBackups($request);
+        $dbConfig = $this->getDbConfig();
 
         return Inertia::render('settings/Backup', [
             'backups' => $backups['data'],
@@ -26,14 +78,11 @@ class BackupController extends Controller
                 'per_page' => $backups['per_page'],
                 'total' => $backups['total'],
             ],
-            'databaseName' => config('database.connections.mysql.database'),
+            'databaseName' => $dbConfig['database'],
         ]);
     }
 
-    /**
-     * Create a new database backup
-     */
-    public function create(Request $request)
+    public function create()
     {
         try {
             $timestamp = now()->format('Y-m-d_H-i-s');
@@ -42,57 +91,93 @@ class BackupController extends Controller
 
             File::ensureDirectoryExists(storage_path('app/backups'));
 
-            $command = $this->buildMySqlDumpCommand($backupPath);
-            exec($command, $output, $returnCode);
+            $dbConfig = $this->getDbConfig();
+            $connection = config('database.default');
 
-            if ($returnCode !== 0) {
-                Log::error('Backup creation failed');
-                throw new \Exception('Failed to create database backup');
+            if ($connection === 'sqlite') {
+                $dbPath = config('database.connections.sqlite.database');
+                if (! File::exists($dbPath)) {
+                    throw new \Exception('SQLite database file not found');
+                }
+                $sqlitePath = database_path('database.sqlite');
+                copy($sqlitePath, $backupPath);
+                $fileSize = File::size($backupPath);
+
+                return back()->with('success', 'Backup created successfully! ('.$this->formatFileSize($fileSize).')');
             }
 
-            if (!File::exists($backupPath) || File::size($backupPath) === 0) {
-                throw new \Exception('Backup file was not created or is empty');
+            if (! in_array($connection, ['mysql', 'mariadb'])) {
+                throw new \Exception("Unsupported database connection: {$connection}");
             }
 
-            return redirect()->back()->with('success', 'Database backup created successfully!');
+            $isDocker = env('APP_ENV') === 'docker' || getenv('DOCKER_CONTAINER');
+            $dockerContainer = env('DOCKER_MYSQL_CONTAINER', 'carding_app_mysql');
+
+            if ($isDocker) {
+                $process = Process::fromShellCommandLine(sprintf(
+                    'docker exec %s mysqldump -u%s -p%s %s',
+                    $dockerContainer,
+                    escapeshellarg($dbConfig['username']),
+                    escapeshellarg($dbConfig['password']),
+                    escapeshellarg($dbConfig['database'])
+                ));
+                $process->setTimeout(300);
+                $output = $process->mustRun();
+                File::put($backupPath, $output->getOutput());
+            } else {
+                $executableFinder = new ExecutableFinder;
+                $mysqldump = $executableFinder->find('mysqldump');
+
+                if (! $mysqldump) {
+                    $mysqlPath = $this->getMySqlPath();
+                    if ($mysqlPath) {
+                        $mysqldump = $mysqlPath.DIRECTORY_SEPARATOR.'mysqldump'.(PHP_OS === 'WINNT' ? '.exe' : '');
+                    }
+                }
+
+                if (! $mysqldump) {
+                    throw new \Exception('mysqldump not found. Please ensure MySQL is installed and in PATH, or configure DOCKER_MYSQL_CONTAINER in .env for Docker mode.');
+                }
+
+                $pass = $dbConfig['password'] ? '-p'.$dbConfig['password'] : '';
+                $command = sprintf(
+                    'cmd /c "%s -h%s -P%s -u%s %s --single-transaction --quick --lock-tables=false %s -r %s"',
+                    $mysqldump,
+                    $dbConfig['host'],
+                    $dbConfig['port'],
+                    $dbConfig['username'],
+                    $pass,
+                    $dbConfig['database'],
+                    $backupPath
+                );
+                exec($command, $output, $returnCode);
+                if ($returnCode !== 0) {
+                    throw new \Exception('mysqldump failed with code: '.$returnCode);
+                }
+            }
+
+            if (! File::exists($backupPath)) {
+                throw new \Exception('Backup file was not created');
+            }
+
+            $fileSize = File::size($backupPath);
+            if ($fileSize === 0) {
+                File::delete($backupPath);
+                throw new \Exception('Backup file is empty - check database credentials');
+            }
+
+            return back()->with('success', 'Backup created successfully! ('.$this->formatFileSize($fileSize).')');
+        } catch (ProcessFailedException $e) {
+            Log::error('Backup process failed: '.$e->getMessage());
+
+            return back()->with('error', 'Backup failed: '.$e->getProcess()->getErrorOutput());
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Failed to create backup: ' . $e->getMessage());
+            Log::error('Backup failed: '.$e->getMessage());
+
+            return back()->with('error', $e->getMessage());
         }
     }
 
-    /**
-     * Download a backup file
-     */
-    public function download($fileName)
-    {
-        $path = storage_path("app/backups/{$fileName}");
-
-        if (!File::exists($path)) {
-            return back()->with('error', 'Backup file not found');
-        }
-
-        return response()->download($path);
-    }
-
-    /**
-     * Delete a backup file
-     */
-    public function destroy($fileName)
-    {
-        $path = storage_path("app/backups/{$fileName}");
-
-        if (!File::exists($path)) {
-            return back()->with('error', 'Backup file not found');
-        }
-
-        File::delete($path);
-
-        return back()->with('success', 'Backup deleted successfully!');
-    }
-
-    /**
-     * Restore database from backup
-     */
     public function restore(Request $request)
     {
         $request->validate([
@@ -103,288 +188,182 @@ class BackupController extends Controller
             $fileName = $request->input('file_name');
             $backupPath = storage_path("app/backups/{$fileName}");
 
-            if (!File::exists($backupPath)) {
+            if (! File::exists($backupPath)) {
                 return back()->with('error', 'Backup file not found');
             }
 
-            $sqlContent = File::get($backupPath);
+            $this->restoreDb($backupPath);
 
-            if (empty($sqlContent)) {
-                throw new \Exception('Backup file is empty');
-            }
-
-            $this->executeMySqlRestore($sqlContent);
             $this->clearCachesAndDisconnect();
 
-            return back()->with('success', 'Database restored successfully! The page will reload with fresh data.');
+            return back()->with('success', 'Database restored successfully!');
         } catch (\Exception $e) {
-            Log::error('Database restore failed: ' . $e->getMessage());
-            return back()->with('error', 'Failed to restore database: ' . $e->getMessage());
+            Log::error($e->getMessage());
+
+            return back()->with('error', $e->getMessage());
         }
     }
 
-    /**
-     * Upload and restore from uploaded file
-     */
     public function uploadRestore(Request $request)
     {
         $request->validate([
-            'backup_file' => [
-                'required',
-                'file',
-                'max:102400',
-                function ($attribute, $value, $fail) {
-                    $extension = strtolower($value->getClientOriginalExtension());
-                    $allowedExtensions = ['sql', 'zip', 'gz'];
-
-                    if (!in_array($extension, $allowedExtensions)) {
-                        $fail('The backup file must be a file of type: sql, zip, gz.');
-                    }
-                },
-            ],
+            'backup_file' => 'required|file|max:204800',
         ]);
 
         try {
             $file = $request->file('backup_file');
-            $fileName = time() . '_' . $file->getClientOriginalName();
-            $tempPath = storage_path("app/temp/{$fileName}");
+            $fileName = time().'_'.$file->getClientOriginalName();
 
+            $path = storage_path("app/temp/{$fileName}");
             File::ensureDirectoryExists(storage_path('app/temp'));
+
             $file->move(storage_path('app/temp'), $fileName);
 
-            $sqlContent = File::get($tempPath);
+            $this->restoreDb($path);
 
-            if (empty($sqlContent)) {
-                File::delete($tempPath);
-                throw new \Exception('Uploaded backup file is empty');
-            }
+            File::delete($path);
 
-            $this->executeMySqlRestore($sqlContent);
-            File::delete($tempPath);
             $this->clearCachesAndDisconnect();
 
-            return back()->with('success', 'Database restored from uploaded file successfully! The page will reload with fresh data.');
+            return back()->with('success', 'Database restored successfully!');
         } catch (\Exception $e) {
-            Log::error('Upload restore failed: ' . $e->getMessage());
-            return back()->with('error', 'Failed to restore database: ' . $e->getMessage());
+            Log::error($e->getMessage());
+
+            return back()->with('error', $e->getMessage());
         }
     }
 
-    /**
-     * Get list of available backups
-     */
-    private function getBackups(Request $request): array
+    private function restoreDb(string $filePath): void
     {
-        $backupDir = storage_path('app/backups');
+        $connection = config('database.default');
 
-        if (!File::exists($backupDir)) {
-            return [
-                'data' => [],
-                'current_page' => 1,
-                'last_page' => 1,
-                'per_page' => 15,
-                'total' => 0,
-            ];
+        if ($connection === 'sqlite') {
+            $sqlitePath = database_path('database.sqlite');
+            copy($filePath, $sqlitePath);
+
+            return;
         }
 
-        $files = File::files($backupDir);
-        $backups = [];
-
-        foreach ($files as $file) {
-            $dateTime = new \DateTime();
-            $dateTime->setTimestamp($file->getMTime());
-            $dateTime->setTimezone(new \DateTimeZone('Asia/Manila'));
-
-            $backups[] = [
-                'name' => $file->getFilename(),
-                'size' => $this->formatFileSize($file->getSize()),
-                'date' => $dateTime->format('Y-m-d g:i:s A'),
-                'path' => $file->getPathname(),
-            ];
+        if (! in_array($connection, ['mysql', 'mariadb'])) {
+            throw new \Exception("Unsupported database connection: {$connection}");
         }
 
-        usort($backups, function ($a, $b) {
-            return strtotime($b['date']) - strtotime($a['date']);
-        });
+        $dbConfig = $this->getDbConfig();
+        $isDocker = env('APP_ENV') === 'docker' || getenv('DOCKER_CONTAINER');
+        $dockerContainer = env('DOCKER_MYSQL_CONTAINER', 'carding_app_mysql');
 
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
-
-        if ($startDate) {
-            $backups = array_filter($backups, function ($backup) use ($startDate) {
-                return strtotime($backup['date']) >= strtotime($startDate . ' 00:00:00');
-            });
-        }
-
-        if ($endDate) {
-            $backups = array_filter($backups, function ($backup) use ($endDate) {
-                return strtotime($backup['date']) <= strtotime($endDate . ' 23:59:59');
-            });
-        }
-
-        $backups = array_values($backups);
-
-        $perPage = 15;
-        $currentPage = (int) $request->input('page', 1);
-        $total = count($backups);
-        $lastPage = (int) ceil($total / $perPage);
-
-        if ($currentPage < 1) {
-            $currentPage = 1;
-        }
-        if ($currentPage > $lastPage && $lastPage > 0) {
-            $currentPage = $lastPage;
-        }
-
-        $offset = ($currentPage - 1) * $perPage;
-        $paginatedBackups = array_slice($backups, $offset, $perPage);
-
-        return [
-            'data' => $paginatedBackups,
-            'current_page' => $currentPage,
-            'last_page' => $lastPage,
-            'per_page' => $perPage,
-            'total' => $total,
-        ];
-    }
-
-    /**
-     * Build mysqldump command for backup creation
-     */
-    private function buildMySqlDumpCommand(string $backupPath): string
-    {
-        $host = config('database.connections.mysql.host');
-        $port = config('database.connections.mysql.port');
-        $database = config('database.connections.mysql.database');
-        $username = config('database.connections.mysql.username');
-        $password = config('database.connections.mysql.password');
-
-        return sprintf(
-            'mysqldump --user=%s --password=%s --host=%s --port=%s --add-drop-table --routines --triggers %s > "%s" 2>&1',
-            escapeshellarg($username),
-            escapeshellarg($password),
-            escapeshellarg($host),
-            escapeshellarg($port),
-            escapeshellarg($database),
-            $backupPath
-        );
-    }
-
-    /**
-     * Execute MySQL restore using proc_open
-     */
-    private function executeMySqlRestore(string $sqlContent): void
-    {
-        $mysqlPath = $this->getMySqlPath();
-        $dbConfig = $this->getDatabaseConfig();
-
-        $errorFile = tempnam(sys_get_temp_dir(), 'mysql_error_');
-
-        $descriptorspec = [
-            0 => ['pipe', 'r'],
-            1 => ['pipe', 'w'],
-            2 => ['file', $errorFile, 'w'],
-        ];
-
-        $process = proc_open(
-            sprintf(
-                '%s --user=%s --password=%s --host=%s --port=%s --force %s',
-                escapeshellarg($mysqlPath),
+        if ($isDocker) {
+            $process = Process::fromShellCommandLine(sprintf(
+                'cat %s | docker exec -i %s mysql -u%s -p%s %s',
+                escapeshellarg($filePath),
+                $dockerContainer,
                 escapeshellarg($dbConfig['username']),
                 escapeshellarg($dbConfig['password']),
-                escapeshellarg($dbConfig['host']),
-                escapeshellarg($dbConfig['port']),
                 escapeshellarg($dbConfig['database'])
-            ),
-            $descriptorspec,
-            $pipes
-        );
+            ));
+            $process->setTimeout(600);
+            $process->mustRun();
+        } else {
+            $executableFinder = new ExecutableFinder;
+            $mysql = $executableFinder->find('mysql');
 
-        if (!is_resource($process)) {
-            throw new \Exception('Failed to start MySQL process');
-        }
+            if (! $mysql) {
+                $mysqlPath = $this->getMySqlPath();
+                if ($mysqlPath) {
+                    $mysql = $mysqlPath.DIRECTORY_SEPARATOR.'mysql'.(PHP_OS === 'WINNT' ? '.exe' : '');
+                }
+            }
 
-        fwrite($pipes[0], $sqlContent);
-        fclose($pipes[0]);
+            if (! $mysql) {
+                throw new \Exception('mysql not found. Please ensure MySQL is installed and in PATH, or configure DOCKER_MYSQL_CONTAINER in .env for Docker mode.');
+            }
 
-        $output = stream_get_contents($pipes[1]);
-        fclose($pipes[1]);
-
-        $returnCode = proc_close($process);
-        $errorOutput = file_exists($errorFile) ? file_get_contents($errorFile) : '';
-
-        @unlink($errorFile);
-
-        if ($returnCode !== 0) {
-            Log::error('MySQL restore failed');
-            throw new \Exception('Failed to restore database');
+            $pass = $dbConfig['password'] ? '-p'.$dbConfig['password'] : '';
+            $command = sprintf(
+                'cmd /c "%s -h%s -P%s -u%s %s %s < %s"',
+                $mysql,
+                $dbConfig['host'],
+                $dbConfig['port'],
+                $dbConfig['username'],
+                $pass,
+                $dbConfig['database'],
+                $filePath
+            );
+            exec($command, $output, $returnCode);
+            if ($returnCode !== 0) {
+                throw new \Exception('mysql restore failed with code: '.$returnCode);
+            }
         }
     }
 
-    /**
-     * Clear Laravel caches and disconnect database
-     */
+    public function download($fileName)
+    {
+        $path = storage_path("app/backups/{$fileName}");
+
+        if (! File::exists($path)) {
+            return back()->with('error', 'File not found');
+        }
+
+        return response()->download($path);
+    }
+
+    public function destroy($fileName)
+    {
+        $path = storage_path("app/backups/{$fileName}");
+
+        if (File::exists($path)) {
+            File::delete($path);
+        }
+
+        return back()->with('success', 'Deleted successfully');
+    }
+
     private function clearCachesAndDisconnect(): void
     {
         Artisan::call('cache:clear');
         Artisan::call('config:clear');
         Artisan::call('view:clear');
-        Artisan::call('event:clear');
         Artisan::call('route:clear');
 
         DB::disconnect();
     }
 
-    /**
-     * Get MySQL executable path
-     */
-    private function getMySqlPath(): string
+    private function getBackups(Request $request): array
     {
-        if (strtoupper(substr(PHP_OS, 0, 3)) !== 'WIN') {
-            return 'mysql';
+        $dir = storage_path('app/backups');
+
+        if (! File::exists($dir)) {
+            return ['data' => [], 'current_page' => 1, 'last_page' => 1, 'per_page' => 15, 'total' => 0];
         }
 
-        $possiblePaths = [
-            'C:\\laragon\\bin\\mysql\\mysql-8.4.3-winx64\\bin\\mysql.exe',
-            'C:\\laragon\\bin\\mysql\\mysql-8.0.30-winx64\\bin\\mysql.exe',
-            'C:\\xampp\\mysql\\bin\\mysql.exe',
-            'C:\\wamp\\bin\\mysql\\mysql8.0.27\\bin\\mysql.exe',
-        ];
+        $files = File::files($dir);
 
-        foreach ($possiblePaths as $path) {
-            if (file_exists($path)) {
-                return $path;
-            }
-        }
+        $data = collect($files)->map(function ($file) {
+            return [
+                'name' => $file->getFilename(),
+                'size' => $this->formatFileSize($file->getSize()),
+                'date' => date('Y-m-d H:i:s', $file->getMTime()),
+            ];
+        })->sortByDesc('date')->values()->toArray();
 
-        return 'mysql';
-    }
-
-    /**
-     * Get database configuration
-     */
-    private function getDatabaseConfig(): array
-    {
         return [
-            'host' => config('database.connections.mysql.host'),
-            'port' => config('database.connections.mysql.port'),
-            'database' => config('database.connections.mysql.database'),
-            'username' => config('database.connections.mysql.username'),
-            'password' => config('database.connections.mysql.password'),
+            'data' => $data,
+            'current_page' => 1,
+            'last_page' => 1,
+            'per_page' => count($data),
+            'total' => count($data),
         ];
     }
 
-    /**
-     * Format file size to human readable format
-     */
     private function formatFileSize(int $bytes): string
     {
-        $units = ['B', 'KB', 'MB', 'GB'];
-        $bytes = max($bytes, 0);
-        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-        $pow = min($pow, count($units) - 1);
-        $bytes /= pow(1024, $pow);
+        if ($bytes === 0) {
+            return '0 B';
+        }
 
-        return round($bytes, 2) . ' ' . $units[$pow];
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $i = floor(log($bytes, 1024));
+
+        return round($bytes / pow(1024, $i), 2).' '.$units[$i];
     }
 }
