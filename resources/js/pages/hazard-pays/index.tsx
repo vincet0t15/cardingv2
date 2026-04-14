@@ -142,8 +142,20 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
         return new Intl.NumberFormat('en-PH', {
             style: 'currency',
             currency: 'PHP',
+            minimumFractionDigits: 0,
         }).format(amount);
     };
+
+    const formatNumber = (num: number) => {
+        return new Intl.NumberFormat('en-PH').format(num);
+    };
+
+    // Calculate statistics
+    const totalEmployees = employees.total;
+    const employeesWithHazard = employees.data.filter((e) => e.latest_hazard_pay).length;
+    const totalHazard = employees.data.reduce((sum, e) => sum + Number(e.latest_hazard_pay?.amount || 0), 0);
+    const averageHazard = employeesWithHazard > 0 ? totalHazard / employeesWithHazard : 0;
+    const highestHazard = Math.max(...employees.data.map((e) => Number(e.latest_hazard_pay?.amount || 0)));
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

@@ -3,6 +3,7 @@ import Heading from '@/components/heading';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,7 +12,7 @@ import type { BreadcrumbItem } from '@/types';
 import type { EmploymentStatus } from '@/types/employmentStatuses';
 import type { Office } from '@/types/office';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Printer, Search, User } from 'lucide-react';
+import { Printer, Search, TrendingDown, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 const MONTHS = [
@@ -176,16 +177,71 @@ export default function Index({ employees, offices, employmentStatuses, filters 
         return new Intl.NumberFormat('en-PH', {
             style: 'currency',
             currency: 'PHP',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
         }).format(amount);
     };
+
+    const formatNumber = (num: number) => {
+        return new Intl.NumberFormat('en-PH').format(num);
+    };
+
+    // Calculate statistics
+    const totalEmployees = employees.length;
+    const employeesWithDeductions = employees.filter((e) => (e.employee_deductions?.length || 0) > 0).length;
+    const totalDeductionsAll = employees.reduce((sum, e) => sum + getTotalDeductions(e.employee_deductions as any[]), 0);
+    const averageDeduction = employeesWithDeductions > 0 ? totalDeductionsAll / employeesWithDeductions : 0;
+    const highestDeduction = Math.max(...employees.map((e) => getTotalDeductions(e.employee_deductions as any[])));
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Employee Deductions" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <Heading title="Employee Deductions" description="Manage employee deductions for payroll processing." />
+
+                {/* Summary Cards */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
+                            <User className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatNumber(totalEmployees)}</div>
+                            <p className="text-muted-foreground text-xs">{employeesWithDeductions} with deductions</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Deductions</CardTitle>
+                            <TrendingDown className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-red-600">{formatCurrency(totalDeductionsAll)}</div>
+                            <p className="text-muted-foreground text-xs">Monthly total</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Average Deduction</CardTitle>
+                            <TrendingDown className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatCurrency(averageDeduction)}</div>
+                            <p className="text-muted-foreground text-xs">Per employee</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Highest Deduction</CardTitle>
+                            <TrendingDown className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatCurrency(highestDeduction)}</div>
+                            <p className="text-muted-foreground text-xs">Maximum</p>
+                        </CardContent>
+                    </Card>
+                </div>
 
                 {/* Instruction Note */}
                 <div className="rounded-lg border border-teal-200 bg-teal-50 p-4 text-teal-800 dark:border-teal-800 dark:bg-teal-900/20 dark:text-teal-300">
@@ -292,7 +348,7 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableHead className="text-primary font-bold">Employee</TableHead>
+                                <TableHead className="text-primary w-[500px] font-bold">Employee</TableHead>
                                 <TableHead className="text-primary font-bold">Pay Period</TableHead>
                                 <TableHead className="text-primary text-right font-bold">Monthly Salary</TableHead>
                                 <TableHead className="text-primary text-right font-bold">Total Deductions</TableHead>
@@ -376,8 +432,14 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="py-3 text-center text-gray-500">
-                                        No employees found
+                                    <TableCell colSpan={4} className="py-12">
+                                        <div className="flex flex-col items-center justify-center text-center">
+                                            <TrendingDown className="mb-3 h-16 w-16 text-gray-300 dark:text-gray-600" />
+                                            <p className="text-muted-foreground text-lg font-semibold">No employees found</p>
+                                            <p className="text-muted-foreground mt-1 text-sm">
+                                                {search ? 'Try adjusting your search' : 'No employees with deductions'}
+                                            </p>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             )}

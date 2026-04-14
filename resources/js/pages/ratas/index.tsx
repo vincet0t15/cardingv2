@@ -4,6 +4,7 @@ import Pagination from '@/components/paginationData';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,9 +17,8 @@ import type { FilterProps } from '@/types/filter';
 import type { Office } from '@/types/office';
 import type { PaginatedDataResponse } from '@/types/pagination';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { History, PlusIcon, Printer, Search, User } from 'lucide-react';
+import { CreditCard, History, PlusIcon, Printer, Search, TrendingUp, User } from 'lucide-react';
 import { useState } from 'react';
-
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 // Dynamic year range: fixed start year (2020) to current year + 5
@@ -143,14 +143,70 @@ export default function RatasIndex({ employees, offices, employmentStatuses, fil
         return new Intl.NumberFormat('en-PH', {
             style: 'currency',
             currency: 'PHP',
+            minimumFractionDigits: 0,
         }).format(amount);
     };
+
+    const formatNumber = (num: number) => {
+        return new Intl.NumberFormat('en-PH').format(num);
+    };
+
+    // Calculate statistics
+    const totalEmployees = employees.total;
+    const employeesWithRata = employees.data.filter((e) => e.latest_rata).length;
+    const totalRata = employees.data.reduce((sum, e) => sum + Number(e.latest_rata?.amount || 0), 0);
+    const averageRata = employeesWithRata > 0 ? totalRata / employeesWithRata : 0;
+    const highestRata = Math.max(...employees.data.map((e) => Number(e.latest_rata?.amount || 0)));
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="RATA" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <Heading title="Representation and Transportation Allowance (RATA)" description="Manage RATA records for eligible employees only." />
+
+                {/* Summary Cards */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
+                            <User className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatNumber(totalEmployees)}</div>
+                            <p className="text-muted-foreground text-xs">{employeesWithRata} with RATA</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total RATA</CardTitle>
+                            <CreditCard className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatCurrency(totalRata)}</div>
+                            <p className="text-muted-foreground text-xs">Monthly total</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Average RATA</CardTitle>
+                            <CreditCard className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatCurrency(averageRata)}</div>
+                            <p className="text-muted-foreground text-xs">Per employee</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Highest RATA</CardTitle>
+                            <TrendingUp className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatCurrency(highestRata)}</div>
+                            <p className="text-muted-foreground text-xs">Maximum</p>
+                        </CardContent>
+                    </Card>
+                </div>
 
                 {/* Instruction Note */}
                 <div className="rounded-lg border border-teal-200 bg-teal-50 p-4 text-teal-800 dark:border-teal-800 dark:bg-teal-900/20 dark:text-teal-300">
@@ -237,7 +293,7 @@ export default function RatasIndex({ employees, offices, employmentStatuses, fil
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableHead className="text-primary font-bold">Employee</TableHead>
+                                <TableHead className="text-primary w-[500px] font-bold">Employee</TableHead>
                                 <TableHead className="text-primary text-right font-bold">Current RATA</TableHead>
                                 <TableHead className="text-primary w-[150px] text-center font-bold">Actions</TableHead>
                             </TableRow>
@@ -282,7 +338,7 @@ export default function RatasIndex({ employees, offices, employmentStatuses, fil
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                                                    className="h-8 w-8 text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-900/30"
                                                     onClick={() => router.get(route('ratas.history', employee.id))}
                                                     title="View RATA History"
                                                 >
@@ -291,7 +347,7 @@ export default function RatasIndex({ employees, offices, employmentStatuses, fil
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-8 w-8 text-teal-600 hover:bg-teal-50 hover:text-teal-700"
+                                                    className="h-8 w-8 text-teal-600 transition-colors hover:bg-teal-50 hover:text-teal-700 dark:hover:bg-teal-900/30"
                                                     onClick={() => handleOpenAdd(employee)}
                                                     title="Add RATA Record"
                                                 >
@@ -303,8 +359,14 @@ export default function RatasIndex({ employees, offices, employmentStatuses, fil
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="py-3 text-center text-gray-500">
-                                        No RATA-eligible employees found.
+                                    <TableCell colSpan={3} className="py-12">
+                                        <div className="flex flex-col items-center justify-center text-center">
+                                            <CreditCard className="mb-3 h-16 w-16 text-gray-300 dark:text-gray-600" />
+                                            <p className="text-muted-foreground text-lg font-semibold">No RATA-eligible employees found</p>
+                                            <p className="text-muted-foreground mt-1 text-sm">
+                                                {filterData.search ? 'Try adjusting your search' : 'No eligible employees available'}
+                                            </p>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             )}
