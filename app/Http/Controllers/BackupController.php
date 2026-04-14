@@ -185,7 +185,7 @@ class BackupController extends Controller
                 throw new \Exception('Backup file is empty - check database credentials');
             }
 
-            return back()->with('success', 'Backup created successfully! ('.$this->formatFileSize($fileSize).')');
+            return to_route('settings.backup.index')->with('success', 'Backup created successfully! ('.$this->formatFileSize($fileSize).')');
         } catch (ProcessFailedException $e) {
             Log::error('Backup process failed: '.$e->getMessage());
 

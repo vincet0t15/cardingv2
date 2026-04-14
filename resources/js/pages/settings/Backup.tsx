@@ -76,7 +76,7 @@ export default function Backup({ backups, pagination, databaseName }: BackupProp
             onSuccess: () => {
                 toast.success('Backup created successfully!');
                 setShowCreateConfirm(false);
-                router.reload({ only: ['backups'] });
+                window.location.reload();
             },
             onError: () => {
                 toast.error('Failed to create backup');
