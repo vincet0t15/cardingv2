@@ -79,7 +79,6 @@ class DashboardController extends Controller
         // Employees by office
         $employeesByOffice = Office::withCount('employees')
             ->orderBy('employees_count', 'desc')
-            ->limit(5)
             ->get();
 
         // Recent employees with their total deductions this month (or all if no filter)

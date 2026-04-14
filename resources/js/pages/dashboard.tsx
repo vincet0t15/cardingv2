@@ -821,7 +821,7 @@ export default function Dashboard({
                     </CardHeader>
                     <CardContent>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                            {employeesByOffice.slice(0, 8).map((office) => (
+                            {employeesByOffice.slice(0, 16).map((office) => (
                                 <div
                                     key={office.id}
                                     className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
