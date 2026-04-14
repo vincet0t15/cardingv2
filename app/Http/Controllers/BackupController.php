@@ -126,6 +126,7 @@ class BackupController extends Controller
                 $sqlitePath = database_path('database.sqlite');
                 copy($sqlitePath, $backupPath);
                 $fileSize = File::size($backupPath);
+                dd(1);
 
                 return back()->with('success', 'Backup created successfully! ('.$this->formatFileSize($fileSize).')');
             }
@@ -139,36 +140,41 @@ class BackupController extends Controller
                     $mysqldump = file_exists('/usr/bin/mysqldump') ? '/usr/bin/mysqldump' : '/usr/local/bin/mysqldump';
                     $pass = $dbConfig['password'] ? '-p'.$dbConfig['password'] : '';
                     $command = sprintf(
-                        '%s -h%s -P%s -u%s %s --single-transaction --quick --lock-tables=false %s',
+                        '%s -h%s -P%s -u%s %s --single-transaction --quick --lock-tables=false --column-statistics=0 %s -r %s',
                         $mysqldump,
                         $dbConfig['host'],
                         $dbConfig['port'],
                         $dbConfig['username'],
                         $pass,
-                        $dbConfig['database']
+                        $dbConfig['database'],
+                        $backupPath
                     );
                     Log::info('Docker mysqldump command: '.$command);
                     $returnCode = 0;
-                    $output = [];
-                    exec($command, $output, $returnCode);
+                    system($command, $returnCode);
                     if ($returnCode !== 0) {
-                        Log::error('Docker mysqldump failed. Code: '.$returnCode.' Output: '.implode("\n", $output));
+                        Log::error('Docker mysqldump failed. Code: '.$returnCode);
                         throw new \Exception('Docker mysqldump failed with code: '.$returnCode);
                     }
-                    File::put($backupPath, implode("\n", $output));
                 } else {
                     throw new \Exception('mysqldump not found in Docker container');
                 }
             } else {
-                $mysqldump = $this->getMySqlPath().DIRECTORY_SEPARATOR.'mysqldump'.(PHP_OS === 'WINNT' ? '.exe' : '');
+                $finder = new ExecutableFinder;
+                $mysqldump = $finder->find('mysqldump');
+
+                if (! $mysqldump) {
+                    $mysqldump = 'C:\laragon\bin\mysql\mysql-8.4.3-winx64\bin\mysqldump.exe';
+                }
 
                 if (! File::exists($mysqldump)) {
+                    Log::error('mysqldump not found at: '.$mysqldump);
                     throw new \Exception('mysqldump not found at: '.$mysqldump);
                 }
 
                 $pass = $dbConfig['password'] ? '-p'.$dbConfig['password'] : '';
                 $command = sprintf(
-                    '"%s" -h%s -P%s -u%s %s --single-transaction --quick --lock-tables=false %s -r "%s"',
+                    'cmd /c "%s -h%s -P%s -u%s %s --single-transaction --quick --lock-tables=false %s -r %s"',
                     $mysqldump,
                     $dbConfig['host'],
                     $dbConfig['port'],
@@ -177,8 +183,11 @@ class BackupController extends Controller
                     $dbConfig['database'],
                     $backupPath
                 );
+                Log::info('Local backup - mysqldump: '.$mysqldump);
+                Log::info('Local backup command: '.$command);
                 $returnCode = 0;
                 system($command, $returnCode);
+                Log::info('Local backup return code: '.$returnCode);
                 if ($returnCode !== 0) {
                     throw new \Exception('mysqldump failed with code: '.$returnCode);
                 }
@@ -283,7 +292,7 @@ class BackupController extends Controller
                 $mysql = file_exists('/usr/bin/mysql') ? '/usr/bin/mysql' : '/usr/local/bin/mysql';
                 $pass = $dbConfig['password'] ? '-p'.$dbConfig['password'] : '';
                 $command = sprintf(
-                    '%s -h%s -P%s -u%s %s %s < "%s"',
+                    '%s -h %s -P %s -u %s %s %s < %s',
                     $mysql,
                     $dbConfig['host'],
                     $dbConfig['port'],
@@ -294,7 +303,7 @@ class BackupController extends Controller
                 );
                 Log::info('Docker mysql restore command: '.$command);
                 $returnCode = 0;
-                exec($command, $output, $returnCode);
+                system($command, $returnCode);
                 if ($returnCode !== 0) {
                     Log::error('Docker mysql restore failed. Code: '.$returnCode);
                     throw new \Exception('Docker mysql restore failed with code: '.$returnCode);
@@ -311,7 +320,7 @@ class BackupController extends Controller
 
             $pass = $dbConfig['password'] ? '-p'.$dbConfig['password'] : '';
             $command = sprintf(
-                '"%s" -h%s -P%s -u%s %s %s < "%s"',
+                'cmd /c "%s -h%s -P%s -u%s %s %s < %s"',
                 $mysql,
                 $dbConfig['host'],
                 $dbConfig['port'],
@@ -320,6 +329,7 @@ class BackupController extends Controller
                 $dbConfig['database'],
                 $filePath
             );
+            Log::info('Local restore command: '.$command);
             $returnCode = 0;
             system($command, $returnCode);
             if ($returnCode !== 0) {
