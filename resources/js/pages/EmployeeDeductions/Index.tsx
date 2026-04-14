@@ -10,9 +10,9 @@ import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import type { EmploymentStatus } from '@/types/employmentStatuses';
 import type { Office } from '@/types/office';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Printer, Search, User, Users } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const MONTHS = [
     { value: '1', label: 'January' },
@@ -83,44 +83,72 @@ interface IndexProps {
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Employee Deductions', href: '/employee-deductions' }];
 
 export default function Index({ employees, offices, employmentStatuses, filters }: IndexProps) {
-    const [search, setSearch] = useState(filters.search || '');
-    const [selectedMonth, setSelectedMonth] = useState(String(filters.month));
-    const [selectedYear, setSelectedYear] = useState(String(filters.year));
-    const [selectedOffice, setSelectedOffice] = useState(filters.office_id ? String(filters.office_id) : 'all');
-    const [selectedEmploymentStatus, setSelectedEmploymentStatus] = useState(
-        filters.employment_status_id ? String(filters.employment_status_id) : 'all',
-    );
+    const { url } = usePage();
 
-    const handleFilter = () => {
-        router.get(
-            route('employee-deductions.index'),
-            {
-                search,
-                month: selectedMonth,
-                year: selectedYear,
-                office_id: selectedOffice === 'all' ? null : selectedOffice,
-                employment_status_id: selectedEmploymentStatus === 'all' ? null : selectedEmploymentStatus,
-            },
-            {
-                preserveState: true,
-                preserveScroll: true,
-            },
-        );
+    // Get initial filters from URL or defaults
+    const getInitialFilters = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        return {
+            search: urlParams.get('search') || filters.search || '',
+            month: urlParams.get('month') || String(filters.month || ''),
+            year: urlParams.get('year') || String(filters.year || new Date().getFullYear()),
+            office_id: urlParams.get('office_id') || (filters.office_id ? String(filters.office_id) : 'all'),
+            employment_status_id:
+                urlParams.get('employment_status_id') || (filters.employment_status_id ? String(filters.employment_status_id) : 'all'),
+        };
+    };
+
+    const [search, setSearch] = useState(getInitialFilters().search);
+    const [selectedMonth, setSelectedMonth] = useState(getInitialFilters().month);
+    const [selectedYear, setSelectedYear] = useState(getInitialFilters().year);
+    const [selectedOffice, setSelectedOffice] = useState(getInitialFilters().office_id);
+    const [selectedEmploymentStatus, setSelectedEmploymentStatus] = useState(getInitialFilters().employment_status_id);
+
+    // Auto-apply filters when they change
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            applyFilters();
+        }, 300); // 300ms debounce
+
+        return () => clearTimeout(timeoutId);
+    }, [selectedMonth, selectedYear, selectedOffice, selectedEmploymentStatus, search]);
+
+    const applyFilters = () => {
+        const queryString: Record<string, string | null> = {
+            search: search || null,
+            month: selectedMonth || null,
+            year: selectedYear || null,
+            office_id: selectedOffice === 'all' ? null : selectedOffice,
+            employment_status_id: selectedEmploymentStatus === 'all' ? null : selectedEmploymentStatus,
+        };
+
+        // Update URL
+        const url = new URL(window.location.href);
+        if (queryString.search) url.searchParams.set('search', queryString.search);
+        else url.searchParams.delete('search');
+        if (queryString.month) url.searchParams.set('month', queryString.month);
+        else url.searchParams.delete('month');
+        if (queryString.year) url.searchParams.set('year', queryString.year);
+        else url.searchParams.delete('year');
+        if (queryString.office_id) url.searchParams.set('office_id', queryString.office_id);
+        else url.searchParams.delete('office_id');
+        if (queryString.employment_status_id) url.searchParams.set('employment_status_id', queryString.employment_status_id);
+        else url.searchParams.delete('employment_status_id');
+
+        window.history.pushState({}, '', url.toString());
+
+        router.get(route('employee-deductions.index'), queryString, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const handleReset = () => {
         setSearch('');
-        setSelectedMonth(String(new Date().getMonth() + 1));
+        setSelectedMonth('');
         setSelectedYear(String(new Date().getFullYear()));
         setSelectedOffice('all');
         setSelectedEmploymentStatus('all');
-        router.get(route('employee-deductions.index'), {}, { preserveState: true });
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            handleFilter();
-        }
     };
 
     const getLatestSalary = (salary: Salary | undefined) => {
@@ -195,8 +223,8 @@ export default function Index({ employees, offices, employmentStatuses, filters 
 
                         <div className="w-[150px]">
                             <CustomComboBox
-                                items={MONTHS}
-                                placeholder="Month"
+                                items={[{ value: '', label: 'All Months' }, ...MONTHS]}
+                                placeholder="All Months"
                                 value={selectedMonth}
                                 onSelect={(value) => setSelectedMonth(value || '')}
                             />
@@ -221,7 +249,6 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                                 className="w-full pl-8"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                onKeyDown={handleKeyDown}
                             />
                             <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50 select-none" />
                         </div>
@@ -245,7 +272,6 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                         <Button variant="outline" onClick={handleReset}>
                             Reset
                         </Button>
-                        <Button onClick={handleFilter}>Apply Filters</Button>
                         <Link href={route('employee-deductions.bulk-add-page')}>
                             <Button>
                                 <Users className="mr-2 h-4 w-4" />
