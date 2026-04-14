@@ -4,6 +4,7 @@ import Pagination from '@/components/paginationData';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,7 +16,7 @@ import { FilterProps } from '@/types/filter';
 import type { Office } from '@/types/office';
 import { PaginatedDataResponse } from '@/types/pagination';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { PlusIcon, Search, User } from 'lucide-react';
+import { Building2, PlusIcon, Search, User, Users } from 'lucide-react';
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Employees',
@@ -28,8 +29,14 @@ interface Props {
     offices: Office[];
     employmentStatuses: EmploymentStatus[];
     filters: FilterProps & { office_id?: string; employment_status_id?: string };
+    statistics: {
+        total_employees: number;
+        plantilla_count: number;
+        cosjo_count: number;
+        unique_offices: number;
+    };
 }
-export default function Employees({ employees, offices, employmentStatuses, filters }: Props) {
+export default function Employees({ employees, offices, employmentStatuses, filters, statistics }: Props) {
     // Initialize filters from URL or sessionStorage
     const getInitialFilters = () => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -110,6 +117,16 @@ export default function Employees({ employees, offices, employmentStatuses, filt
         applyFilters({ employment_status_id: newStatusId });
     };
 
+    const formatNumber = (num: number) => {
+        return new Intl.NumberFormat('en-PH').format(num);
+    };
+
+    // Use backend statistics (accurate for all employees, not just current page)
+    const totalEmployees = statistics.total_employees;
+    const plantillaCount = statistics.plantilla_count;
+    const cosjoCount = statistics.cosjo_count;
+    const uniqueOffices = statistics.unique_offices;
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
@@ -118,6 +135,50 @@ export default function Employees({ employees, offices, employmentStatuses, filt
                     title="Employee List"
                     description="Manage all employees, with options to view, edit, or delete records and track their employment statuses."
                 />
+
+                {/* Summary Cards */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
+                            <Users className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatNumber(totalEmployees)}</div>
+                            <p className="text-muted-foreground text-xs">All employees</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Plantilla Employees</CardTitle>
+                            <User className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-blue-600">{formatNumber(plantillaCount)}</div>
+                            <p className="text-muted-foreground text-xs">Permanent positions</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">COS/JO Employees</CardTitle>
+                            <User className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-orange-600">{formatNumber(cosjoCount)}</div>
+                            <p className="text-muted-foreground text-xs">Contract of Service</p>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Offices</CardTitle>
+                            <Building2 className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatNumber(uniqueOffices)}</div>
+                            <p className="text-muted-foreground text-xs">Departments</p>
+                        </CardContent>
+                    </Card>
+                </div>
 
                 {/* Instruction Note */}
                 <div className="rounded-lg border border-teal-200 bg-teal-50 p-4 text-teal-800 dark:border-teal-800 dark:bg-teal-900/20 dark:text-teal-300">
@@ -140,7 +201,7 @@ export default function Employees({ employees, offices, employmentStatuses, filt
                     </div>
                 </div>
                 <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <Button onClick={() => router.get(route('employees.create'))}>
+                    <Button onClick={() => router.get(route('employees.create'))} className="transition-colors hover:bg-green-600">
                         <PlusIcon className="h-4 w-4" />
                         Add Employee
                     </Button>
@@ -234,8 +295,14 @@ export default function Employees({ employees, offices, employmentStatuses, filt
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={3} className="py-3 text-center text-gray-500">
-                                        No data available.
+                                    <TableCell colSpan={1} className="py-12">
+                                        <div className="flex flex-col items-center justify-center text-center">
+                                            <Users className="mb-3 h-16 w-16 text-gray-300 dark:text-gray-600" />
+                                            <p className="text-muted-foreground text-lg font-semibold">No employees found</p>
+                                            <p className="text-muted-foreground mt-1 text-sm">
+                                                {data.search ? 'Try adjusting your search' : 'Add your first employee to get started'}
+                                            </p>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             )}

@@ -21,7 +21,7 @@ class EmployeeController extends Controller
         $officeId = $request->input('office_id');
         $employmentStatusId = $request->input('employment_status_id');
 
-        $employees = Employee::query()
+        $query = Employee::query()
             ->when($search, function ($query) use ($search) {
                 $query->where('first_name', 'like', '%' . $search . '%')
                     ->orWhere('last_name', 'like', '%' . $search . '%');
@@ -31,8 +31,19 @@ class EmployeeController extends Controller
             })
             ->when($employmentStatusId, function ($query) use ($employmentStatusId) {
                 $query->where('employment_status_id', $employmentStatusId);
-            })
-            ->with(['office', 'employmentStatus'])
+            });
+
+        // Get total counts before pagination
+        $totalEmployees = $query->count();
+        $plantillaCount = (clone $query)->whereHas('employmentStatus', function ($q) {
+            $q->where('name', 'Plantilla');
+        })->count();
+        $cosjoCount = (clone $query)->whereHas('employmentStatus', function ($q) {
+            $q->where('name', 'COS/JO');
+        })->count();
+        $uniqueOfficesCount = $query->distinct('office_id')->count('office_id');
+
+        $employees = $query->with(['office', 'employmentStatus'])
             ->orderBy('last_name', 'asc')
             ->orderBy('first_name', 'asc')
             ->orderBy('middle_name', 'asc')
@@ -50,6 +61,12 @@ class EmployeeController extends Controller
                 'search' => $search,
                 'office_id' => $officeId,
                 'employment_status_id' => $employmentStatusId,
+            ],
+            'statistics' => [
+                'total_employees' => $totalEmployees,
+                'plantilla_count' => $plantillaCount,
+                'cosjo_count' => $cosjoCount,
+                'unique_offices' => $uniqueOfficesCount,
             ],
         ]);
     }
