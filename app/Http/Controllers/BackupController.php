@@ -135,28 +135,30 @@ class BackupController extends Controller
             }
 
             if ($this->isDocker()) {
-                if (file_exists('/usr/bin/mysqldump') || file_exists('/usr/local/bin/mysqldump')) {
-                    $mysqldump = file_exists('/usr/bin/mysqldump') ? '/usr/bin/mysqldump' : '/usr/local/bin/mysqldump';
-                    $pass = $dbConfig['password'] ? '-p' . $dbConfig['password'] : '';
-                    $command = sprintf(
-                        '%s -h%s -P%s -u%s %s --single-transaction --quick --lock-tables=false --column-statistics=0 %s -r %s',
-                        $mysqldump,
-                        $dbConfig['host'],
-                        $dbConfig['port'],
-                        $dbConfig['username'],
-                        $pass,
-                        $dbConfig['database'],
-                        $backupPath
-                    );
-                    Log::info('Docker mysqldump command: ' . $command);
-                    $returnCode = 0;
-                    system($command, $returnCode);
-                    if ($returnCode !== 0) {
-                        Log::error('Docker mysqldump failed. Code: ' . $returnCode);
-                        throw new \Exception('Docker mysqldump failed with code: ' . $returnCode);
-                    }
-                } else {
-                    throw new \Exception('mysqldump not found in Docker container');
+                // In Docker, use docker exec to run mysqldump inside the MySQL container
+                $container = $this->getDockerContainer();
+                $pass = $dbConfig['password'] ? '-p' . $dbConfig['password'] : '';
+
+                // Write to a temp file inside container first, then copy to host
+                $tempFile = '/tmp/backup_' . time() . '.sql';
+
+                // Step 1: Create backup inside container
+                $command = sprintf(
+                    'docker exec %s mysqldump -u%s %s --single-transaction --quick --lock-tables=false --column-statistics=0 %s > %s 2>&1',
+                    escapeshellarg($container),
+                    escapeshellarg($dbConfig['username']),
+                    $pass,
+                    escapeshellarg($dbConfig['database']),
+                    escapeshellarg($backupPath)
+                );
+
+                Log::info('Docker backup command: ' . $command);
+                $returnCode = 0;
+                system($command, $returnCode);
+
+                if ($returnCode !== 0) {
+                    Log::error('Docker mysqldump failed. Code: ' . $returnCode);
+                    throw new \Exception('Docker mysqldump failed with code: ' . $returnCode . '. Check MySQL credentials and container status.');
                 }
             } else {
                 $finder = new ExecutableFinder;
