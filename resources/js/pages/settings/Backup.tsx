@@ -73,15 +73,18 @@ export default function Backup({ backups, pagination, databaseName }: BackupProp
     const handleCreateBackup = () => {
         createForm.post(route('settings.backup.create'), {
             preserveScroll: true,
-            preserveState: false,
-            onSuccess: () => {
-                toast.success('Backup created successfully!');
-                setShowCreateConfirm(false);
-                setTimeout(() => window.location.reload(), 1000);
+            onSuccess: (response: { props: FlashProps }) => {
+                if (response.props.flash?.success) {
+                    toast.success(response.props.flash.success);
+                    setShowCreateConfirm(false);
+                    setTimeout(() => window.location.reload(), 1000);
+                } else if (response.props.flash?.error) {
+                    toast.error(response.props.flash.error);
+                }
             },
             onError: (errors) => {
                 console.error('Backup errors:', errors);
-                toast.error('Failed to create backup');
+                toast.error('Failed to create backup. Check console for details.');
             },
         });
     };
