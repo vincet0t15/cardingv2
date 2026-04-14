@@ -66,7 +66,11 @@ class BackupController extends Controller
 
     private function isDocker(): bool
     {
-        return env('APP_ENV') === 'docker' || getenv('DOCKER_CONTAINER') || file_exists('/.dockerenv') || env('DOCKER_MYSQL_CONTAINER');
+        // Only return true if actually running inside Docker container
+        return env('APP_ENV') === 'docker'
+            || getenv('DOCKER_CONTAINER')
+            || file_exists('/.dockerenv');
+        // Note: DOCKER_MYSQL_CONTAINER is just a config value, not an indicator we're IN Docker
     }
 
     private function getDockerContainer(): string
