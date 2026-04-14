@@ -12,7 +12,7 @@ services:
       mysql:
         condition: service_healthy
     networks:
-      - dtr_network
+      - carding_network
     restart: unless-stopped
 
   nginx:
@@ -26,7 +26,7 @@ services:
     depends_on:
       - app
     networks:
-      - dtr_network
+      - carding_network
     restart: unless-stopped
 
   mysql:
@@ -39,10 +39,10 @@ services:
       --wait_timeout=28800
       --interactive_timeout=28800
     environment:
-      MYSQL_ROOT_PASSWORD: lgu_biometric_app_password
-      MYSQL_DATABASE: lgu_biometric_app
-      MYSQL_USER: lgu_biometric_app
-      MYSQL_PASSWORD: lgu_biometric_app
+      MYSQL_ROOT_PASSWORD: carding_db_password
+      MYSQL_DATABASE: carding_db
+      MYSQL_USER: carding_db_user
+      MYSQL_PASSWORD: carding_db_password
     volumes:
       - carding_app_mysql:/var/lib/mysql
     ports:
@@ -52,7 +52,7 @@ services:
       interval: 5s
       retries: 10
     networks:
-      - dtr_network
+      - carding_network
     restart: unless-stopped
 
   phpmyadmin:
@@ -65,7 +65,7 @@ services:
     depends_on:
       - mysql
     networks:
-      - dtr_network
+      - carding_network
     restart: unless-stopped
 
 
