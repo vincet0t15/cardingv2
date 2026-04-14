@@ -263,53 +263,64 @@ export default function Dashboard({
             <Head title="Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
                 {/* Header */}
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Dashboard Overview</h1>
-                        <p className="text-muted-foreground">
-                            Welcome back! Here's what's happening with your payroll for1{' '}
-                            <span className="font-medium text-slate-900 dark:text-white">
-                                {months.find((m) => m.value === filterData.month)?.label || currentPeriod.monthName} {filterData.year}
-                            </span>
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <CustomComboBox
-                            items={months}
-                            placeholder="All Months"
-                            value={filterData.month || null}
-                            onSelect={(value) => handleFilterChange('month', value ?? '')}
-                            showClear={true}
-                        />
-                        <CustomComboBox
-                            items={yearOptions}
-                            placeholder="All Years"
-                            value={filterData.year || null}
-                            onSelect={(value) => handleFilterChange('year', value ?? '')}
-                            showClear={true}
-                        />
-                        <Button onClick={() => router.get(route('payroll.index'))}>
-                            View Payroll
-                            <ArrowUpRight />
-                        </Button>
+                <div className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 p-6 dark:border-blue-800 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-purple-900/20">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Dashboard Overview</h1>
+                            <p className="text-muted-foreground mt-1">
+                                Welcome back! Here's what's happening with your payroll for{' '}
+                                <span className="font-semibold text-blue-600 dark:text-blue-400">
+                                    {months.find((m) => m.value === filterData.month)?.label || currentPeriod.monthName} {filterData.year}
+                                </span>
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <CustomComboBox
+                                items={months}
+                                placeholder="All Months"
+                                value={filterData.month || null}
+                                onSelect={(value) => handleFilterChange('month', value ?? '')}
+                                showClear={true}
+                            />
+                            <CustomComboBox
+                                items={yearOptions}
+                                placeholder="All Years"
+                                value={filterData.year || null}
+                                onSelect={(value) => handleFilterChange('year', value ?? '')}
+                                showClear={true}
+                            />
+                            <Button
+                                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-lg"
+                                onClick={() => router.get(route('payroll.index'))}
+                            >
+                                View Payroll
+                                <ArrowUpRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
                 {/* Stats Grid */}
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {statCards.map((card, index) => (
-                        <Card key={index} className="relative overflow-hidden transition-shadow hover:shadow-md">
+                        <Card
+                            key={index}
+                            className="group relative overflow-hidden border-0 bg-gradient-to-br from-white to-slate-50 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg dark:from-slate-900 dark:to-slate-800"
+                        >
+                            <div
+                                className={`absolute top-0 right-0 h-24 w-24 ${card.color} opacity-10 blur-2xl transition-all group-hover:opacity-20`}
+                            />
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                                <div className={`${card.color} rounded-lg p-2`}>
+                                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">{card.title}</CardTitle>
+                                <div className={`${card.color} rounded-lg p-2 shadow-sm transition-transform group-hover:scale-110`}>
                                     <card.icon className="h-4 w-4 text-white" />
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">{card.value}</div>
-                                <div className="mt-1 flex items-center gap-2">
+                                <div className="text-3xl font-bold text-slate-900 dark:text-white">{card.value}</div>
+                                <div className="mt-2 flex items-center justify-between">
                                     <p className="text-muted-foreground text-xs">{card.description}</p>
-                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                    <span className="rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:from-blue-900/30 dark:to-indigo-900/30 dark:text-blue-300">
                                         {card.trend}
                                     </span>
                                 </div>
@@ -319,24 +330,31 @@ export default function Dashboard({
                 </div>
 
                 {/* Compensation Summary */}
-                <Card>
+                <Card className="border-0 bg-gradient-to-br from-slate-50 to-white shadow-md dark:from-slate-900 dark:to-slate-800">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <BarChart3 className="h-5 w-5" />
-                            Compensation Overview
+                            <div className="rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 p-2">
+                                <BarChart3 className="h-5 w-5 text-white" />
+                            </div>
+                            <span>Compensation Overview</span>
                         </CardTitle>
                         <CardDescription>Total compensation breakdown across all employees</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="grid gap-6 sm:grid-cols-3">
                             {compensationStats.map((stat) => (
-                                <div key={stat.label} className="flex items-center gap-4">
-                                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800`}>
-                                        <stat.icon className={`h-6 w-6 ${stat.color}`} />
+                                <div
+                                    key={stat.label}
+                                    className="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
+                                >
+                                    <div
+                                        className={`flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 transition-transform group-hover:scale-110 dark:from-slate-700 dark:to-slate-800`}
+                                    >
+                                        <stat.icon className={`h-7 w-7 ${stat.color}`} />
                                     </div>
                                     <div>
-                                        <p className="text-sm text-slate-500 dark:text-slate-400">{stat.label}</p>
-                                        <p className="text-xl font-bold">{stat.value}</p>
+                                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{stat.label}</p>
+                                        <p className="text-2xl font-bold text-slate-900 dark:text-white">{stat.value}</p>
                                     </div>
                                 </div>
                             ))}
@@ -645,15 +663,12 @@ export default function Dashboard({
                 </div>
 
                 {/* Claims & Overtime by Office Chart */}
-                <Card>
-                    <CardContent className="pt-6">
-                        <ChartOfficeClaims
-                            data={claimsByOffice}
-                            title="Claims & Overtime by Office"
-                            description={`Distribution of claims and overtime for ${months.find((m) => m.value === filterData.month)?.label || currentPeriod.monthName} ${filterData.year}`}
-                        />
-                    </CardContent>
-                </Card>
+
+                <ChartOfficeClaims
+                    data={claimsByOffice}
+                    title="Claims & Overtime by Office"
+                    description={`Distribution of claims and overtime for ${months.find((m) => m.value === filterData.month)?.label || currentPeriod.monthName} ${filterData.year}`}
+                />
 
                 {/* Employment Type Breakdown */}
                 <Card>
@@ -811,28 +826,30 @@ export default function Dashboard({
                 </div>
 
                 {/* Employees by Office */}
-                <Card>
+                <Card className="border-0 shadow-md">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <Building2 className="h-5 w-5" />
-                            Employees by Office
+                            <div className="rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 p-2">
+                                <Building2 className="h-5 w-5 text-white" />
+                            </div>
+                            <span>Employees by Office</span>
                         </CardTitle>
                         <CardDescription>Workforce distribution across departments</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             {employeesByOffice.slice(0, 16).map((office) => (
                                 <div
                                     key={office.id}
-                                    className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
+                                    className="group flex items-center justify-between rounded-xl border border-slate-200 bg-gradient-to-r from-white to-slate-50 p-4 transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md dark:border-slate-700 dark:from-slate-800 dark:to-slate-900"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
-                                            <Building2 className="h-4 w-4 text-slate-500" />
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 transition-all group-hover:from-blue-100 group-hover:to-indigo-100 dark:from-slate-700 dark:to-slate-800">
+                                            <Building2 className="h-5 w-5 text-slate-500 transition-colors group-hover:text-blue-600 dark:text-slate-400" />
                                         </div>
-                                        <span className="text-sm font-medium">{office.name}</span>
+                                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{office.name}</span>
                                     </div>
-                                    <span className="bg-primary/10 text-primary rounded-full px-2.5 py-0.5 text-xs font-semibold">
+                                    <span className="rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 px-3 py-1.5 text-xs font-bold text-blue-700 transition-all group-hover:from-blue-100 group-hover:to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 dark:text-blue-300">
                                         {office.employees_count}
                                     </span>
                                 </div>
@@ -842,9 +859,14 @@ export default function Dashboard({
                 </Card>
 
                 {/* Quick Actions */}
-                <Card>
+                <Card className="border-0 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 shadow-md dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20">
                     <CardHeader>
-                        <CardTitle>Quick Actions</CardTitle>
+                        <CardTitle className="flex items-center gap-2">
+                            <div className="rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 p-2">
+                                <Wallet className="h-5 w-5 text-white" />
+                            </div>
+                            <span>Quick Actions</span>
+                        </CardTitle>
                         <CardDescription>Common tasks for managing your payroll system</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -855,64 +877,73 @@ export default function Dashboard({
                                     title: 'Claims Report',
                                     desc: 'View all claims',
                                     route: 'claims.report',
-                                    color: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900 dark:text-cyan-300',
+                                    color: 'from-cyan-500 to-blue-600',
+                                    bgHover: 'hover:from-cyan-50 hover:to-blue-50 dark:hover:from-cyan-900/20 dark:hover:to-blue-900/20',
                                 },
                                 {
                                     icon: MinusCircle,
                                     title: 'View Deductions',
                                     desc: 'Manage all deductions',
                                     route: 'employee-deductions.index',
-                                    color: 'bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-300',
+                                    color: 'from-amber-500 to-orange-600',
+                                    bgHover: 'hover:from-amber-50 hover:to-orange-50 dark:hover:from-amber-900/20 dark:hover:to-orange-900/20',
                                 },
                                 {
                                     icon: Users,
                                     title: 'Employees',
                                     desc: 'View employee list',
                                     route: 'employees.index',
-                                    color: 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300',
+                                    color: 'from-blue-500 to-indigo-600',
+                                    bgHover: 'hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/20 dark:hover:to-indigo-900/20',
                                 },
                                 {
                                     icon: FileText,
                                     title: 'Deduction Types',
                                     desc: 'Manage categories',
                                     route: 'deduction-types.index',
-                                    color: 'bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300',
+                                    color: 'from-purple-500 to-pink-600',
+                                    bgHover: 'hover:from-purple-50 hover:to-pink-50 dark:hover:from-purple-900/20 dark:hover:to-pink-900/20',
                                 },
                                 {
                                     icon: Calculator,
                                     title: 'Add Employee',
                                     desc: 'Create new record',
                                     route: 'employees.create',
-                                    color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-300',
+                                    color: 'from-emerald-500 to-green-600',
+                                    bgHover: 'hover:from-emerald-50 hover:to-green-50 dark:hover:from-emerald-900/20 dark:hover:to-green-900/20',
                                 },
                                 {
                                     icon: Shield,
                                     title: 'Roles',
                                     desc: 'Manage user roles',
                                     route: 'roles.index',
-                                    color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300',
+                                    color: 'from-indigo-500 to-violet-600',
+                                    bgHover: 'hover:from-indigo-50 hover:to-violet-50 dark:hover:from-indigo-900/20 dark:hover:to-violet-900/20',
                                 },
                                 {
                                     icon: Key,
                                     title: 'Permissions',
                                     desc: 'Manage permissions',
                                     route: 'permissions.index',
-                                    color: 'bg-rose-100 text-rose-600 dark:bg-rose-900 dark:text-rose-300',
+                                    color: 'from-rose-500 to-red-600',
+                                    bgHover: 'hover:from-rose-50 hover:to-red-50 dark:hover:from-rose-900/20 dark:hover:to-red-900/20',
                                 },
                             ].map((action) => (
                                 <button
                                     key={action.title}
                                     onClick={() => router.get(route(action.route))}
-                                    className="group hover:border-primary/50 flex items-center gap-3 rounded-lg border p-4 text-left transition-all hover:bg-slate-50 dark:hover:bg-slate-800"
+                                    className={`group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-lg ${action.bgHover} dark:border-slate-700 dark:bg-slate-800`}
                                 >
-                                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${action.color}`}>
-                                        <action.icon className="h-5 w-5" />
+                                    <div
+                                        className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${action.color} shadow-sm transition-transform group-hover:scale-110`}
+                                    >
+                                        <action.icon className="h-6 w-6 text-white" />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="font-medium">{action.title}</p>
+                                        <p className="font-semibold text-slate-900 dark:text-white">{action.title}</p>
                                         <p className="text-muted-foreground text-xs">{action.desc}</p>
                                     </div>
-                                    <ChevronRight className="h-4 w-4 text-slate-400 opacity-0 transition-opacity group-hover:opacity-100" />
+                                    <ChevronRight className="h-5 w-5 text-slate-400 opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
                                 </button>
                             ))}
                         </div>
