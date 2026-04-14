@@ -66,7 +66,7 @@ class BackupController extends Controller
 
     private function isDocker(): bool
     {
-        return env('APP_ENV') === 'docker' || getenv('DOCKER_CONTAINER') || file_exists('/.dockerenv');
+        return env('APP_ENV') === 'docker' || getenv('DOCKER_CONTAINER') || file_exists('/.dockerenv') || env('DOCKER_MYSQL_CONTAINER');
     }
 
     private function getDockerContainer(): string
@@ -135,21 +135,31 @@ class BackupController extends Controller
             }
 
             if ($this->isDocker()) {
-                $container = $this->getDockerContainer();
-                $command = sprintf(
-                    'docker exec %s mysqldump -u%s -p%s --single-transaction --quick --lock-tables=false %s',
-                    $container,
-                    $dbConfig['username'],
-                    $dbConfig['password'],
-                    $dbConfig['database']
-                );
-                $returnCode = 0;
-                $output = [];
-                exec($command, $output, $returnCode);
-                if ($returnCode !== 0) {
-                    throw new \Exception('Docker mysqldump failed with code: '.$returnCode);
+                $isFallback = true;
+                if (file_exists('/usr/bin/mysqldump') || file_exists('/usr/local/bin/mysqldump')) {
+                    $mysqldump = file_exists('/usr/bin/mysqldump') ? '/usr/bin/mysqldump' : '/usr/local/bin/mysqldump';
+                    $pass = $dbConfig['password'] ? '-p'.$dbConfig['password'] : '';
+                    $command = sprintf(
+                        '%s -h%s -P%s -u%s %s --single-transaction --quick --lock-tables=false %s',
+                        $mysqldump,
+                        $dbConfig['host'],
+                        $dbConfig['port'],
+                        $dbConfig['username'],
+                        $pass,
+                        $dbConfig['database']
+                    );
+                    Log::info('Docker mysqldump command: '.$command);
+                    $returnCode = 0;
+                    $output = [];
+                    exec($command, $output, $returnCode);
+                    if ($returnCode !== 0) {
+                        Log::error('Docker mysqldump failed. Code: '.$returnCode.' Output: '.implode("\n", $output));
+                        throw new \Exception('Docker mysqldump failed with code: '.$returnCode);
+                    }
+                    File::put($backupPath, implode("\n", $output));
+                } else {
+                    throw new \Exception('mysqldump not found in Docker container');
                 }
-                File::put($backupPath, implode("\n", $output));
             } else {
                 $mysqldump = $this->getMySqlPath().DIRECTORY_SEPARATOR.'mysqldump'.(PHP_OS === 'WINNT' ? '.exe' : '');
 
@@ -270,19 +280,28 @@ class BackupController extends Controller
         $dbConfig = $this->getDbConfig();
 
         if ($this->isDocker()) {
-            $container = $this->getDockerContainer();
-            $command = sprintf(
-                'docker exec -i %s mysql -u%s -p%s %s < %s',
-                $container,
-                $dbConfig['username'],
-                $dbConfig['password'],
-                $dbConfig['database'],
-                $filePath
-            );
-            $returnCode = 0;
-            exec($command, $output, $returnCode);
-            if ($returnCode !== 0) {
-                throw new \Exception('Docker mysql restore failed with code: '.$returnCode);
+            if (file_exists('/usr/bin/mysql') || file_exists('/usr/local/bin/mysql')) {
+                $mysql = file_exists('/usr/bin/mysql') ? '/usr/bin/mysql' : '/usr/local/bin/mysql';
+                $pass = $dbConfig['password'] ? '-p'.$dbConfig['password'] : '';
+                $command = sprintf(
+                    '%s -h%s -P%s -u%s %s %s < "%s"',
+                    $mysql,
+                    $dbConfig['host'],
+                    $dbConfig['port'],
+                    $dbConfig['username'],
+                    $pass,
+                    $dbConfig['database'],
+                    $filePath
+                );
+                Log::info('Docker mysql restore command: '.$command);
+                $returnCode = 0;
+                exec($command, $output, $returnCode);
+                if ($returnCode !== 0) {
+                    Log::error('Docker mysql restore failed. Code: '.$returnCode);
+                    throw new \Exception('Docker mysql restore failed with code: '.$returnCode);
+                }
+            } else {
+                throw new \Exception('mysql not found in Docker container');
             }
         } else {
             $mysql = $this->getMySqlPath().DIRECTORY_SEPARATOR.'mysql'.(PHP_OS === 'WINNT' ? '.exe' : '');
