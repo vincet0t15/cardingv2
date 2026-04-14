@@ -90,8 +90,12 @@ export default function EmployeesBySourceOfFund({ sourceOfFundCodes, employees, 
         { value: '12', label: 'December' },
     ];
 
-    // Use available years from backend, or generate default range if none selected
-    const years = availableYears.length > 0 ? availableYears : Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+    // Use available years from backend, or generate default range (fixed start year 2020 to current year + 5)
+    const currentYear = new Date().getFullYear();
+    const startYear = 2020;
+    const endYear = currentYear + 5;
+    const defaultYears = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
+    const years = availableYears.length > 0 ? availableYears : defaultYears;
 
     const handlePrint = () => {
         if (!data.source_of_fund_code_id) {

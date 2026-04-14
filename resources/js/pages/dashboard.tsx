@@ -194,7 +194,11 @@ export default function Dashboard({
         { value: '12', label: 'December' },
     ];
 
-    const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+    // Dynamic year range: fixed start year (2020) to current year + 5
+    const currentYearDashboard = new Date().getFullYear();
+    const startYearDashboard = 2020;
+    const endYearDashboard = currentYearDashboard + 5;
+    const years = Array.from({ length: endYearDashboard - startYearDashboard + 1 }, (_, i) => startYearDashboard + i);
 
     const handleFilterChange = (field: string, value: string) => {
         setFilterData(field as keyof typeof filterData, value);
@@ -487,7 +491,7 @@ export default function Dashboard({
                             <div className="flex items-center justify-between">
                                 <CardTitle className="flex items-center gap-2">
                                     <Receipt className="h-5 w-5" />
-                                    Top 10 Travel & Meal Claims by Employee
+                                    Top 10 Travel Claims by Employee
                                 </CardTitle>
                                 <Button variant="ghost" size="sm" onClick={() => router.get(route('claims.report', { type: 'travel' }))}>
                                     View All
@@ -495,8 +499,8 @@ export default function Dashboard({
                                 </Button>
                             </div>
                             <CardDescription>
-                                Employees with highest travel & meal claim amounts for{' '}
-                                {months.find((m) => m.value === filterData.month)?.label || 'Current'} {filterData.year}
+                                Employees with highest travel claim amounts for {months.find((m) => m.value === filterData.month)?.label || 'Current'}{' '}
+                                {filterData.year}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -552,7 +556,7 @@ export default function Dashboard({
                                     <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
                                         <Receipt className="h-6 w-6 text-slate-400" />
                                     </div>
-                                    <p className="text-muted-foreground text-sm">No travel & meal claims data for this period</p>
+                                    <p className="text-muted-foreground text-sm">No travel claims data for this period</p>
                                 </div>
                             )}
                         </CardContent>

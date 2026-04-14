@@ -20,8 +20,11 @@ import { useState } from 'react';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+// Dynamic year range: fixed start year (2020) to current year + 5
 const currentYear = new Date().getFullYear();
-const YEARS = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
+const startYear = 2020;
+const endYear = currentYear + 5;
+const YEARS = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {

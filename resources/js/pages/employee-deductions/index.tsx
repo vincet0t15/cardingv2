@@ -198,7 +198,6 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
                         </div>
                     </div>
                 </div>
-
                 <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-wrap items-center gap-2">
                         <div className="w-[160px]">
@@ -261,7 +260,6 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
                         <Button onClick={handleFilterChange}>Filter</Button>
                     </div>
                 </div>
-
                 <div className="w-full overflow-hidden rounded-sm border shadow-sm">
                     <Table>
                         <TableHeader className="bg-muted/50">
@@ -354,9 +352,7 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
                         </TableBody>
                     </Table>
                 </div>
-
                 <Pagination data={employees} />
-
                 {/* Add Deduction Dialog */}
                 <Dialog open={openAdd} onOpenChange={setOpenAdd}>
                     <DialogContent>
@@ -416,7 +412,6 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-
                 {/* Edit Deduction Dialog */}
                 <Dialog open={openEdit} onOpenChange={setOpenEdit}>
                     <DialogContent>

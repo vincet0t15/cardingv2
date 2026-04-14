@@ -30,6 +30,7 @@ use App\Policies\SalaryPolicy;
 use App\Policies\SupplierPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -53,5 +54,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(ClaimType::class, ClaimTypePolicy::class);
         Gate::policy(HazardPay::class, HazardPayPolicy::class);
         Gate::policy(ClothingAllowance::class, ClothingAllowancePolicy::class);
+
+        if (config('app.env') !== 'local') {
+            URL::forceScheme('https');
+        }
     }
 }

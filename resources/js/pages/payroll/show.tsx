@@ -2,7 +2,6 @@ import { CustomComboBox } from '@/components/CustomComboBox';
 import Heading from '@/components/heading';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
@@ -40,6 +39,15 @@ const MONTHS = [
     { value: 11, label: 'November' },
     { value: 12, label: 'December' },
 ];
+
+// Dynamic year range: fixed start year (2020) to current year + 5
+const currentYear = new Date().getFullYear();
+const startYear = 2020;
+const endYear = currentYear + 5;
+const YEARS = Array.from({ length: endYear - startYear + 1 }, (_, i) => ({
+    value: String(startYear + i),
+    label: String(startYear + i),
+}));
 
 interface PayrollShowProps {
     employee: Employee;
@@ -139,12 +147,14 @@ export default function PayrollShow({ employee, salaryHistory, peraHistory, rata
                         />
                     </div>
 
-                    <Input
-                        type="number"
-                        className="w-[100px]"
-                        value={filterData.year}
-                        onChange={(e) => setFilterData('year', parseInt(e.target.value))}
-                    />
+                    <div className="w-[120px]">
+                        <CustomComboBox
+                            items={YEARS}
+                            placeholder="Select Year"
+                            value={filterData.year ? String(filterData.year) : null}
+                            onSelect={(value) => setFilterData('year', value ? parseInt(value) : currentYear)}
+                        />
+                    </div>
 
                     <Button onClick={handleFilterChange}>View</Button>
 

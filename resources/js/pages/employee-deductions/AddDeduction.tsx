@@ -36,8 +36,11 @@ const MONTHS = [
     { value: '12', label: 'December' },
 ];
 
+// Dynamic year range: fixed start year (2020) to current year + 5
 const currentYear = new Date().getFullYear();
-const YEARS = Array.from({ length: 6 }, (_, i) => currentYear - i);
+const startYear = 2020;
+const endYear = currentYear + 5;
+const YEARS = Array.from({ length: endYear - startYear + 1 }, (_, i) => String(startYear + i));
 
 interface AddDeductionPageProps {
     employee: Employee;
