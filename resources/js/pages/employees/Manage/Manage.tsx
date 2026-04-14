@@ -3,7 +3,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -79,6 +80,25 @@ export default function EmployeeManagePage({
     totalDeductionsAllTime = 0,
     totalClaimsAllTime = 0,
 }: EmployeeManageProps) {
+    const { url } = usePage();
+
+    // Get active tab from URL or default to 'overview'
+    const getInitialTab = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+        const validTabs = ['overview', 'compensation', 'deductions', 'claims', 'reports', 'settings'];
+        return tabParam && validTabs.includes(tabParam) ? tabParam : 'overview';
+    };
+
+    const [activeTab, setActiveTab] = useState(getInitialTab());
+
+    // Update URL when tab changes
+    const handleTabChange = (value: string) => {
+        setActiveTab(value);
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', value);
+        window.history.replaceState({}, '', url.toString());
+    };
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Employees', href: '/employees' },
         { title: `${employee.last_name}, ${employee.first_name}`, href: `/manage/employees/${employee.id}` },
@@ -138,7 +158,7 @@ export default function EmployeeManagePage({
                 <Separator className="bg-slate-200/60" />
 
                 {/* --- TABS SECTION --- */}
-                <Tabs defaultValue="overview" className="space-y-6">
+                <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
                     <div className="flex items-center justify-between overflow-x-auto pb-1">
                         <TabsList>
                             <TabsTrigger value="overview">

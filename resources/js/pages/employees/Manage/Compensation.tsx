@@ -1,5 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Employee } from '@/types/employee';
+import { useState } from 'react';
 import { CompensationClothingAllowance } from './compensation/clothing-allowance';
 import { CompensationHazardPay } from './compensation/hazard-pay';
 import CompensationPera from './compensation/pera';
@@ -12,9 +13,27 @@ interface EmployeeCompensationProps {
 }
 
 function EmployeeCompensation({ employee, sourceOfFundCodes }: EmployeeCompensationProps) {
+    // Get initial tab from URL or default to 'salary'
+    const getInitialTab = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const compTab = urlParams.get('comp_tab');
+        const validTabs = ['salary', 'pera', 'rata', 'hazard-pay', 'clothing-allowance'];
+        return compTab && validTabs.includes(compTab) ? compTab : 'salary';
+    };
+
+    const [activeTab, setActiveTab] = useState(getInitialTab());
+
+    // Update URL when tab changes
+    const handleTabChange = (value: string) => {
+        setActiveTab(value);
+        const url = new URL(window.location.href);
+        url.searchParams.set('comp_tab', value);
+        window.history.replaceState({}, '', url.toString());
+    };
+
     return (
         <div>
-            <Tabs defaultValue="salary" orientation="vertical">
+            <Tabs value={activeTab} onValueChange={handleTabChange} orientation="vertical">
                 <TabsList className="flex w-[180px] flex-col gap-3 bg-transparent">
                     <TabsTrigger value="salary">Salary</TabsTrigger>
                     <TabsTrigger value="pera">PERA</TabsTrigger>
