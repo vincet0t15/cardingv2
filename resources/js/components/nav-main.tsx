@@ -6,6 +6,36 @@ import { Link } from '@inertiajs/react';
 export function NavMain({ items = [] }: { items: NavGroup[] }) {
     const { isCurrentUrl } = useCurrentUrl();
 
+    // Icon color mapping for better visual appeal
+    const getIconColor = (href: string) => {
+        const colorMap: Record<string, string> = {
+            '/dashboard': 'text-blue-500',
+            '/employees': 'text-emerald-500',
+            '/suppliers': 'text-cyan-500',
+            '/reports/employees-by-source-of-fund': 'text-indigo-500',
+            '/payroll': 'text-violet-500',
+            '/employee-deductions': 'text-amber-500',
+            '/salaries': 'text-blue-600',
+            '/peras': 'text-emerald-600',
+            '/ratas': 'text-orange-500',
+            '/hazard-pays': 'text-red-500',
+            '/clothing-allowances': 'text-pink-500',
+            '/general-funds': 'text-yellow-600',
+            '/settings/offices': 'text-teal-500',
+            '/settings/employment-statuses': 'text-green-500',
+            '/settings/deduction-types': 'text-purple-500',
+            '/settings/document-types': 'text-sky-500',
+            '/settings/claim-types': 'text-rose-500',
+            '/settings/backup': 'text-slate-500',
+            '/accounts': 'text-indigo-600',
+            '/roles': 'text-blue-700',
+            '/permissions': 'text-orange-600',
+            '/audit-logs': 'text-gray-500',
+        };
+
+        return colorMap[href] || 'text-slate-500';
+    };
+
     return (
         <div className="space-y-2">
             {items.map((group) => (
@@ -16,7 +46,7 @@ export function NavMain({ items = [] }: { items: NavGroup[] }) {
                             <SidebarMenuItem key={item.title}>
                                 <SidebarMenuButton asChild isActive={isCurrentUrl(item.href)} tooltip={{ children: item.title }} className="">
                                     <Link href={item.href} prefetch preserveState preserveScroll>
-                                        {item.icon && <item.icon />}
+                                        {item.icon && <item.icon className={`h-4 w-4 ${getIconColor(item.href)}`} />}
                                         <span>{item.title}</span>
                                     </Link>
                                 </SidebarMenuButton>
