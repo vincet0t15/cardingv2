@@ -201,6 +201,15 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
         return new Intl.NumberFormat('en-PH', {
             style: 'currency',
             currency: 'PHP',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(amount);
+    };
+
+    const formatNumber = (amount: number) => {
+        return new Intl.NumberFormat('en-PH', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
         }).format(amount);
     };
 

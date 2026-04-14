@@ -131,6 +131,15 @@ export default function Index({ employees, offices, employmentStatuses, filters 
         return deductions?.reduce((sum, d) => sum + Number(d.amount || 0), 0) || 0;
     };
 
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('en-PH', {
+            style: 'currency',
+            currency: 'PHP',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(amount);
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Employee Deductions" />
@@ -293,16 +302,10 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right font-medium">
-                                            ₱
-                                            {getLatestSalary(employee.salaries?.[0]).toLocaleString('en-PH', {
-                                                minimumFractionDigits: 2,
-                                            })}
+                                            {formatCurrency(getLatestSalary(employee.salaries?.[0]))}
                                         </TableCell>
                                         <TableCell className="text-right font-medium">
-                                            ₱
-                                            {getTotalDeductions(employee.employee_deductions as any[])?.toLocaleString('en-PH', {
-                                                minimumFractionDigits: 2,
-                                            })}
+                                            {formatCurrency(getTotalDeductions(employee.employee_deductions as any[]))}
                                         </TableCell>
                                     </TableRow>
                                 ))
