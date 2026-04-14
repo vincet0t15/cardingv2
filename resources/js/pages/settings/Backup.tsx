@@ -74,17 +74,8 @@ export default function Backup({ backups, pagination, databaseName }: BackupProp
         createForm.post(route('settings.backup.create'), {
             preserveScroll: true,
             onSuccess: (response: { props: FlashProps }) => {
-                if (response.props.flash?.success) {
-                    toast.success(response.props.flash.success);
-                    setShowCreateConfirm(false);
-                    setTimeout(() => window.location.reload(), 1000);
-                } else if (response.props.flash?.error) {
-                    toast.error(response.props.flash.error);
-                }
-            },
-            onError: (errors) => {
-                console.error('Backup errors:', errors);
-                toast.error('Failed to create backup. Check console for details.');
+                toast.success(response.props.flash?.success);
+                setShowCreateConfirm(false);
             },
         });
     };
@@ -120,15 +111,21 @@ export default function Backup({ backups, pagination, databaseName }: BackupProp
     const handleRestoreConfirm = () => {
         restoreForm.post(route('settings.backup.restore'), {
             preserveScroll: true,
-            onSuccess: () => {
-                toast.success('Database restored successfully!');
+            onSuccess: (response: { props: FlashProps }) => {
+                if (response.props.flash?.success) {
+                    toast.success(response.props.flash.success);
+                } else if (response.props.flash?.error) {
+                    toast.error(response.props.flash.error);
+                    return; // Don't close dialog or reload on error
+                }
                 setShowRestoreDialog(false);
                 setTimeout(() => {
                     window.location.reload();
                 }, 1000);
             },
-            onError: () => {
-                toast.error('Failed to restore database');
+            onError: (errors) => {
+                console.error('Restore errors:', errors);
+                toast.error('Failed to restore database. Please check the logs.');
             },
         });
     };
@@ -143,16 +140,22 @@ export default function Backup({ backups, pagination, databaseName }: BackupProp
         uploadForm.post(route('settings.backup.upload-restore'), {
             forceFormData: true,
             preserveScroll: true,
-            onSuccess: () => {
-                toast.success('Database restored successfully!');
+            onSuccess: (response: { props: FlashProps }) => {
+                if (response.props.flash?.success) {
+                    toast.success(response.props.flash.success);
+                } else if (response.props.flash?.error) {
+                    toast.error(response.props.flash.error);
+                    return; // Don't close dialog or reload on error
+                }
                 setShowUploadDialog(false);
                 uploadForm.reset();
                 setTimeout(() => {
                     window.location.reload();
                 }, 1000);
             },
-            onError: () => {
-                toast.error('Failed to restore from uploaded file');
+            onError: (errors) => {
+                console.error('Upload restore errors:', errors);
+                toast.error('Failed to restore from uploaded file. Please check the logs.');
             },
         });
     };
