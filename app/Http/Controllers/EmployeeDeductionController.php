@@ -68,7 +68,7 @@ class EmployeeDeductionController extends Controller
             ->with(['employeeDeductions' => function ($query) use ($year, $month) {
                 $query->where('pay_period_year', $year)
                     ->with('deductionType')
-                    ->orderBy('created_at', 'desc');
+                    ->orderBy('pay_period_month', 'asc');
                 // Only filter by month if it's provided
                 if ($month) {
                     $query->where('pay_period_month', $month);

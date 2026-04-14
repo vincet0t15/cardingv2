@@ -159,6 +159,19 @@ export default function Index({ employees, offices, employmentStatuses, filters 
         return deductions?.reduce((sum, d) => sum + Number(d.amount || 0), 0) || 0;
     };
 
+    const getDeductionMonths = (deductions: any[]) => {
+        if (!deductions || deductions.length === 0) return [];
+
+        // Get unique months from deductions
+        const uniqueMonths = [...new Set(deductions.map((d) => d.pay_period_month))];
+        return uniqueMonths;
+    };
+
+    const getMonthLabel = (monthNumber: number) => {
+        const month = MONTHS.find((m) => m.value === String(monthNumber));
+        return month ? month.label : 'Unknown';
+    };
+
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-PH', {
             style: 'currency',
@@ -280,7 +293,7 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                         <TableHeader className="bg-muted/50">
                             <TableRow>
                                 <TableHead className="text-primary font-bold">Employee</TableHead>
-
+                                <TableHead className="text-primary font-bold">Pay Period</TableHead>
                                 <TableHead className="text-primary text-right font-bold">Monthly Salary</TableHead>
                                 <TableHead className="text-primary text-right font-bold">Total Deductions</TableHead>
                             </TableRow>
@@ -321,6 +334,38 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                                                 </div>
                                             </div>
                                         </TableCell>
+                                        <TableCell>
+                                            {(() => {
+                                                const deductionMonths = getDeductionMonths(employee.employee_deductions as any[]);
+
+                                                if (deductionMonths.length === 0) {
+                                                    return (
+                                                        <Badge variant="outline" className="text-gray-400">
+                                                            No deductions
+                                                        </Badge>
+                                                    );
+                                                }
+
+                                                // If only one month, show it
+                                                if (deductionMonths.length === 1) {
+                                                    return (
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300"
+                                                        >
+                                                            {getMonthLabel(deductionMonths[0])} {selectedYear}
+                                                        </Badge>
+                                                    );
+                                                }
+
+                                                // If multiple months, show count
+                                                return (
+                                                    <Badge variant="secondary" className="text-xs">
+                                                        {deductionMonths.length} months
+                                                    </Badge>
+                                                );
+                                            })()}
+                                        </TableCell>
                                         <TableCell className="text-right font-medium">
                                             {formatCurrency(getLatestSalary(employee.salaries?.[0]))}
                                         </TableCell>
@@ -331,7 +376,7 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="py-3 text-center text-gray-500">
+                                    <TableCell colSpan={4} className="py-3 text-center text-gray-500">
                                         No employees found
                                     </TableCell>
                                 </TableRow>
