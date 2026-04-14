@@ -105,6 +105,33 @@ class BackupController extends Controller
         ];
     }
 
+    /**
+     * Check if MySQL is running in Docker (even if Laravel is local)
+     */
+    private function isMysqlInDocker(): bool
+    {
+        $dbHost = config('database.connections.mysql.host', '127.0.0.1');
+
+        // If DB_HOST is 'mysql' or Docker service name, MySQL is in Docker
+        if ($dbHost === 'mysql' || $dbHost === 'db') {
+            return true;
+        }
+
+        // Check if Docker is running and container exists
+        if ($this->isDocker()) {
+            return true;
+        }
+
+        // For hybrid setup (Laravel local, MySQL in Docker)
+        // Check if we can reach Docker MySQL container
+        $container = $this->getDockerContainer();
+        $output = [];
+        $returnCode = 0;
+        exec(sprintf('docker ps --filter name=%s --format "{{.Names}}"', escapeshellarg($container)), $output, $returnCode);
+
+        return !empty($output) && $output[0] === $container;
+    }
+
     public function index(Request $request)
     {
         $backups = $this->getBackups($request);
@@ -151,7 +178,8 @@ class BackupController extends Controller
                 throw new \Exception("Unsupported database connection: {$connection}");
             }
 
-            if ($this->isDocker()) {
+            // Check if MySQL is in Docker (works for both full Docker and hybrid setups)
+            if ($this->isMysqlInDocker()) {
                 // In Docker, use docker exec to run mysqldump inside the MySQL container
                 $container = $this->getDockerContainer();
                 $pass = $dbConfig['password'] ? '-p' . $dbConfig['password'] : '';
@@ -313,7 +341,8 @@ class BackupController extends Controller
 
         $dbConfig = $this->getDbConfig();
 
-        if ($this->isDocker()) {
+        // Check if MySQL is in Docker (works for both full Docker and hybrid setups)
+        if ($this->isMysqlInDocker()) {
             if (file_exists('/usr/bin/mysql') || file_exists('/usr/local/bin/mysql')) {
                 $mysql = file_exists('/usr/bin/mysql') ? '/usr/bin/mysql' : '/usr/local/bin/mysql';
                 $pass = $dbConfig['password'] ? '-p' . $dbConfig['password'] : '';
