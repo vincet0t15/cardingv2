@@ -65,8 +65,6 @@ class AdjustmentTypeSeeder extends Seeder
             ],
         ];
 
-        // Make seeder defensive: only set keys that exist in the DB schema so seeding
-        // can run even before the new migration is applied. Also wrap in transaction.
 
         DB::transaction(function () use ($adjustmentTypes) {
             $hasTaxable = Schema::hasColumn('adjustment_types', 'taxable');
