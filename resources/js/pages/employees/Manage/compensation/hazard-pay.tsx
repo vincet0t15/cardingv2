@@ -218,7 +218,7 @@ export function CompensationHazardPay({ employee, sourceOfFundCodes }: Compensat
         open: false,
         hazardPay: null,
     });
-    const hazardPays: HazardPay[] = employee.hazardPays ?? [];
+    const hazardPays: HazardPay[] = employee.hazard_pays ?? [];
     const current = employee.latest_hazard_pay;
 
     const handleDelete = (hazardPay: HazardPay) => {

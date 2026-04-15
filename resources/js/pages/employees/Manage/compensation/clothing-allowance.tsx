@@ -218,7 +218,7 @@ export function CompensationClothingAllowance({ employee, sourceOfFundCodes }: C
         open: false,
         clothingAllowance: null,
     });
-    const clothingAllowances: ClothingAllowance[] = employee.clothingAllowances ?? [];
+    const clothingAllowances: ClothingAllowance[] = employee.clothing_allowances ?? [];
     const current = employee.latest_clothing_allowance;
 
     const handleDelete = (clothingAllowance: ClothingAllowance) => {

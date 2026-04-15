@@ -52,25 +52,12 @@ function getEffectiveAmountForDateRange(
     periodMonth: number,
 ): number {
     if (!history || history.length === 0) {
-        console.log('getEffectiveAmountForDateRange: No history data');
         return 0;
     }
-
-    console.log('getEffectiveAmountForDateRange called with:', {
-        historyLength: history.length,
-        periodYear,
-        periodMonth,
-        firstRecord: history[0],
-    });
 
     const periodStart = new Date(periodYear, periodMonth - 1, 1);
     const periodEnd = new Date(periodYear, periodMonth, 0); // Last day of month, 00:00
     periodEnd.setHours(23, 59, 59, 999); // Set to end of day
-
-    console.log('Period range:', {
-        periodStart: periodStart.toISOString(),
-        periodEnd: periodEnd.toISOString(),
-    });
 
     const effectiveRecord = history
         .filter((record) => {
@@ -88,16 +75,6 @@ function getEffectiveAmountForDateRange(
             const isActive = startDate <= periodEnd;
             const matches = endDate ? isActive && endDate >= periodStart : isActive;
 
-            console.log('Record check:', {
-                start_date: record.start_date,
-                end_date: record.end_date,
-                startDate: startDate.toLocaleDateString(),
-                endDate: endDate?.toLocaleDateString(),
-                isActive,
-                matches,
-                amount: record.amount,
-            });
-
             return matches;
         })
         .sort((a, b) => {
@@ -108,8 +85,6 @@ function getEffectiveAmountForDateRange(
                 new Date(parseInt(aParts[0]), parseInt(aParts[1]) - 1, parseInt(aParts[2])).getTime()
             );
         })[0];
-
-    console.log('Effective record:', effectiveRecord);
     return Number(effectiveRecord?.amount ?? 0);
 }
 
