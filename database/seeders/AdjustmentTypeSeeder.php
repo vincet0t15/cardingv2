@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\Models\AdjustmentType;
 use App\Models\ReferenceType;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class AdjustmentTypeSeeder extends Seeder
 {
@@ -63,46 +65,72 @@ class AdjustmentTypeSeeder extends Seeder
             ],
         ];
 
-        foreach ($adjustmentTypes as $type) {
-            $record = array_merge($type, [
-                'taxable' => in_array($type['name'], ['Monetization', 'Terminal Pay']),
-                'include_in_payroll' => in_array($type['name'], ['Monetization', 'Terminal Pay']),
-                'requires_approval' => true,
-                'restricted_roles' => in_array($type['name'], ['Terminal Pay']) ? 'hr,finance' : null,
-                'created_by' => 1,
-            ]);
+        // Make seeder defensive: only set keys that exist in the DB schema so seeding
+        // can run even before the new migration is applied. Also wrap in transaction.
+        DB::transaction(function () use ($adjustmentTypes) {
+            $hasTaxable = Schema::hasColumn('adjustment_types', 'taxable');
+            $hasIncludeInPayroll = Schema::hasColumn('adjustment_types', 'include_in_payroll');
+            $hasRequiresApproval = Schema::hasColumn('adjustment_types', 'requires_approval');
+            $hasRestrictedRoles = Schema::hasColumn('adjustment_types', 'restricted_roles');
+            $hasCreatedBy = Schema::hasColumn('adjustment_types', 'created_by');
 
-            AdjustmentType::firstOrCreate(['name' => $type['name']], $record);
-        }
+            foreach ($adjustmentTypes as $type) {
+                $record = $type;
 
-        $referenceTypes = [
-            [
-                'name' => 'Payroll',
-                'description' => 'Payroll reference number',
-            ],
-            [
-                'name' => 'Biometric',
-                'description' => 'Biometric system reference',
-            ],
-            [
-                'name' => 'Manual Entry',
-                'description' => 'Manual adjustment entry',
-            ],
-            [
-                'name' => 'Audit Finding',
-                'description' => 'Adjustment from audit finding',
-            ],
-            [
-                'name' => 'Employee Request',
-                'description' => 'Adjustment based on employee request',
-            ],
-        ];
+                if ($hasTaxable) {
+                    $record['taxable'] = in_array($type['name'], ['Monetization', 'Terminal Pay']);
+                }
 
-        foreach ($referenceTypes as $type) {
-            ReferenceType::firstOrCreate(
-                ['name' => $type['name']],
-                array_merge($type, ['created_by' => 1])
-            );
-        }
+                if ($hasIncludeInPayroll) {
+                    $record['include_in_payroll'] = in_array($type['name'], ['Monetization', 'Terminal Pay']);
+                }
+
+                if ($hasRequiresApproval) {
+                    $record['requires_approval'] = true;
+                }
+
+                if ($hasRestrictedRoles) {
+                    $record['restricted_roles'] = in_array($type['name'], ['Terminal Pay']) ? 'hr,finance' : null;
+                }
+
+                if ($hasCreatedBy) {
+                    $record['created_by'] = 1;
+                }
+
+                AdjustmentType::firstOrCreate(['name' => $type['name']], $record);
+            }
+
+            $referenceTypes = [
+                [
+                    'name' => 'Payroll',
+                    'description' => 'Payroll reference number',
+                ],
+                [
+                    'name' => 'Biometric',
+                    'description' => 'Biometric system reference',
+                ],
+                [
+                    'name' => 'Manual Entry',
+                    'description' => 'Manual adjustment entry',
+                ],
+                [
+                    'name' => 'Audit Finding',
+                    'description' => 'Adjustment from audit finding',
+                ],
+                [
+                    'name' => 'Employee Request',
+                    'description' => 'Adjustment based on employee request',
+                ],
+            ];
+
+            foreach ($referenceTypes as $type) {
+                $refRecord = $type;
+                if ($hasCreatedBy) {
+                    $refRecord['created_by'] = 1;
+                }
+
+                ReferenceType::firstOrCreate(['name' => $type['name']], $refRecord);
+            }
+        });
     }
 }
