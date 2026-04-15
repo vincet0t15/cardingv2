@@ -21,7 +21,7 @@ export interface ChartOfficeClaimsProps {
 
 const chartConfig = {
     amount: {
-        label: 'Total Claims',
+        label: 'Travel Claims',
         color: 'hsl(217.2 91.2% 60%)',
     },
 } satisfies ChartConfig;
@@ -123,7 +123,7 @@ export function ChartOfficeClaims({ data, title = 'Total Claims by Office', desc
             </CardContent>
             {chartData.length > 0 && (
                 <CardFooter className="flex-col items-start gap-2 text-sm">
-                    <div className="text-muted-foreground text-xs">Showing total claim amounts per office (all claim types combined)</div>
+                    <div className="text-muted-foreground text-xs">Showing total travel claim amounts per office (Travel claims only)</div>
                 </CardFooter>
             )}
         </Card>

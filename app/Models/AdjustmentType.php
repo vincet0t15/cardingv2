@@ -17,11 +17,18 @@ class AdjustmentType extends Model
         'name',
         'description',
         'effect',
+        'taxable',
+        'include_in_payroll',
+        'requires_approval',
+        'restricted_roles',
         'created_by',
     ];
 
     protected $casts = [
         'effect' => 'string',
+        'taxable' => 'boolean',
+        'include_in_payroll' => 'boolean',
+        'requires_approval' => 'boolean',
     ];
 
     public function adjustments(): HasMany

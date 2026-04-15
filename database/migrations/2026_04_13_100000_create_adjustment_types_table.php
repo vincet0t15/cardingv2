@@ -16,6 +16,11 @@ return new class extends Migration
             $table->string('name')->unique();
             $table->text('description')->nullable();
             $table->enum('effect', ['positive', 'negative'])->default('positive');
+            // Flags for additional business metadata
+            $table->boolean('taxable')->default(false);
+            $table->boolean('include_in_payroll')->default(false);
+            $table->boolean('requires_approval')->default(true);
+            $table->string('restricted_roles')->nullable(); // comma-separated list of roles allowed to create/approve
             $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
             $table->softDeletes();
             $table->timestamps();

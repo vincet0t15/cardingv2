@@ -8,34 +8,28 @@ use Spatie\Permission\Models\Role;
 
 class AssignAdjustmentPermissionsSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // Get Super Admin role
-        $superAdmin = Role::where('name', 'Super Admin')->first();
+        // Ensure permissions exist
+        $permissions = [
+            'adjustment_types.view',
+            'adjustment_types.store',
+            'adjustment_types.edit',
+            'adjustment_types.delete',
+        ];
 
-        if (!$superAdmin) {
-            $this->command->error('Super Admin role not found!');
-            return;
+        foreach ($permissions as $permission) {
+            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
-        // Get all adjustment permissions
-        $adjustmentPermissions = Permission::where('name', 'like', '%adjustments%')->get();
+        // Assign adjustment creation and approval to HR and Finance roles if they exist
+        $rolesToAssign = ['hr', 'finance', 'super admin'];
 
-        if ($adjustmentPermissions->isEmpty()) {
-            $this->command->error('No adjustment permissions found. Run AdjustmentPermissionSeeder first.');
-            return;
-        }
-
-        // Assign all adjustment permissions to Super Admin
-        $superAdmin->givePermissionTo($adjustmentPermissions);
-
-        $this->command->info("✅ Assigned " . $adjustmentPermissions->count() . " adjustment permissions to Super Admin role");
-        $this->command->info("\nPermissions assigned:");
-        foreach ($adjustmentPermissions as $permission) {
-            $this->command->line("  ✓ " . $permission->name);
+        foreach ($rolesToAssign as $roleName) {
+            $role = Role::where('name', $roleName)->first();
+            if ($role) {
+                $role->givePermissionTo($permissions);
+            }
         }
     }
 }

@@ -29,6 +29,7 @@ class ManageEmployeeController extends Controller
             'office',
             'employmentStatus',
             'latestSalary',
+            'earliestSalary',
             'latestPera',
             'latestRata',
             'latestHazardPay',
@@ -73,9 +74,25 @@ class ManageEmployeeController extends Controller
             return "{$p->pay_period_year}-" . str_pad($p->pay_period_month, 2, '0', STR_PAD_LEFT);
         })->values()->toArray();
 
-        $deductionsData = EmployeeDeduction::where('employee_id', $employee->id)
-            ->whereIn('pay_period_year', $paginatedPeriods->pluck('pay_period_year'))
-            ->whereIn('pay_period_month', $paginatedPeriods->pluck('pay_period_month'))
+        // Build pair-safe period filters to avoid cross-joining years and months separately
+        $periodPairs = $paginatedPeriods->map(function ($p) {
+            return ['year' => $p->pay_period_year, 'month' => $p->pay_period_month];
+        })->toArray();
+
+        $deductionsQuery = EmployeeDeduction::where('employee_id', $employee->id);
+
+        if (! empty($periodPairs)) {
+            $deductionsQuery->where(function ($q) use ($periodPairs) {
+                foreach ($periodPairs as $pair) {
+                    $q->orWhere(function ($q2) use ($pair) {
+                        $q2->where('pay_period_year', $pair['year'])
+                            ->where('pay_period_month', $pair['month']);
+                    });
+                }
+            });
+        }
+
+        $deductionsData = $deductionsQuery
             ->with('deductionType')
             ->orderBy('pay_period_year', 'desc')
             ->orderBy('pay_period_month', 'desc')
@@ -165,6 +182,10 @@ class ManageEmployeeController extends Controller
 
         return Inertia::render('employees/Manage/Manage', [
             'employee' => $employee,
+            // Explicitly include earliest_salary for the frontend props so components can
+            // read employee.earliest_salary directly without relying on implicit
+            // serializer behavior.
+            'earliest_salary' => $employee->earliestSalary,
             'employmentStatuses' => $employmentStatuses,
             'offices' => $offices,
             'deductionTypes' => $deductionTypes,

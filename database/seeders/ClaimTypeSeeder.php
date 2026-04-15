@@ -18,6 +18,8 @@ class ClaimTypeSeeder extends Seeder
             ['name' => 'Cash Advance', 'code' => 'CASH_ADVANCE', 'description' => 'Cash advance for official purposes'],
             ['name' => 'Meal Allowance', 'code' => 'MEAL', 'description' => 'Meal expenses during official travel'],
             ['name' => 'Transportation Allowance', 'code' => 'TRANSPORTATION', 'description' => 'Transportation expenses'],
+            ['name' => 'Laundry', 'code' => 'LAUNDRY', 'description' => 'Laundry / dry cleaning expenses'],
+            ['name' => 'Subsistence', 'code' => 'SUBSISTENCE', 'description' => 'Subsistence per-diem or related expenses'],
             ['name' => 'Other Claims', 'code' => 'OTHER', 'description' => 'Other reimbursable expenses'],
         ];
 

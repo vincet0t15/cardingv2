@@ -349,9 +349,10 @@ class DashboardController extends Controller
                 ];
             });
 
-        // Claims by Office - Sum of ALL claim types
-        $claimsByOfficeQuery = Claim::query()
-            ->with('employee.office');
+        // Claims by Office - Travel claims only (sum of TRAVEL claim type amounts)
+        $claimsByOfficeQuery = Claim::whereHas('claimType', function ($q) {
+            $q->where('code', 'TRAVEL');
+        })->with('employee.office');
 
         if ($useFilters) {
             $claimsByOfficeQuery->whereMonth('claim_date', $currentMonth)

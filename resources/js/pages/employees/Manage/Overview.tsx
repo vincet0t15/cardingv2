@@ -22,7 +22,6 @@ function formatCurrency(amount: number | undefined | null) {
     return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(amount);
 }
 
-function formatDate(dateStr: string | undefined) {
 function formatDate(dateStr?: string | undefined) {
     if (!dateStr) return '—';
     const d = new Date(dateStr);
@@ -55,7 +54,8 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
     const netThisMonth = grossPay - currentMonthDeductionTotal;
 
     // Calculate employment duration
-    const hireDate = employee.salaries?.[0]?.effective_date;
+    // Determine hire date: prefer earliestSalary if available (added on backend), fallback to earliest in salaries array, then employee.created_at
+    const hireDate = employee.earliest_salary?.effective_date ?? (employee.salaries && employee.salaries.length ? employee.salaries[employee.salaries.length - 1].effective_date : employee.created_at);
     const yearsOfService = hireDate ? Math.floor((new Date().getTime() - new Date(hireDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 0;
 
     // Recent claims (last 5)

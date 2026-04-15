@@ -99,11 +99,19 @@ class Employee extends Model
     }
 
     /**
-     * Get the latest salary record
+     * Get the latest Salary record
      */
     public function latestSalary(): HasOne
     {
         return $this->hasOne(Salary::class)->latestOfMany('effective_date')->with('sourceOfFundCode');
+    }
+
+    /**
+     * Get the earliest (hire) Salary record
+     */
+    public function earliestSalary(): HasOne
+    {
+        return $this->hasOne(Salary::class)->oldestOfMany('effective_date')->with('sourceOfFundCode');
     }
 
     /**

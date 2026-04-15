@@ -51,13 +51,28 @@ class AdjustmentTypeSeeder extends Seeder
                 'description' => 'Adjustment for holiday pay',
                 'effect' => 'positive',
             ],
+            [
+                'name' => 'Monetization',
+                'description' => 'Monetization of unused leave or benefits',
+                'effect' => 'positive',
+            ],
+            [
+                'name' => 'Terminal Pay',
+                'description' => 'Final settlement on separation or retirement',
+                'effect' => 'positive',
+            ],
         ];
 
         foreach ($adjustmentTypes as $type) {
-            AdjustmentType::firstOrCreate(
-                ['name' => $type['name']],
-                array_merge($type, ['created_by' => 1])
-            );
+            $record = array_merge($type, [
+                'taxable' => in_array($type['name'], ['Monetization', 'Terminal Pay']),
+                'include_in_payroll' => in_array($type['name'], ['Monetization', 'Terminal Pay']),
+                'requires_approval' => true,
+                'restricted_roles' => in_array($type['name'], ['Terminal Pay']) ? 'hr,finance' : null,
+                'created_by' => 1,
+            ]);
+
+            AdjustmentType::firstOrCreate(['name' => $type['name']], $record);
         }
 
         $referenceTypes = [
