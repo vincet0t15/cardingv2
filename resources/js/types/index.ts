@@ -46,3 +46,32 @@ export interface User {
     updated_at: string;
     [key: string]: unknown; // This allows for additional properties...
 }
+
+export interface Adjustment {
+    id: number;
+    employee_id: number;
+    employee: {
+        id: number;
+        first_name: string;
+        last_name: string;
+        employee_id?: string;
+        position?: string;
+    };
+    adjustment_type: string;
+    amount: number;
+    pay_period_month: number;
+    pay_period_year: number;
+    effectivity_date: string;
+    reference_id?: string;
+    reference_type?: string;
+    status: 'pending' | 'approved' | 'rejected' | 'processed';
+    reason: string;
+    remarks?: string;
+    approved_by?: number;
+    approved_at?: string;
+    processed_at?: string;
+    processed_by?: string;
+    created_at: string;
+    updated_at: string;
+}
+

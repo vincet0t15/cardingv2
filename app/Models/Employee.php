@@ -91,6 +91,14 @@ class Employee extends Model
     }
 
     /**
+     * Get all adjustments for this employee
+     */
+    public function adjustments(): HasMany
+    {
+        return $this->hasMany(Adjustment::class);
+    }
+
+    /**
      * Get the latest salary record
      */
     public function latestSalary(): HasOne

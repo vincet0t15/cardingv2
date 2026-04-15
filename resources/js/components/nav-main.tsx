@@ -60,7 +60,7 @@ export function NavMain({ items = [] }: { items: NavGroup[] }) {
                                 <span className="text-xs font-bold tracking-wider text-slate-700 uppercase dark:text-slate-200">{group.title}</span>
                             </div>
                         </SidebarGroupLabel>
-                        <SidebarMenu className="gap-1">
+                        <SidebarMenu className="ml-2 gap-1">
                             {group.children?.map((item) => (
                                 <SidebarMenuItem key={item.title}>
                                     <SidebarMenuButton asChild isActive={isCurrentUrl(item.href)} tooltip={{ children: item.title }} className="">

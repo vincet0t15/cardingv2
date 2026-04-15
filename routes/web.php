@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AdjustmentController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\ClothingAllowanceController;
@@ -275,6 +276,26 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/', [AuditLogController::class, 'index'])->name('audit-logs.index');
         Route::get('/{auditLog}', [AuditLogController::class, 'show'])->name('audit-logs.show');
         Route::get('/export/csv', [AuditLogController::class, 'export'])->name('audit-logs.export');
+    });
+
+    // ADJUSTMENTS - Manage payroll adjustments with approval workflow
+    Route::prefix('adjustments')->group(function () {
+        Route::get('/', [AdjustmentController::class, 'index'])->name('adjustments.index');
+        Route::get('/create', [AdjustmentController::class, 'create'])->name('adjustments.create');
+        Route::post('/', [AdjustmentController::class, 'store'])->name('adjustments.store');
+        Route::get('/{adjustment}', [AdjustmentController::class, 'show'])->name('adjustments.show');
+        Route::get('/{adjustment}/edit', [AdjustmentController::class, 'edit'])->name('adjustments.edit');
+        Route::put('/{adjustment}', [AdjustmentController::class, 'update'])->name('adjustments.update');
+        Route::post('/{adjustment}/approve', [AdjustmentController::class, 'approve'])->name('adjustments.approve');
+        Route::post('/{adjustment}/reject', [AdjustmentController::class, 'reject'])->name('adjustments.reject');
+        Route::post('/{adjustment}/process', [AdjustmentController::class, 'process'])->name('adjustments.process');
+        Route::delete('/{adjustment}', [AdjustmentController::class, 'destroy'])->name('adjustments.destroy');
+
+        // Employee-specific adjustments
+        Route::get('/employee/{employee}', [AdjustmentController::class, 'employeeAdjustments'])->name('adjustments.employee');
+
+        // Report
+        Route::get('/report', [AdjustmentController::class, 'report'])->name('adjustments.report');
     });
 });
 

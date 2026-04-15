@@ -16,8 +16,9 @@ import type { EmployeeDeduction } from '@/types/employeeDeduction';
 import type { EmploymentStatus } from '@/types/employmentStatuses';
 import type { Office } from '@/types/office';
 import type { PaginatedDataResponse } from '@/types/pagination';
-import { ArrowLeft, CoinsIcon, FileText, LayoutDashboard, Receipt, Settings, TrendingDown } from 'lucide-react';
+import { ArrowLeft, CoinsIcon, FileText, LayoutDashboard, Receipt, RefreshCcw, Settings, TrendingDown } from 'lucide-react';
 
+import EmployeeAdjustments from './Adjustments';
 import EmployeeCompensation from './Compensation';
 import Overview from './Overview';
 import Reports from './Reports';
@@ -56,6 +57,15 @@ interface EmployeeManageProps {
     allClaims?: Claim[];
     totalDeductionsAllTime?: number;
     totalClaimsAllTime?: number;
+    // Adjustments
+    adjustments?: any[];
+    adjustmentStatistics?: {
+        total_pending: number;
+        total_approved: number;
+        total_processed: number;
+        total_rejected: number;
+        total_amount: number;
+    };
 }
 
 export default function EmployeeManagePage({
@@ -79,6 +89,8 @@ export default function EmployeeManagePage({
     allClaims = [],
     totalDeductionsAllTime = 0,
     totalClaimsAllTime = 0,
+    adjustments = [],
+    adjustmentStatistics = { total_pending: 0, total_approved: 0, total_processed: 0, total_rejected: 0, total_amount: 0 },
 }: EmployeeManageProps) {
     const { url } = usePage();
 
@@ -86,7 +98,7 @@ export default function EmployeeManagePage({
     const getInitialTab = () => {
         const urlParams = new URLSearchParams(window.location.search);
         const tabParam = urlParams.get('tab');
-        const validTabs = ['overview', 'compensation', 'deductions', 'claims', 'reports', 'settings'];
+        const validTabs = ['overview', 'compensation', 'deductions', 'claims', 'adjustments', 'reports', 'settings'];
         return tabParam && validTabs.includes(tabParam) ? tabParam : 'overview';
     };
 
@@ -189,6 +201,9 @@ export default function EmployeeManagePage({
                             <TabsTrigger value="claims">
                                 <Receipt className="h-4 w-4" /> Claims
                             </TabsTrigger>
+                            <TabsTrigger value="adjustments">
+                                <RefreshCcw className="h-4 w-4" /> Adjustments
+                            </TabsTrigger>
                             <TabsTrigger value="reports">
                                 <FileText className="h-4 w-4" /> Reports
                             </TabsTrigger>
@@ -231,6 +246,9 @@ export default function EmployeeManagePage({
                             availableYears={availableClaimYears}
                             filters={claimFilters}
                         />
+                    </TabsContent>
+                    <TabsContent value="adjustments" className="mt-0 outline-none">
+                        <EmployeeAdjustments employee={employee} adjustments={adjustments} statistics={adjustmentStatistics} />
                     </TabsContent>
                     <TabsContent value="reports" className="mt-0 outline-none">
                         <Reports employee={employee} allDeductions={allDeductions} allClaims={allClaims} />

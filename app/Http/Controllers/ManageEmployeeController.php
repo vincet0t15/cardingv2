@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Adjustment;
 use App\Models\Claim;
 use App\Models\ClaimType;
 use App\Models\DeductionType;
@@ -149,6 +150,19 @@ class ManageEmployeeController extends Controller
         $totalDeductionsAllTime = (float) $allDeductions->sum('amount');
         $totalClaimsAllTime = (float) $allClaims->sum('amount');
 
+        // Load adjustments for this employee
+        $adjustments = Adjustment::where('employee_id', $employee->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $adjustmentStatistics = [
+            'total_pending' => Adjustment::where('employee_id', $employee->id)->pending()->count(),
+            'total_approved' => Adjustment::where('employee_id', $employee->id)->approved()->count(),
+            'total_processed' => Adjustment::where('employee_id', $employee->id)->processed()->count(),
+            'total_rejected' => Adjustment::where('employee_id', $employee->id)->rejected()->count(),
+            'total_amount' => Adjustment::where('employee_id', $employee->id)->sum('amount'),
+        ];
+
         return Inertia::render('employees/Manage/Manage', [
             'employee' => $employee,
             'employmentStatuses' => $employmentStatuses,
@@ -185,6 +199,8 @@ class ManageEmployeeController extends Controller
             'allClaims' => $allClaims,
             'totalDeductionsAllTime' => $totalDeductionsAllTime,
             'totalClaimsAllTime' => $totalClaimsAllTime,
+            'adjustments' => $adjustments,
+            'adjustmentStatistics' => $adjustmentStatistics,
             'similarEmployees' => session('similar_employees', []),
             'warning' => session('warning'),
             'editingEmployeeId' => session('editing_employee_id'),
