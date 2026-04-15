@@ -184,8 +184,8 @@ function Reports({ employee, allDeductions, allClaims }: ReportsProps) {
         salary = getEffectiveAmount(employee.salaries, parseInt(filterYear), parseInt(filterMonth));
         pera = getEffectiveAmount(employee.peras, parseInt(filterYear), parseInt(filterMonth));
         rata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, parseInt(filterYear), parseInt(filterMonth)) : 0;
-        hazardPay = getEffectiveAmountForDateRange(employee.hazardPays, parseInt(filterYear), parseInt(filterMonth));
-        clothingAllowance = getEffectiveAmountForDateRange(employee.clothingAllowances, parseInt(filterYear), parseInt(filterMonth));
+        hazardPay = getEffectiveAmountForDateRange(employee.hazard_pays, parseInt(filterYear), parseInt(filterMonth));
+        clothingAllowance = getEffectiveAmountForDateRange(employee.clothing_allowances, parseInt(filterYear), parseInt(filterMonth));
         showGrossAndNet = true; // Specific period - calculations make sense
     } else if (filterYear) {
         // Year only - sum ALL records within that year
@@ -193,14 +193,14 @@ function Reports({ employee, allDeductions, allClaims }: ReportsProps) {
         pera = sumCompensationForYear(employee.peras, parseInt(filterYear));
         rata = employee.is_rata_eligible ? sumCompensationForYear(employee.ratas, parseInt(filterYear)) : 0;
         // For year view, sum date-range based records that fall in the year
-        hazardPay = employee.hazardPays
-            ? employee.hazardPays.reduce((sum, r) => {
+        hazardPay = employee.hazard_pays
+            ? employee.hazard_pays.reduce((sum, r) => {
                   const startYear = parseInt(r.start_date.split('-')[0]);
                   return startYear === parseInt(filterYear) ? sum + Number(r.amount) : sum;
               }, 0)
             : 0;
-        clothingAllowance = employee.clothingAllowances
-            ? employee.clothingAllowances.reduce((sum, r) => {
+        clothingAllowance = employee.clothing_allowances
+            ? employee.clothing_allowances.reduce((sum, r) => {
                   const startYear = parseInt(r.start_date.split('-')[0]);
                   return startYear === parseInt(filterYear) ? sum + Number(r.amount) : sum;
               }, 0)
@@ -213,8 +213,8 @@ function Reports({ employee, allDeductions, allClaims }: ReportsProps) {
         pera = sumCompensation(employee.peras);
         rata = employee.is_rata_eligible ? sumCompensation(employee.ratas) : 0;
         // All-time sum for date-range based allowances
-        hazardPay = employee.hazardPays ? employee.hazardPays.reduce((sum, r) => sum + Number(r.amount), 0) : 0;
-        clothingAllowance = employee.clothingAllowances ? employee.clothingAllowances.reduce((sum, r) => sum + Number(r.amount), 0) : 0;
+        hazardPay = employee.hazard_pays ? employee.hazard_pays.reduce((sum, r) => sum + Number(r.amount), 0) : 0;
+        clothingAllowance = employee.clothing_allowances ? employee.clothing_allowances.reduce((sum, r) => sum + Number(r.amount), 0) : 0;
         showGrossAndNet = true; // Now we can show gross/net for all-time view
         isAllTimeView = true;
     }
@@ -362,8 +362,8 @@ function Reports({ employee, allDeductions, allClaims }: ReportsProps) {
                             const periodSalary = getEffectiveAmount(employee.salaries, period.year, period.month);
                             const periodPera = getEffectiveAmount(employee.peras, period.year, period.month);
                             const periodRata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, period.year, period.month) : 0;
-                            const periodHazardPay = getEffectiveAmount(employee.hazardPays, period.year, period.month);
-                            const periodClothingAllowance = getEffectiveAmount(employee.clothingAllowances, period.year, period.month);
+                            const periodHazardPay = getEffectiveAmountForDateRange(employee.hazard_pays, period.year, period.month);
+                            const periodClothingAllowance = getEffectiveAmountForDateRange(employee.clothing_allowances, period.year, period.month);
                             const periodGrossPay = periodSalary + periodPera + periodRata + periodHazardPay + periodClothingAllowance;
                             const periodNetPay = periodGrossPay - period.total;
 

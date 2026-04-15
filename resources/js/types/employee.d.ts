@@ -1,11 +1,11 @@
-import type { EmploymentStatus } from "./employmentStatuses";
-import type { Office } from "./office";
-import type { Salary } from "./salary";
-import type { Pera } from "./pera";
-import type { Rata } from "./rata";
-import type { HazardPay } from "./hazard-pay";
-import type { ClothingAllowance } from "./clothing-allowance";
-import type { EmployeeDeduction } from "./employeeDeduction";
+import type { ClothingAllowance } from './clothing-allowance';
+import type { EmployeeDeduction } from './employeeDeduction';
+import type { EmploymentStatus } from './employmentStatuses';
+import type { HazardPay } from './hazard-pay';
+import type { Office } from './office';
+import type { Pera } from './pera';
+import type { Rata } from './rata';
+import type { Salary } from './salary';
 
 export interface Employee {
     id: number;
@@ -24,15 +24,14 @@ export interface Employee {
     salaries?: Salary[];
     peras?: Pera[];
     ratas?: Rata[];
-    hazardPays?: HazardPay[];
-    clothingAllowances?: ClothingAllowance[];
+    hazard_pays?: HazardPay[];
+    clothing_allowances?: ClothingAllowance[];
     deductions?: EmployeeDeduction[];
     latest_salary?: Salary;
     latest_pera?: Pera;
     latest_rata?: Rata;
     latest_hazard_pay?: HazardPay;
     latest_clothing_allowance?: ClothingAllowance;
-
 }
 
 export type EmployeeCreateRequest = {
@@ -47,4 +46,4 @@ export type EmployeeCreateRequest = {
     photo: File | null;
     _method?: string;
     force_create?: boolean;
-}
+};

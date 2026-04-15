@@ -246,16 +246,16 @@ export default function EmployeePrintReport({
         salary = getEffectiveAmount(employee.salaries, parseInt(filterYear), parseInt(filterMonth));
         pera = getEffectiveAmount(employee.peras, parseInt(filterYear), parseInt(filterMonth));
         rata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, parseInt(filterYear), parseInt(filterMonth)) : 0;
-        hazardPay = getEffectiveAmountForDateRange(employee.hazardPays, parseInt(filterYear), parseInt(filterMonth));
-        clothingAllowance = getEffectiveAmountForDateRange(employee.clothingAllowances, parseInt(filterYear), parseInt(filterMonth));
+        hazardPay = getEffectiveAmountForDateRange(employee.hazard_pays, parseInt(filterYear), parseInt(filterMonth));
+        clothingAllowance = getEffectiveAmountForDateRange(employee.clothing_allowances, parseInt(filterYear), parseInt(filterMonth));
         adjustments = sumAdjustmentsForPeriod(allAdjustments, parseInt(filterYear), parseInt(filterMonth));
         showGrossAndNet = true;
     } else if (filterYear) {
         salary = sumCompensationForYear(employee.salaries, parseInt(filterYear));
         pera = sumCompensationForYear(employee.peras, parseInt(filterYear));
         rata = employee.is_rata_eligible ? sumCompensationForYear(employee.ratas, parseInt(filterYear)) : 0;
-        hazardPay = sumCompensationForYearDateRange(employee.hazardPays, parseInt(filterYear));
-        clothingAllowance = sumCompensationForYearDateRange(employee.clothingAllowances, parseInt(filterYear));
+        hazardPay = sumCompensationForYearDateRange(employee.hazard_pays, parseInt(filterYear));
+        clothingAllowance = sumCompensationForYearDateRange(employee.clothing_allowances, parseInt(filterYear));
         adjustments = sumAdjustmentsForPeriod(allAdjustments, parseInt(filterYear));
         showGrossAndNet = true;
         isYearlyView = true;
@@ -263,8 +263,8 @@ export default function EmployeePrintReport({
         salary = sumCompensation(employee.salaries);
         pera = sumCompensation(employee.peras);
         rata = employee.is_rata_eligible ? sumCompensation(employee.ratas) : 0;
-        hazardPay = sumCompensationForDateRange(employee.hazardPays);
-        clothingAllowance = sumCompensationForDateRange(employee.clothingAllowances);
+        hazardPay = sumCompensationForDateRange(employee.hazard_pays);
+        clothingAllowance = sumCompensationForDateRange(employee.clothing_allowances);
         adjustments = totalAllAdjustments;
         showGrossAndNet = true; // Now we can show gross/net for all-time view
         isAllTimeView = true;

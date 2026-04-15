@@ -46,20 +46,35 @@ function getEffectiveAmount(history: { amount: number; effective_date: string }[
 }
 
 // Helper function to get hazard pay for a specific period (based on start_date)
-function getHazardPayForPeriod(hazardPays: { amount: number; start_date: string }[] | undefined, periodYear: number, periodMonth: number): number {
+function getHazardPayForPeriod(
+    hazardPays: { amount: number; start_date: string; end_date?: string }[] | undefined,
+    periodYear: number,
+    periodMonth: number,
+): number {
     if (!hazardPays || hazardPays.length === 0) return 0;
 
     // Create a date for the end of the period (last day of the month)
-    const periodEndDate = new Date(periodYear, periodMonth, 0);
+    // Note: JavaScript months are 0-indexed, so we use periodMonth - 1
+    const periodEndDate = new Date(periodYear, periodMonth - 1, 0);
 
     // Sort by start_date descending (newest first)
     const sortedHazard = [...hazardPays].sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
 
-    // Find the most recent hazard pay that started before or during this period
+    // Find the most recent hazard pay that was active during this period
     for (const hazard of sortedHazard) {
         const hazardStartDate = new Date(hazard.start_date);
+        const hazardEndDate = hazard.end_date ? new Date(hazard.end_date) : null;
+
+        // Hazard pay is active if:
+        // 1. It started on or before the end of the period, AND
+        // 2. Either no end date, OR ended on or after the start of the period
+        const periodStartDate = new Date(periodYear, periodMonth - 1, 1);
+
         if (hazardStartDate <= periodEndDate) {
-            return Number(hazard.amount);
+            // Check if hazard pay is active during this period
+            if (!hazardEndDate || hazardEndDate >= periodStartDate) {
+                return Number(hazard.amount);
+            }
         }
     }
 

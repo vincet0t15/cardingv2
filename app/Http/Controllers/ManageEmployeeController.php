@@ -263,7 +263,8 @@ class ManageEmployeeController extends Controller
         $filterYear = $request->input('year');
         $printType = $request->input('type', 'all');
 
-        $employee->load([
+        // Re-fetch employee with all relationships to ensure proper serialization
+        $employee = Employee::with([
             'office',
             'employmentStatus',
             'latestSalary',
@@ -286,7 +287,7 @@ class ManageEmployeeController extends Controller
             'clothingAllowances' => function ($query) {
                 $query->orderBy('start_date', 'desc');
             },
-        ]);
+        ])->findOrFail($employee->id);
 
         // Get all deductions
         $deductionsQuery = EmployeeDeduction::with('deductionType')
