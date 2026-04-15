@@ -12,22 +12,26 @@ import { ArrowLeft, RefreshCcw, Save } from 'lucide-react';
 interface Props {
     employees: Employee[];
     adjustment?: any;
+    preSelectedEmployeeId?: string | null;
 }
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Employees',
-        href: '/employees',
-    },
-    {
-        title: 'Add Adjustment',
-        href: '/employee-adjustments/add',
-    },
-];
-export default function Create({ employees, adjustment }: Props) {
+
+export default function Create({ employees, adjustment, preSelectedEmployeeId }: Props) {
     const isEdit = !!adjustment;
 
+    // Dynamic breadcrumbs based on context
+    const breadcrumbs: BreadcrumbItem[] = preSelectedEmployeeId
+        ? [
+              { title: 'Employees', href: '/employees' },
+              { title: 'Employee Details', href: `/manage/employees/${preSelectedEmployeeId}` },
+              { title: 'Add Adjustment', href: '/adjustments/create' },
+          ]
+        : [
+              { title: 'Employees', href: '/employees' },
+              { title: 'Add Adjustment', href: '/adjustments/create' },
+          ];
+
     const { data, setData, post, put, processing, errors } = useForm({
-        employee_id: adjustment?.employee_id?.toString() || '',
+        employee_id: adjustment?.employee_id?.toString() || preSelectedEmployeeId?.toString() || '',
         adjustment_type: adjustment?.adjustment_type || '',
         amount: adjustment?.amount?.toString() || '',
         pay_period_month: adjustment?.pay_period_month?.toString() || (new Date().getMonth() + 1).toString(),
@@ -106,14 +110,18 @@ export default function Create({ employees, adjustment }: Props) {
                 <div className="rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 p-6">
                     <div className="flex items-center gap-3">
                         <Button asChild variant="outline" size="icon" className="h-10 w-10">
-                            <Link href={route('adjustments.index')}>
+                            <Link href={preSelectedEmployeeId ? route('manage.employees.index', preSelectedEmployeeId) : route('adjustments.index')}>
                                 <ArrowLeft className="h-4 w-4" />
                             </Link>
                         </Button>
                         <div>
                             <h1 className="text-2xl font-bold tracking-tight">{isEdit ? 'Edit Adjustment' : 'Create New Adjustment'}</h1>
                             <p className="text-sm text-slate-600">
-                                {isEdit ? 'Update adjustment details' : 'Add a new payroll adjustment for LGU biometric system'}
+                                {isEdit
+                                    ? 'Update adjustment details'
+                                    : preSelectedEmployeeId
+                                      ? 'Add a new payroll adjustment for this employee'
+                                      : 'Add a new payroll adjustment for LGU biometric system'}
                             </p>
                         </div>
                     </div>
@@ -130,19 +138,21 @@ export default function Create({ employees, adjustment }: Props) {
                             <CardDescription>Fill in all required fields to create the adjustment</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            {/* Employee Selection */}
-                            <div className="space-y-2">
-                                <Label htmlFor="employee_id" className="required">
-                                    Employee
-                                </Label>
-                                <CustomComboBox
-                                    items={employeeOptions}
-                                    placeholder="Select employee"
-                                    value={data.employee_id || null}
-                                    onSelect={(value) => setData('employee_id', value || '')}
-                                />
-                                {errors.employee_id && <p className="text-sm text-red-500">{errors.employee_id}</p>}
-                            </div>
+                            {/* Employee Selection - Only show if not pre-selected */}
+                            {!preSelectedEmployeeId && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="employee_id" className="required">
+                                        Employee
+                                    </Label>
+                                    <CustomComboBox
+                                        items={employeeOptions}
+                                        placeholder="Select employee"
+                                        value={data.employee_id || null}
+                                        onSelect={(value) => setData('employee_id', value || '')}
+                                    />
+                                    {errors.employee_id && <p className="text-sm text-red-500">{errors.employee_id}</p>}
+                                </div>
+                            )}
 
                             {/* Adjustment Type */}
                             <div className="space-y-2">
@@ -277,8 +287,25 @@ export default function Create({ employees, adjustment }: Props) {
                                     <Save className="mr-2 h-4 w-4" />
                                     {processing ? 'Saving...' : isEdit ? 'Update Adjustment' : 'Create Adjustment'}
                                 </Button>
-                                <Button type="button" variant="outline" asChild>
-                                    <Link href={route('adjustments.index')}>Cancel</Link>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    asChild
+                                    onClick={() =>
+                                        (window.location.href = preSelectedEmployeeId
+                                            ? route('manage.employees.index', preSelectedEmployeeId)
+                                            : route('adjustments.index'))
+                                    }
+                                >
+                                    <Link
+                                        href={
+                                            preSelectedEmployeeId
+                                                ? route('manage.employees.index', preSelectedEmployeeId)
+                                                : route('adjustments.index')
+                                        }
+                                    >
+                                        Cancel
+                                    </Link>
                                 </Button>
                             </div>
                         </CardContent>

@@ -79,7 +79,7 @@ class AdjustmentController extends Controller
     /**
      * Show the form for creating a new adjustment.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
         $this->authorize('create', Adjustment::class);
 
@@ -87,9 +87,13 @@ class AdjustmentController extends Controller
             ->orderBy('last_name')
             ->get();
 
+        // Get pre-selected employee from URL parameter
+        $preSelectedEmployeeId = $request->query('employee_id');
+
         return Inertia::render('adjustments/Create', [
             'employees' => $employees,
             'adjustmentTypes' => Adjustment::getAdjustmentTypes(),
+            'preSelectedEmployeeId' => $preSelectedEmployeeId,
         ]);
     }
 
@@ -113,6 +117,18 @@ class AdjustmentController extends Controller
             'remarks' => $request->remarks,
             'status' => Adjustment::STATUS_PENDING,
         ]);
+
+        // Redirect back to employee page if created from there, otherwise to adjustments list
+        $referer = $request->header('referer', '');
+        if (str_contains($referer, '/manage/employees/')) {
+            // Extract employee ID from referer URL
+            preg_match('/\/manage\/employees\/(\d+)/', $referer, $matches);
+            $employeeId = $matches[1] ?? $request->employee_id;
+
+            return redirect()
+                ->route('manage.employees.index', $employeeId)
+                ->with('success', 'Adjustment created successfully and pending approval.');
+        }
 
         return redirect()
             ->route('adjustments.index')

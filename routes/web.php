@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdjustmentController;
+use App\Http\Controllers\AdjustmentTypeController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\ClothingAllowanceController;
@@ -24,6 +25,7 @@ use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\PeraController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RataController;
+use App\Http\Controllers\ReferenceTypeController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SalaryController;
@@ -283,20 +285,25 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/', [AdjustmentController::class, 'index'])->name('adjustments.index');
         Route::get('/create', [AdjustmentController::class, 'create'])->name('adjustments.create');
         Route::post('/', [AdjustmentController::class, 'store'])->name('adjustments.store');
-        Route::get('/{adjustment}', [AdjustmentController::class, 'show'])->name('adjustments.show');
         Route::get('/{adjustment}/edit', [AdjustmentController::class, 'edit'])->name('adjustments.edit');
         Route::put('/{adjustment}', [AdjustmentController::class, 'update'])->name('adjustments.update');
         Route::post('/{adjustment}/approve', [AdjustmentController::class, 'approve'])->name('adjustments.approve');
         Route::post('/{adjustment}/reject', [AdjustmentController::class, 'reject'])->name('adjustments.reject');
         Route::post('/{adjustment}/process', [AdjustmentController::class, 'process'])->name('adjustments.process');
         Route::delete('/{adjustment}', [AdjustmentController::class, 'destroy'])->name('adjustments.destroy');
-
-        // Employee-specific adjustments
-        Route::get('/employee/{employee}', [AdjustmentController::class, 'employeeAdjustments'])->name('adjustments.employee');
-
-        // Report
-        Route::get('/report', [AdjustmentController::class, 'report'])->name('adjustments.report');
     });
+
+    // ADJUSTMENT TYPES (Settings CRUD)
+    Route::middleware(['permission:adjustment_types.view'])->get('settings/adjustment-types', [AdjustmentTypeController::class, 'index'])->name('adjustment-types.index');
+    Route::middleware(['permission:adjustment_types.store'])->post('settings/adjustment-types', [AdjustmentTypeController::class, 'store'])->name('adjustment-types.store');
+    Route::middleware(['permission:adjustment_types.edit'])->put('settings/adjustment-types/{adjustmentType}', [AdjustmentTypeController::class, 'update'])->name('adjustment-types.update');
+    Route::middleware(['permission:adjustment_types.delete'])->delete('settings/adjustment-types/{adjustmentType}', [AdjustmentTypeController::class, 'destroy'])->name('adjustment-types.destroy');
+
+    // REFERENCE TYPES (Settings CRUD)
+    Route::middleware(['permission:reference_types.view'])->get('settings/reference-types', [ReferenceTypeController::class, 'index'])->name('reference-types.index');
+    Route::middleware(['permission:reference_types.store'])->post('settings/reference-types', [ReferenceTypeController::class, 'store'])->name('reference-types.store');
+    Route::middleware(['permission:reference_types.edit'])->put('settings/reference-types/{referenceType}', [ReferenceTypeController::class, 'update'])->name('reference-types.update');
+    Route::middleware(['permission:reference_types.delete'])->delete('settings/reference-types/{referenceType}', [ReferenceTypeController::class, 'destroy'])->name('reference-types.destroy');
 });
 
 require __DIR__ . '/settings.php';

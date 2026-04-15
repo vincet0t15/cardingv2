@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\AdjustmentType;
 use App\Models\Claim;
 use App\Models\ClaimType;
 use App\Models\ClothingAllowance;
@@ -13,8 +14,10 @@ use App\Models\HazardPay;
 use App\Models\Office;
 use App\Models\Pera;
 use App\Models\Rata;
+use App\Models\ReferenceType;
 use App\Models\Salary;
 use App\Models\Supplier;
+use App\Policies\AdjustmentTypePolicy;
 use App\Policies\ClaimPolicy;
 use App\Policies\ClaimTypePolicy;
 use App\Policies\ClothingAllowancePolicy;
@@ -26,6 +29,7 @@ use App\Policies\HazardPayPolicy;
 use App\Policies\OfficePolicy;
 use App\Policies\PeraPolicy;
 use App\Policies\RataPolicy;
+use App\Policies\ReferenceTypePolicy;
 use App\Policies\SalaryPolicy;
 use App\Policies\SupplierPolicy;
 use Illuminate\Support\Facades\Gate;
@@ -54,6 +58,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(ClaimType::class, ClaimTypePolicy::class);
         Gate::policy(HazardPay::class, HazardPayPolicy::class);
         Gate::policy(ClothingAllowance::class, ClothingAllowancePolicy::class);
+        Gate::policy(AdjustmentType::class, AdjustmentTypePolicy::class);
+        Gate::policy(ReferenceType::class, ReferenceTypePolicy::class);
 
         if (config('app.env') !== 'local') {
             URL::forceScheme('https');

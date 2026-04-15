@@ -369,9 +369,6 @@ export default function Index({ adjustments, employees, filters, statistics }: P
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
                                                     <div className="flex items-center justify-center gap-2">
-                                                        <Button asChild variant="ghost" size="sm" className="h-8 text-blue-600 hover:text-blue-700">
-                                                            <Link href={route('adjustments.show', adjustment.id)}>View</Link>
-                                                        </Button>
                                                         {adjustment.status === 'pending' && (
                                                             <>
                                                                 <Button

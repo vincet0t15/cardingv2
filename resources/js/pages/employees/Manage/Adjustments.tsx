@@ -2,8 +2,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Employee } from '@/types/employee';
-import { Link, router } from '@inertiajs/react';
-import { CheckCircle, Clock, DollarSign, Plus, RefreshCcw, XCircle } from 'lucide-react';
+import { Link } from '@inertiajs/react';
+import { DollarSign, Plus, RefreshCcw } from 'lucide-react';
 
 interface Adjustment {
     id: number;
@@ -55,31 +55,6 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
         });
     };
 
-    const getStatusBadge = (status: string) => {
-        const variants: Record<string, string> = {
-            pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
-            approved: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-            rejected: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-            processed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
-        };
-
-        const icons: Record<string, any> = {
-            pending: Clock,
-            approved: CheckCircle,
-            rejected: XCircle,
-            processed: RefreshCcw,
-        };
-
-        const Icon = icons[status] || Clock;
-
-        return (
-            <Badge className={`${variants[status] || variants.pending} gap-1 px-2 py-1`}>
-                <Icon className="h-3 w-3" />
-                <span className="capitalize">{status}</span>
-            </Badge>
-        );
-    };
-
     const getTypeBadge = (type: string) => {
         const isPositive = ['Salary Refund', 'Underpayment', 'Overtime Adjustment', 'Deduction Refund', 'Holiday Pay Adjustment'].includes(type);
 
@@ -89,26 +64,6 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
                 <span>{type}</span>
             </Badge>
         );
-    };
-
-    const handleApprove = (id: number) => {
-        router.post(route('adjustments.approve', id));
-    };
-
-    const handleReject = (id: number) => {
-        router.post(route('adjustments.reject', id), {
-            rejection_reason: 'Rejected via employee page',
-        });
-    };
-
-    const handleProcess = (id: number) => {
-        router.post(route('adjustments.process', id));
-    };
-
-    const handleDelete = (id: number) => {
-        if (confirm('Are you sure you want to delete this adjustment?')) {
-            router.delete(route('adjustments.destroy', id));
-        }
     };
 
     return (
@@ -122,7 +77,7 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
                     </p>
                 </div>
                 <Button asChild className="bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md hover:shadow-lg">
-                    <Link href={route('adjustments.create')}>
+                    <Link href={route('adjustments.create', { employee_id: employee.id })}>
                         <Plus className="mr-2 h-4 w-4" />
                         New Adjustment
                     </Link>
@@ -192,7 +147,6 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
                                     <tr>
                                         <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-slate-500 uppercase">Type</th>
                                         <th className="px-4 py-3 text-right text-xs font-medium tracking-wider text-slate-500 uppercase">Amount</th>
-                                        <th className="px-4 py-3 text-center text-xs font-medium tracking-wider text-slate-500 uppercase">Status</th>
                                         <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-slate-500 uppercase">
                                             Pay Period
                                         </th>
@@ -200,7 +154,7 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
                                             Effectivity
                                         </th>
                                         <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-slate-500 uppercase">Reason</th>
-                                        <th className="px-4 py-3 text-center text-xs font-medium tracking-wider text-slate-500 uppercase">Actions</th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium tracking-wider text-slate-500 uppercase">Created</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -218,7 +172,6 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
                                                     {formatCurrency(adjustment.amount)}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3 text-center">{getStatusBadge(adjustment.status)}</td>
                                             <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
                                                 {new Date(2026, adjustment.pay_period_month - 1).toLocaleString('default', {
                                                     month: 'short',
@@ -231,57 +184,8 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
                                             <td className="max-w-xs truncate px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
                                                 {adjustment.reason}
                                             </td>
-                                            <td className="px-4 py-3 text-center">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    {adjustment.status === 'pending' && (
-                                                        <>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-8 text-emerald-600 hover:text-emerald-700"
-                                                                onClick={() => handleApprove(adjustment.id)}
-                                                            >
-                                                                Approve
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-8 text-red-600 hover:text-red-700"
-                                                                onClick={() => handleReject(adjustment.id)}
-                                                            >
-                                                                Reject
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-8 text-slate-600 hover:text-slate-700"
-                                                                onClick={() => handleDelete(adjustment.id)}
-                                                            >
-                                                                Delete
-                                                            </Button>
-                                                        </>
-                                                    )}
-                                                    {adjustment.status === 'approved' && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-8 text-blue-600 hover:text-blue-700"
-                                                            onClick={() => handleProcess(adjustment.id)}
-                                                        >
-                                                            Process
-                                                        </Button>
-                                                    )}
-                                                    {adjustment.status === 'rejected' && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-8 text-slate-600 hover:text-slate-700"
-                                                            onClick={() => handleDelete(adjustment.id)}
-                                                        >
-                                                            Delete
-                                                        </Button>
-                                                    )}
-                                                </div>
+                                            <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
+                                                {formatDate(adjustment.created_at)}
                                             </td>
                                         </tr>
                                     ))}
@@ -296,7 +200,7 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
                             <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300">No adjustments yet</h3>
                             <p className="mt-1 text-sm text-slate-500">Create your first adjustment for this employee</p>
                             <Button asChild className="mt-4">
-                                <Link href={route('adjustments.create')}>
+                                <Link href={route('adjustments.create', { employee_id: employee.id })}>
                                     <Plus className="mr-2 h-4 w-4" />
                                     New Adjustment
                                 </Link>
