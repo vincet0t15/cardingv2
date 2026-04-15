@@ -159,5 +159,9 @@ class RoleSeeder extends Seeder
         // Create roles
         $superAdminRole = Role::firstOrCreate(['name' => 'super admin', 'guard_name' => 'web']);
         $superAdminRole->syncPermissions(Permission::all());
+
+        // Ensure HR and Finance roles exist (some seeders reference them)
+        $hrRole = Role::firstOrCreate(['name' => 'hr', 'guard_name' => 'web']);
+        $financeRole = Role::firstOrCreate(['name' => 'finance', 'guard_name' => 'web']);
     }
 }

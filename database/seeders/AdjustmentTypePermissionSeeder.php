@@ -34,8 +34,8 @@ class AdjustmentTypePermissionSeeder extends Seeder
             Permission::firstOrCreate(['name' => $permission]);
         }
 
-        // Assign all permissions to Super Admin role
-        $superAdmin = Role::where('name', 'super_admin')->first();
+        // Assign all permissions to Super Admin role (normalize name to 'super admin')
+        $superAdmin = Role::where('name', 'super admin')->first();
         if ($superAdmin) {
             $superAdmin->givePermissionTo(array_merge($adjustmentTypePermissions, $referenceTypePermissions));
         }
