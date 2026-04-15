@@ -14,14 +14,16 @@ class Adjustment extends Model
 
     protected $fillable = [
         'employee_id',
-        'adjustment_type',
+        'adjustment_type_id',
+        'adjustment_type', // Keep for backward compatibility
         'amount',
         'currency',
         'pay_period_month',
         'pay_period_year',
         'effectivity_date',
         'reference_id',
-        'reference_type',
+        'reference_type_id',
+        'reference_type', // Keep for backward compatibility
         'status',
         'approved_by',
         'approved_at',
@@ -75,6 +77,16 @@ class Adjustment extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    public function adjustmentType(): BelongsTo
+    {
+        return $this->belongsTo(AdjustmentType::class);
+    }
+
+    public function referenceType(): BelongsTo
+    {
+        return $this->belongsTo(ReferenceType::class);
     }
 
     public function approvedBy(): BelongsTo

@@ -6,16 +6,21 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
+import type { AdjustmentType } from '@/types/adjustmentType';
 import type { Employee } from '@/types/employee';
+import type { ReferenceType } from '@/types/referenceType';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, RefreshCcw, Save } from 'lucide-react';
+
 interface Props {
     employees: Employee[];
+    adjustmentTypes: AdjustmentType[];
+    referenceTypes: ReferenceType[];
     adjustment?: any;
     preSelectedEmployeeId?: string | null;
 }
 
-export default function Create({ employees, adjustment, preSelectedEmployeeId }: Props) {
+export default function Create({ employees, adjustmentTypes, referenceTypes, adjustment, preSelectedEmployeeId }: Props) {
     const isEdit = !!adjustment;
 
     // Dynamic breadcrumbs based on context
@@ -32,13 +37,13 @@ export default function Create({ employees, adjustment, preSelectedEmployeeId }:
 
     const { data, setData, post, put, processing, errors } = useForm({
         employee_id: adjustment?.employee_id?.toString() || preSelectedEmployeeId?.toString() || '',
-        adjustment_type: adjustment?.adjustment_type || '',
+        adjustment_type_id: adjustment?.adjustment_type_id?.toString() || '',
         amount: adjustment?.amount?.toString() || '',
         pay_period_month: adjustment?.pay_period_month?.toString() || (new Date().getMonth() + 1).toString(),
         pay_period_year: adjustment?.pay_period_year?.toString() || new Date().getFullYear().toString(),
         effectivity_date: adjustment?.effectivity_date || new Date().toISOString().split('T')[0],
         reference_id: adjustment?.reference_id || '',
-        reference_type: adjustment?.reference_type || '',
+        reference_type_id: adjustment?.reference_type_id?.toString() || '',
         reason: adjustment?.reason || '',
         remarks: adjustment?.remarks || '',
     });
@@ -53,22 +58,21 @@ export default function Create({ employees, adjustment, preSelectedEmployeeId }:
         }
     };
 
-    // CustomComboBox options
+    // CustomComboBox options from database
     const employeeOptions = employees.map((emp) => ({
         value: emp.id.toString(),
         label: `${emp.first_name} ${emp.last_name}`,
     }));
 
-    const adjustmentTypes = [
-        { value: 'Salary Refund', label: '💰 Salary Refund' },
-        { value: 'Underpayment', label: '📈 Underpayment' },
-        { value: 'Overtime Adjustment', label: '⏰ Overtime Adjustment' },
-        { value: 'Late Adjustment', label: '⏱️ Late Adjustment' },
-        { value: 'Deduction Refund', label: '💸 Deduction Refund' },
-        { value: 'Correction', label: '✏️ Correction' },
-        { value: 'Absence Adjustment', label: '🚫 Absence Adjustment' },
-        { value: 'Holiday Pay Adjustment', label: '🎉 Holiday Pay Adjustment' },
-    ];
+    const adjustmentTypeOptions = adjustmentTypes.map((type) => ({
+        value: type.id.toString(),
+        label: `${type.effect === 'positive' ? '↑' : '↓'} ${type.name}`,
+    }));
+
+    const referenceTypeOptions = referenceTypes.map((type) => ({
+        value: type.id.toString(),
+        label: type.name,
+    }));
 
     const monthOptions = [
         { value: '1', label: 'January' },
@@ -92,13 +96,6 @@ export default function Create({ employees, adjustment, preSelectedEmployeeId }:
         { value: '2023', label: '2023' },
         { value: '2022', label: '2022' },
         { value: '2021', label: '2021' },
-    ];
-
-    const referenceTypeOptions = [
-        { value: 'dtr', label: 'DTR' },
-        { value: 'biometric', label: 'Biometric Record' },
-        { value: 'payroll', label: 'Payroll Record' },
-        { value: 'deduction', label: 'Deduction Record' },
     ];
 
     return (
@@ -156,16 +153,16 @@ export default function Create({ employees, adjustment, preSelectedEmployeeId }:
 
                             {/* Adjustment Type */}
                             <div className="space-y-2">
-                                <Label htmlFor="adjustment_type" className="required">
+                                <Label htmlFor="adjustment_type_id" className="required">
                                     Adjustment Type
                                 </Label>
                                 <CustomComboBox
-                                    items={adjustmentTypes}
+                                    items={adjustmentTypeOptions}
                                     placeholder="Select adjustment type"
-                                    value={data.adjustment_type || null}
-                                    onSelect={(value) => setData('adjustment_type', value || '')}
+                                    value={data.adjustment_type_id || null}
+                                    onSelect={(value) => setData('adjustment_type_id', value || '')}
                                 />
-                                {errors.adjustment_type && <p className="text-sm text-red-500">{errors.adjustment_type}</p>}
+                                {errors.adjustment_type_id && <p className="text-sm text-red-500">{errors.adjustment_type_id}</p>}
                             </div>
 
                             {/* Amount */}
@@ -233,12 +230,12 @@ export default function Create({ employees, adjustment, preSelectedEmployeeId }:
                             {/* Reference */}
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div className="space-y-2">
-                                    <Label htmlFor="reference_type">Reference Type</Label>
+                                    <Label htmlFor="reference_type_id">Reference Type</Label>
                                     <CustomComboBox
                                         items={referenceTypeOptions}
                                         placeholder="Select reference type"
-                                        value={data.reference_type || null}
-                                        onSelect={(value) => setData('reference_type', value || '')}
+                                        value={data.reference_type_id || null}
+                                        onSelect={(value) => setData('reference_type_id', value || '')}
                                     />
                                 </div>
 

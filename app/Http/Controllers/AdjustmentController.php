@@ -87,12 +87,17 @@ class AdjustmentController extends Controller
             ->orderBy('last_name')
             ->get();
 
+        // Load adjustment types and reference types from database
+        $adjustmentTypes = \App\Models\AdjustmentType::orderBy('name')->get();
+        $referenceTypes = \App\Models\ReferenceType::orderBy('name')->get();
+
         // Get pre-selected employee from URL parameter
         $preSelectedEmployeeId = $request->query('employee_id');
 
         return Inertia::render('adjustments/Create', [
             'employees' => $employees,
-            'adjustmentTypes' => Adjustment::getAdjustmentTypes(),
+            'adjustmentTypes' => $adjustmentTypes,
+            'referenceTypes' => $referenceTypes,
             'preSelectedEmployeeId' => $preSelectedEmployeeId,
         ]);
     }

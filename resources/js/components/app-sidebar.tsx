@@ -19,9 +19,11 @@ import {
     MinusSquare,
     Receipt,
     ReceiptCent,
+    RefreshCcw,
     Settings,
     Shield,
     Shirt,
+    Tag,
     Truck,
     UserCheck,
     UserRoundPen,
@@ -142,6 +144,16 @@ const mainNavItems: NavGroup[] = [
                 title: 'Claim Types',
                 href: '/settings/claim-types',
                 icon: ReceiptCent,
+            },
+            {
+                title: 'Adjustment Types',
+                href: '/settings/adjustment-types',
+                icon: RefreshCcw,
+            },
+            {
+                title: 'Reference Types',
+                href: '/settings/reference-types',
+                icon: Tag,
             },
             {
                 title: 'Database Backup',
