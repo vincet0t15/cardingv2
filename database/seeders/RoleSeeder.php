@@ -148,6 +148,30 @@ class RoleSeeder extends Seeder
             // Audit Logs
             'audit_logs.view',
             'audit_logs.export',
+
+            // Adjustment permissions
+            'adjustments.view',
+            'adjustments.create',
+            'adjustments.edit',
+            'adjustments.delete',
+            'adjustments.approve',
+            'adjustments.reject',
+            'adjustments.process',
+            'adjustments.manage',
+
+            // Adjustment Type permissions
+            'adjustment_types.view',
+            'adjustment_types.store',
+            'adjustment_types.edit',
+            'adjustment_types.delete',
+            'adjustment_types.manage',
+
+            // Reference Type permissions
+            'reference_types.view',
+            'reference_types.store',
+            'reference_types.edit',
+            'reference_types.delete',
+            'reference_types.manage',
         ];
 
         foreach ($permissions as $permission) {

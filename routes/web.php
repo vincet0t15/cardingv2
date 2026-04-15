@@ -281,16 +281,16 @@ Route::middleware(['auth', 'active'])->group(function () {
     });
 
     // ADJUSTMENTS - Manage payroll adjustments with approval workflow
-    Route::prefix('adjustments')->group(function () {
+    Route::middleware(['permission:adjustments.view'])->prefix('adjustments')->group(function () {
         Route::get('/', [AdjustmentController::class, 'index'])->name('adjustments.index');
-        Route::get('/create', [AdjustmentController::class, 'create'])->name('adjustments.create');
-        Route::post('/', [AdjustmentController::class, 'store'])->name('adjustments.store');
+        Route::middleware(['permission:adjustments.create'])->get('/create', [AdjustmentController::class, 'create'])->name('adjustments.create');
+        Route::middleware(['permission:adjustments.create'])->post('/', [AdjustmentController::class, 'store'])->name('adjustments.store');
         Route::get('/{adjustment}/edit', [AdjustmentController::class, 'edit'])->name('adjustments.edit');
-        Route::put('/{adjustment}', [AdjustmentController::class, 'update'])->name('adjustments.update');
-        Route::post('/{adjustment}/approve', [AdjustmentController::class, 'approve'])->name('adjustments.approve');
-        Route::post('/{adjustment}/reject', [AdjustmentController::class, 'reject'])->name('adjustments.reject');
-        Route::post('/{adjustment}/process', [AdjustmentController::class, 'process'])->name('adjustments.process');
-        Route::delete('/{adjustment}', [AdjustmentController::class, 'destroy'])->name('adjustments.destroy');
+        Route::middleware(['permission:adjustments.edit'])->put('/{adjustment}', [AdjustmentController::class, 'update'])->name('adjustments.update');
+        Route::middleware(['permission:adjustments.approve'])->post('/{adjustment}/approve', [AdjustmentController::class, 'approve'])->name('adjustments.approve');
+        Route::middleware(['permission:adjustments.reject'])->post('/{adjustment}/reject', [AdjustmentController::class, 'reject'])->name('adjustments.reject');
+        Route::middleware(['permission:adjustments.process'])->post('/{adjustment}/process', [AdjustmentController::class, 'process'])->name('adjustments.process');
+        Route::middleware(['permission:adjustments.delete'])->delete('/{adjustment}', [AdjustmentController::class, 'destroy'])->name('adjustments.destroy');
     });
 
     // ADJUSTMENT TYPES (Settings CRUD)
