@@ -45,6 +45,27 @@ function getEffectiveAmount(history: { amount: number; effective_date: string }[
     return Number(sortedHistory[sortedHistory.length - 1]?.amount ?? 0);
 }
 
+// Helper function to get hazard pay for a specific period (based on start_date)
+function getHazardPayForPeriod(hazardPays: { amount: number; start_date: string }[] | undefined, periodYear: number, periodMonth: number): number {
+    if (!hazardPays || hazardPays.length === 0) return 0;
+
+    // Create a date for the end of the period (last day of the month)
+    const periodEndDate = new Date(periodYear, periodMonth, 0);
+
+    // Sort by start_date descending (newest first)
+    const sortedHazard = [...hazardPays].sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
+
+    // Find the most recent hazard pay that started before or during this period
+    for (const hazard of sortedHazard) {
+        const hazardStartDate = new Date(hazard.start_date);
+        if (hazardStartDate <= periodEndDate) {
+            return Number(hazard.amount);
+        }
+    }
+
+    return 0;
+}
+
 interface MonthlyDeductionRow {
     year: number;
     month: number;
@@ -105,22 +126,26 @@ export const PrintReport = forwardRef<HTMLDivElement, PrintReportProps>(({ emplo
     let salary: number;
     let pera: number;
     let rata: number;
+    let hazardPay: number;
 
     if (filterMonth && filterYear) {
         salary = getEffectiveAmount(employee.salaries, parseInt(filterYear), parseInt(filterMonth));
         pera = getEffectiveAmount(employee.peras, parseInt(filterYear), parseInt(filterMonth));
         rata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, parseInt(filterYear), parseInt(filterMonth)) : 0;
+        hazardPay = getHazardPayForPeriod(employee.hazardPays, parseInt(filterYear), parseInt(filterMonth));
     } else if (filterYear) {
         salary = getEffectiveAmount(employee.salaries, parseInt(filterYear), 12);
         pera = getEffectiveAmount(employee.peras, parseInt(filterYear), 12);
         rata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, parseInt(filterYear), 12) : 0;
+        hazardPay = getHazardPayForPeriod(employee.hazardPays, parseInt(filterYear), 12);
     } else {
         salary = Number(employee.latest_salary?.amount ?? 0);
         pera = Number(employee.latest_pera?.amount ?? 0);
         rata = employee.is_rata_eligible ? Number(employee.latest_rata?.amount ?? 0) : 0;
+        hazardPay = Number(employee.latest_hazard_pay?.amount ?? 0);
     }
 
-    const grossPay = salary + pera + rata;
+    const grossPay = salary + pera + rata + hazardPay;
     const netPay = grossPay - totalAllDeductions;
 
     const currentDate = new Date().toLocaleDateString('en-PH', {
@@ -196,8 +221,14 @@ export const PrintReport = forwardRef<HTMLDivElement, PrintReportProps>(({ emplo
                                             <td className="border border-black p-2 text-right">
                                                 {employee.is_rata_eligible ? formatCurrency(rata) : '-'}
                                             </td>
+                                            <td className="border border-black p-2 font-bold">Hazard Pay</td>
+                                            <td className="border border-black p-2 text-right">{formatCurrency(hazardPay)}</td>
+                                        </tr>
+                                        <tr>
                                             <td className="border border-black p-2 font-bold">Gross Pay</td>
-                                            <td className="border border-black p-2 text-right font-medium">{formatCurrency(grossPay)}</td>
+                                            <td className="border border-black p-2 text-right font-medium" colSpan={3}>
+                                                {formatCurrency(grossPay)}
+                                            </td>
                                         </tr>
                                         <tr>
                                             <td className="border border-black p-2 font-bold">Total Deductions</td>

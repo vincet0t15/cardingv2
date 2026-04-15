@@ -39,6 +39,45 @@ function getEffectiveAmount(history: { amount: number; effective_date: string }[
     return Number(sortedHistory[sortedHistory.length - 1]?.amount ?? 0);
 }
 
+// Helper function for date range allowances (hazard pay, clothing allowance)
+function getEffectiveAmountForDateRange(
+    history: { amount: number; start_date: string; end_date?: string }[] | undefined,
+    periodYear: number,
+    periodMonth: number,
+): number {
+    if (!history || history.length === 0) return 0;
+
+    const periodStart = new Date(periodYear, periodMonth - 1, 1);
+    const periodEnd = new Date(periodYear, periodMonth, 0); // Last day of month, 00:00
+    periodEnd.setHours(23, 59, 59, 999); // Set to end of day
+
+    const matched = history
+        .filter((record) => {
+            const startParts = record.start_date.split('-');
+            const startDate = new Date(parseInt(startParts[0]), parseInt(startParts[1]) - 1, parseInt(startParts[2]));
+
+            let endDate: Date | null = null;
+            if (record.end_date) {
+                const endParts = record.end_date.split('-');
+                endDate = new Date(parseInt(endParts[0]), parseInt(endParts[1]) - 1, parseInt(endParts[2]), 23, 59, 59, 999);
+            }
+
+            const isActive = startDate <= periodEnd;
+            const matches = endDate ? isActive && endDate >= periodStart : isActive;
+            return matches;
+        })
+        .sort((a, b) => {
+            const aParts = a.start_date.split('-');
+            const bParts = b.start_date.split('-');
+            return (
+                new Date(parseInt(bParts[0]), parseInt(bParts[1]) - 1, parseInt(bParts[2])).getTime() -
+                new Date(parseInt(aParts[0]), parseInt(aParts[1]) - 1, parseInt(aParts[2])).getTime()
+            );
+        })[0];
+
+    return Number(matched?.amount ?? 0);
+}
+
 interface MonthlyDeductionRow {
     year: number;
     month: number;
@@ -145,16 +184,27 @@ function Reports({ employee, allDeductions, allClaims }: ReportsProps) {
         salary = getEffectiveAmount(employee.salaries, parseInt(filterYear), parseInt(filterMonth));
         pera = getEffectiveAmount(employee.peras, parseInt(filterYear), parseInt(filterMonth));
         rata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, parseInt(filterYear), parseInt(filterMonth)) : 0;
-        hazardPay = getEffectiveAmount(employee.hazardPays, parseInt(filterYear), parseInt(filterMonth));
-        clothingAllowance = getEffectiveAmount(employee.clothingAllowances, parseInt(filterYear), parseInt(filterMonth));
+        hazardPay = getEffectiveAmountForDateRange(employee.hazardPays, parseInt(filterYear), parseInt(filterMonth));
+        clothingAllowance = getEffectiveAmountForDateRange(employee.clothingAllowances, parseInt(filterYear), parseInt(filterMonth));
         showGrossAndNet = true; // Specific period - calculations make sense
     } else if (filterYear) {
         // Year only - sum ALL records within that year
         salary = sumCompensationForYear(employee.salaries, parseInt(filterYear));
         pera = sumCompensationForYear(employee.peras, parseInt(filterYear));
         rata = employee.is_rata_eligible ? sumCompensationForYear(employee.ratas, parseInt(filterYear)) : 0;
-        hazardPay = sumCompensationForYear(employee.hazardPays, parseInt(filterYear));
-        clothingAllowance = sumCompensationForYear(employee.clothingAllowances, parseInt(filterYear));
+        // For year view, sum date-range based records that fall in the year
+        hazardPay = employee.hazardPays
+            ? employee.hazardPays.reduce((sum, r) => {
+                  const startYear = parseInt(r.start_date.split('-')[0]);
+                  return startYear === parseInt(filterYear) ? sum + Number(r.amount) : sum;
+              }, 0)
+            : 0;
+        clothingAllowance = employee.clothingAllowances
+            ? employee.clothingAllowances.reduce((sum, r) => {
+                  const startYear = parseInt(r.start_date.split('-')[0]);
+                  return startYear === parseInt(filterYear) ? sum + Number(r.amount) : sum;
+              }, 0)
+            : 0;
         showGrossAndNet = true;
         isYearlyView = true;
     } else {
@@ -162,8 +212,9 @@ function Reports({ employee, allDeductions, allClaims }: ReportsProps) {
         salary = sumCompensation(employee.salaries);
         pera = sumCompensation(employee.peras);
         rata = employee.is_rata_eligible ? sumCompensation(employee.ratas) : 0;
-        hazardPay = sumCompensation(employee.hazardPays);
-        clothingAllowance = sumCompensation(employee.clothingAllowances);
+        // All-time sum for date-range based allowances
+        hazardPay = employee.hazardPays ? employee.hazardPays.reduce((sum, r) => sum + Number(r.amount), 0) : 0;
+        clothingAllowance = employee.clothingAllowances ? employee.clothingAllowances.reduce((sum, r) => sum + Number(r.amount), 0) : 0;
         showGrossAndNet = true; // Now we can show gross/net for all-time view
         isAllTimeView = true;
     }

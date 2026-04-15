@@ -64,7 +64,8 @@ function getEffectiveAmountForDateRange(
     });
 
     const periodStart = new Date(periodYear, periodMonth - 1, 1);
-    const periodEnd = new Date(periodYear, periodMonth, 0, 23, 59, 59, 999);
+    const periodEnd = new Date(periodYear, periodMonth, 0); // Last day of month, 00:00
+    periodEnd.setHours(23, 59, 59, 999); // Set to end of day
 
     console.log('Period range:', {
         periodStart: periodStart.toISOString(),
