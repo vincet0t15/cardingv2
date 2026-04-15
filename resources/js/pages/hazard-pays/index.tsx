@@ -62,7 +62,8 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
     } = useForm({
         employee_id: 0,
         amount: '',
-        effective_date: new Date().toISOString().split('T')[0],
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: '' as string | undefined,
     });
 
     const officeOptions = offices.map((o) => ({ value: o.id.toString(), label: o.name }));
@@ -342,8 +343,11 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            {employee.latest_hazard_pay?.effective_date
-                                                ? new Date(employee.latest_hazard_pay.effective_date).toLocaleDateString()
+                                            {employee.latest_hazard_pay?.start_date
+                                                ? new Date(employee.latest_hazard_pay.start_date).toLocaleDateString() +
+                                                  (employee.latest_hazard_pay.end_date
+                                                      ? ` - ${new Date(employee.latest_hazard_pay.end_date).toLocaleDateString()}`
+                                                      : ' - Present')
                                                 : '-'}
                                         </TableCell>
                                         <TableCell className="text-right">
@@ -406,15 +410,27 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
                             />
                             {errors.amount && <p className="mt-1 text-sm text-red-500">{errors.amount}</p>}
                         </div>
-                        <div>
-                            <Label htmlFor="effective_date">Effective Date</Label>
-                            <Input
-                                id="effective_date"
-                                type="date"
-                                value={hazardPayData.effective_date}
-                                onChange={(e) => setHazardPayData('effective_date', e.target.value)}
-                            />
-                            {errors.effective_date && <p className="mt-1 text-sm text-red-500">{errors.effective_date}</p>}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label htmlFor="start_date">Start Date</Label>
+                                <Input
+                                    id="start_date"
+                                    type="date"
+                                    value={hazardPayData.start_date}
+                                    onChange={(e) => setHazardPayData('start_date', e.target.value)}
+                                />
+                                {errors.start_date && <p className="mt-1 text-sm text-red-500">{errors.start_date}</p>}
+                            </div>
+                            <div>
+                                <Label htmlFor="end_date">End Date (Optional)</Label>
+                                <Input
+                                    id="end_date"
+                                    type="date"
+                                    value={hazardPayData.end_date || ''}
+                                    onChange={(e) => setHazardPayData('end_date', e.target.value || undefined)}
+                                />
+                                {errors.end_date && <p className="mt-1 text-sm text-red-500">{errors.end_date}</p>}
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>

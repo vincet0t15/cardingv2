@@ -125,7 +125,12 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{formatCurrency(employee.latest_hazard_pay?.amount)}</div>
-                            <p className="text-muted-foreground mt-1 text-xs">Effective {formatDate(employee.latest_hazard_pay?.effective_date)}</p>
+                            <p className="text-muted-foreground mt-1 text-xs">
+                                {employee.latest_hazard_pay?.start_date
+                                    ? formatDate(employee.latest_hazard_pay.start_date) +
+                                      (employee.latest_hazard_pay.end_date ? ` - ${formatDate(employee.latest_hazard_pay.end_date)}` : ' - Present')
+                                    : 'N/A'}
+                            </p>
                         </CardContent>
                     </Card>
 
@@ -139,7 +144,12 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         <CardContent>
                             <div className="text-2xl font-bold">{formatCurrency(employee.latest_clothing_allowance?.amount)}</div>
                             <p className="text-muted-foreground mt-1 text-xs">
-                                Effective {formatDate(employee.latest_clothing_allowance?.effective_date)}
+                                {employee.latest_clothing_allowance?.start_date
+                                    ? formatDate(employee.latest_clothing_allowance.start_date) +
+                                      (employee.latest_clothing_allowance.end_date
+                                          ? ` - ${formatDate(employee.latest_clothing_allowance.end_date)}`
+                                          : ' - Present')
+                                    : 'N/A'}
                             </p>
                         </CardContent>
                     </Card>

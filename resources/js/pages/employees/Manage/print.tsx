@@ -45,6 +45,30 @@ function getEffectiveAmount(history: { amount: number; effective_date: string }[
     return Number(sortedHistory[sortedHistory.length - 1]?.amount ?? 0);
 }
 
+// Helper function for date range allowances (hazard pay, clothing allowance)
+function getEffectiveAmountForDateRange(
+    history: { amount: number; start_date: string; end_date?: string }[] | undefined,
+    periodYear: number,
+    periodMonth: number,
+): number {
+    if (!history || history.length === 0) return 0;
+
+    const periodStart = new Date(periodYear, periodMonth - 1, 1);
+    const periodEnd = new Date(periodYear, periodMonth, 0);
+
+    const effectiveRecord = history
+        .filter((record) => {
+            const startDate = new Date(record.start_date);
+            const endDate = record.end_date ? new Date(record.end_date) : null;
+
+            const isActive = startDate <= periodEnd;
+            return endDate ? isActive && endDate >= periodStart : isActive;
+        })
+        .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())[0];
+
+    return Number(effectiveRecord?.amount ?? 0);
+}
+
 interface MonthlyDeductionRow {
     year: number;
     month: number;
@@ -139,11 +163,26 @@ export default function EmployeePrintReport({
         return history.reduce((sum, record) => sum + Number(record.amount), 0);
     }
 
+    // Helper function to sum compensation for date range records
+    function sumCompensationForDateRange(history: { amount: number; start_date: string; end_date?: string }[] | undefined): number {
+        if (!history || history.length === 0) return 0;
+        return history.reduce((sum, record) => sum + Number(record.amount), 0);
+    }
+
     // Helper function to sum compensation for a specific year
     function sumCompensationForYear(history: { amount: number; effective_date: string }[] | undefined, year: number): number {
         if (!history || history.length === 0) return 0;
         return history.reduce((sum, record) => {
             const recordYear = new Date(record.effective_date).getFullYear();
+            return recordYear === year ? sum + Number(record.amount) : sum;
+        }, 0);
+    }
+
+    // Helper function to sum date range compensation for a specific year
+    function sumCompensationForYearDateRange(history: { amount: number; start_date: string; end_date?: string }[] | undefined, year: number): number {
+        if (!history || history.length === 0) return 0;
+        return history.reduce((sum, record) => {
+            const recordYear = new Date(record.start_date).getFullYear();
             return recordYear === year ? sum + Number(record.amount) : sum;
         }, 0);
     }
@@ -163,16 +202,16 @@ export default function EmployeePrintReport({
         salary = getEffectiveAmount(employee.salaries, parseInt(filterYear), parseInt(filterMonth));
         pera = getEffectiveAmount(employee.peras, parseInt(filterYear), parseInt(filterMonth));
         rata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, parseInt(filterYear), parseInt(filterMonth)) : 0;
-        hazardPay = getEffectiveAmount(employee.hazardPays, parseInt(filterYear), parseInt(filterMonth));
-        clothingAllowance = getEffectiveAmount(employee.clothingAllowances, parseInt(filterYear), parseInt(filterMonth));
+        hazardPay = getEffectiveAmountForDateRange(employee.hazardPays, parseInt(filterYear), parseInt(filterMonth));
+        clothingAllowance = getEffectiveAmountForDateRange(employee.clothingAllowances, parseInt(filterYear), parseInt(filterMonth));
         adjustments = sumAdjustmentsForPeriod(allAdjustments, parseInt(filterYear), parseInt(filterMonth));
         showGrossAndNet = true;
     } else if (filterYear) {
         salary = sumCompensationForYear(employee.salaries, parseInt(filterYear));
         pera = sumCompensationForYear(employee.peras, parseInt(filterYear));
         rata = employee.is_rata_eligible ? sumCompensationForYear(employee.ratas, parseInt(filterYear)) : 0;
-        hazardPay = sumCompensationForYear(employee.hazardPays, parseInt(filterYear));
-        clothingAllowance = sumCompensationForYear(employee.clothingAllowances, parseInt(filterYear));
+        hazardPay = sumCompensationForYearDateRange(employee.hazardPays, parseInt(filterYear));
+        clothingAllowance = sumCompensationForYearDateRange(employee.clothingAllowances, parseInt(filterYear));
         adjustments = sumAdjustmentsForPeriod(allAdjustments, parseInt(filterYear));
         showGrossAndNet = true;
         isYearlyView = true;
@@ -180,8 +219,8 @@ export default function EmployeePrintReport({
         salary = sumCompensation(employee.salaries);
         pera = sumCompensation(employee.peras);
         rata = employee.is_rata_eligible ? sumCompensation(employee.ratas) : 0;
-        hazardPay = sumCompensation(employee.hazardPays);
-        clothingAllowance = sumCompensation(employee.clothingAllowances);
+        hazardPay = sumCompensationForDateRange(employee.hazardPays);
+        clothingAllowance = sumCompensationForDateRange(employee.clothingAllowances);
         adjustments = totalAllAdjustments;
         showGrossAndNet = true; // Now we can show gross/net for all-time view
         isAllTimeView = true;

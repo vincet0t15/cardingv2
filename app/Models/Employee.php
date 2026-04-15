@@ -127,7 +127,7 @@ class Employee extends Model
      */
     public function latestHazardPay(): HasOne
     {
-        return $this->hasOne(HazardPay::class)->latestOfMany('effective_date');
+        return $this->hasOne(HazardPay::class)->latestOfMany('start_date');
     }
 
     /**
@@ -135,7 +135,7 @@ class Employee extends Model
      */
     public function latestClothingAllowance(): HasOne
     {
-        return $this->hasOne(ClothingAllowance::class)->latestOfMany('effective_date');
+        return $this->hasOne(ClothingAllowance::class)->latestOfMany('start_date');
     }
 
     public static function boot()

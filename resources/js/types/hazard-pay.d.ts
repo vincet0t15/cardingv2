@@ -4,7 +4,7 @@ export interface HazardPay {
     id: number;
     employee_id: number;
     amount: number;
-    effective_date: string;
+    start_date: string;
     end_date?: string;
     created_by: number;
     created_at: string;
@@ -25,6 +25,7 @@ export interface HazardPay {
 export interface HazardPayCreateRequest {
     employee_id: number;
     amount: number;
-    effective_date: string;
+    start_date: string;
+    end_date?: string | null;
     source_of_fund_code_id?: number | null;
 }

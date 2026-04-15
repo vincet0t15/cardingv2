@@ -31,7 +31,8 @@ function AddClothingAllowanceDialog({
     const { data, setData, post, processing, reset } = useForm({
         employee_id: employee.id,
         amount: '',
-        effective_date: new Date().toISOString().split('T')[0],
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: '' as string | undefined,
         source_of_fund_code_id: null as number | null,
     });
 
@@ -53,7 +54,7 @@ function AddClothingAllowanceDialog({
                 <form onSubmit={onSubmit}>
                     <DialogHeader>
                         <DialogTitle>Add Clothing Allowance</DialogTitle>
-                        <DialogDescription>Enter the clothing allowance amount and effective date.</DialogDescription>
+                        <DialogDescription>Enter the clothing allowance amount and date range.</DialogDescription>
                     </DialogHeader>
                     <div className="mt-4 space-y-4">
                         <div className="flex flex-col gap-1">
@@ -68,9 +69,15 @@ function AddClothingAllowanceDialog({
                                 required
                             />
                         </div>
-                        <div className="flex flex-col gap-1">
-                            <Label>Effective Date</Label>
-                            <DatePicker value={data.effective_date} onChange={(value) => setData('effective_date', value)} />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1">
+                                <Label>Start Date</Label>
+                                <DatePicker value={data.start_date} onChange={(value) => setData('start_date', value)} />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <Label>End Date (Optional)</Label>
+                                <DatePicker value={data.end_date} onChange={(value) => setData('end_date', value)} />
+                            </div>
                         </div>
                         <div className="flex flex-col gap-1">
                             <Label>Source of Fund Code (Optional)</Label>
@@ -116,7 +123,8 @@ function EditClothingAllowanceDialog({
 }) {
     const { data, setData, put, processing, reset } = useForm({
         amount: String(clothingAllowance.amount),
-        effective_date: clothingAllowance.effective_date,
+        start_date: clothingAllowance.start_date,
+        end_date: clothingAllowance.end_date || undefined,
         source_of_fund_code_id: clothingAllowance.source_of_fund_code?.id || (null as number | null),
     });
 
@@ -141,7 +149,7 @@ function EditClothingAllowanceDialog({
                 <form onSubmit={onSubmit}>
                     <DialogHeader>
                         <DialogTitle>Edit Clothing Allowance</DialogTitle>
-                        <DialogDescription>Update the clothing allowance amount and effective date.</DialogDescription>
+                        <DialogDescription>Update the clothing allowance amount and date range.</DialogDescription>
                     </DialogHeader>
                     <div className="mt-4 space-y-4">
                         <div className="flex flex-col gap-1">
@@ -156,9 +164,15 @@ function EditClothingAllowanceDialog({
                                 required
                             />
                         </div>
-                        <div className="flex flex-col gap-1">
-                            <Label>Effective Date</Label>
-                            <DatePicker value={data.effective_date} onChange={(value) => setData('effective_date', value)} />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1">
+                                <Label>Start Date</Label>
+                                <DatePicker value={data.start_date} onChange={(value) => setData('start_date', value)} />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <Label>End Date (Optional)</Label>
+                                <DatePicker value={data.end_date} onChange={(value) => setData('end_date', value)} />
+                            </div>
                         </div>
                         <div className="flex flex-col gap-1">
                             <Label>Source of Fund Code (Optional)</Label>
@@ -242,8 +256,11 @@ export function CompensationClothingAllowance({ employee, sourceOfFundCodes }: C
                     <div className="px-6 py-5">
                         <div className="flex items-baseline justify-between">
                             <div>
-                                <p className="text-muted-foreground text-xs">Effective Date</p>
-                                <p className="mt-1 font-medium text-slate-900">{formatDate(current.effective_date)}</p>
+                                <p className="text-muted-foreground text-xs">Active Period</p>
+                                <p className="mt-1 font-medium text-slate-900">
+                                    {formatDate(current.start_date)}
+                                    {current.end_date ? ` - ${formatDate(current.end_date)}` : ' - Present'}
+                                </p>
                             </div>
                             <div className="text-right">
                                 <p className="text-muted-foreground text-xs">Amount</p>
@@ -265,7 +282,7 @@ export function CompensationClothingAllowance({ employee, sourceOfFundCodes }: C
                             <TableHeader>
                                 <TableRow className="bg-slate-50">
                                     <TableHead className="font-semibold">Amount</TableHead>
-                                    <TableHead className="font-semibold">Effective Date</TableHead>
+                                    <TableHead className="font-semibold">Date Range</TableHead>
                                     <TableHead className="text-right font-semibold">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -273,7 +290,10 @@ export function CompensationClothingAllowance({ employee, sourceOfFundCodes }: C
                                 {clothingAllowances.map((ca, i) => (
                                     <TableRow key={ca.id} className={i === 0 ? 'font-semibold' : ''}>
                                         <TableCell>{formatCurrency(ca.amount)}</TableCell>
-                                        <TableCell className="text-muted-foreground text-sm">{formatDate(ca.effective_date)}</TableCell>
+                                        <TableCell className="text-muted-foreground text-sm">
+                                            {formatDate(ca.start_date)}
+                                            {ca.end_date ? ` - ${formatDate(ca.end_date)}` : ' - Present'}
+                                        </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-1">
                                                 <Button variant="ghost" size="icon" onClick={() => handleEdit(ca)} className="h-8 w-8">

@@ -56,12 +56,24 @@ class PayrollController extends Controller
                     ->orderBy('effective_date', 'desc');
             }])
             ->with(['hazardPays' => function ($query) use ($year, $calculationMonth) {
-                $query->where('effective_date', '<=', now()->setDate($year, $calculationMonth, 1)->endOfMonth())
-                    ->orderBy('effective_date', 'desc');
+                $periodEnd = now()->setDate($year, $calculationMonth, 1)->endOfMonth();
+                $periodStart = now()->setDate($year, $calculationMonth, 1)->startOfMonth();
+                $query->where('start_date', '<=', $periodEnd)
+                    ->where(function ($q) use ($periodEnd, $periodStart) {
+                        $q->whereNull('end_date')
+                            ->orWhere('end_date', '>=', $periodStart);
+                    })
+                    ->orderBy('start_date', 'desc');
             }])
             ->with(['clothingAllowances' => function ($query) use ($year, $calculationMonth) {
-                $query->where('effective_date', '<=', now()->setDate($year, $calculationMonth, 1)->endOfMonth())
-                    ->orderBy('effective_date', 'desc');
+                $periodEnd = now()->setDate($year, $calculationMonth, 1)->endOfMonth();
+                $periodStart = now()->setDate($year, $calculationMonth, 1)->startOfMonth();
+                $query->where('start_date', '<=', $periodEnd)
+                    ->where(function ($q) use ($periodEnd, $periodStart) {
+                        $q->whereNull('end_date')
+                            ->orWhere('end_date', '>=', $periodStart);
+                    })
+                    ->orderBy('start_date', 'desc');
             }])
             ->with(['deductions' => function ($query) use ($calculationMonth, $year) {
                 $query->where('pay_period_month', $calculationMonth)
@@ -214,6 +226,26 @@ class PayrollController extends Controller
                     $query->where('effective_date', '<=', $periodEnd)
                         ->orderBy('effective_date', 'desc');
                 }])
+                ->with(['hazardPays' => function ($query) use ($month, $year) {
+                    $periodEnd = now()->setDate($year, $month, 1)->endOfMonth();
+                    $periodStart = now()->setDate($year, $month, 1)->startOfMonth();
+                    $query->where('start_date', '<=', $periodEnd)
+                        ->where(function ($q) use ($periodEnd, $periodStart) {
+                            $q->whereNull('end_date')
+                                ->orWhere('end_date', '>=', $periodStart);
+                        })
+                        ->orderBy('start_date', 'desc');
+                }])
+                ->with(['clothingAllowances' => function ($query) use ($month, $year) {
+                    $periodEnd = now()->setDate($year, $month, 1)->endOfMonth();
+                    $periodStart = now()->setDate($year, $month, 1)->startOfMonth();
+                    $query->where('start_date', '<=', $periodEnd)
+                        ->where(function ($q) use ($periodEnd, $periodStart) {
+                            $q->whereNull('end_date')
+                                ->orWhere('end_date', '>=', $periodStart);
+                        })
+                        ->orderBy('start_date', 'desc');
+                }])
                 ->with(['deductions' => function ($query) use ($month, $year) {
                     $query->where('pay_period_month', $month)
                         ->where('pay_period_year', $year);
@@ -317,8 +349,9 @@ class PayrollController extends Controller
                 $salary = $this->payrollService->getEffectiveAmount($employee->salaries, $year, $monthNum);
                 $pera = $this->payrollService->getEffectiveAmount($employee->peras, $year, $monthNum);
                 $rata = $employee->is_rata_eligible ? $this->payrollService->getEffectiveAmount($employee->ratas, $year, $monthNum) : 0;
-                $hazardPay = $this->payrollService->getEffectiveAmount($employee->hazardPays, $year, $monthNum);
-                $clothingAllowance = $this->payrollService->getEffectiveAmount($employee->clothingAllowances, $year, $monthNum);
+                // Use date range logic for hazard pay and clothing allowance
+                $hazardPay = $this->payrollService->getEffectiveAmountForDateRange($employee->hazardPays, $year, $monthNum);
+                $clothingAllowance = $this->payrollService->getEffectiveAmountForDateRange($employee->clothingAllowances, $year, $monthNum);
                 $deductions = $employee->deductions()
                     ->where('pay_period_month', $monthNum)
                     ->where('pay_period_year', $year)

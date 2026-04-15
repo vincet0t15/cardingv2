@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AdjustmentType;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class AdjustmentTypeController extends Controller
@@ -44,7 +45,7 @@ class AdjustmentTypeController extends Controller
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'effect' => $validated['effect'],
-            'created_by' => auth()->id(),
+            'created_by' => Auth::id(),
         ]);
 
         return redirect()->back()->with('success', 'Adjustment Type created successfully.');

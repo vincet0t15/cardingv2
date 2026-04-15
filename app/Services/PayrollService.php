@@ -6,6 +6,9 @@ use Illuminate\Support\Collection;
 
 class PayrollService
 {
+    /**
+     * Get effective amount for records with effective_date (salary, pera, rata)
+     */
     public function getEffectiveAmount(Collection $history, int $year, int $month): float
     {
         if ($history->isEmpty()) {
@@ -25,13 +28,55 @@ class PayrollService
         return (float) ($effectiveRecord?->amount ?? 0);
     }
 
+    /**
+     * Get effective amount for records with date range (hazard pay, clothing allowance)
+     * Checks if the given month/year falls within start_date and end_date range
+     */
+    public function getEffectiveAmountForDateRange(Collection $history, int $year, int $month): float
+    {
+        if ($history->isEmpty()) {
+            return 0;
+        }
+
+        $periodStart = now()->setDate($year, $month, 1)->startOfMonth();
+        $periodEnd = now()->setDate($year, $month, 1)->endOfMonth();
+
+        // Find records where the period falls within start_date and end_date range
+        $effectiveRecord = $history
+            ->filter(function ($record) use ($periodStart, $periodEnd) {
+                // Record is active if:
+                // 1. start_date <= end of period AND
+                // 2. (end_date >= start of period OR end_date is null)
+                $startDate = $record->start_date ?? $record->effective_date ?? null;
+                $endDate = $record->end_date;
+
+                if (!$startDate) {
+                    return false;
+                }
+
+                $isActive = $startDate <= $periodEnd;
+
+                if ($endDate) {
+                    $isActive = $isActive && ($endDate >= $periodStart);
+                }
+
+                return $isActive;
+            })
+            ->sortByDesc('start_date')
+            ->first();
+
+        return (float) ($effectiveRecord?->amount ?? 0);
+    }
+
     public function calculatePayroll($employee, int $year, int $month): array
     {
         $salary = $this->getEffectiveAmount($employee->salaries, $year, $month);
         $pera = $this->getEffectiveAmount($employee->peras, $year, $month);
         $rata = $employee->is_rata_eligible ? $this->getEffectiveAmount($employee->ratas, $year, $month) : 0;
-        $hazardPay = $this->getEffectiveAmount($employee->hazardPays, $year, $month);
-        $clothingAllowance = $this->getEffectiveAmount($employee->clothingAllowances, $year, $month);
+
+        // Use date range logic for hazard pay and clothing allowance
+        $hazardPay = $this->getEffectiveAmountForDateRange($employee->hazardPays, $year, $month);
+        $clothingAllowance = $this->getEffectiveAmountForDateRange($employee->clothingAllowances, $year, $month);
 
         $totalDeductions = (float) $employee->deductions
             ->where('pay_period_month', $month)

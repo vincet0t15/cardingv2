@@ -14,7 +14,7 @@ class ClothingAllowance extends Model
     protected $fillable = [
         'employee_id',
         'amount',
-        'effective_date',
+        'start_date',
         'end_date',
         'created_by',
         'source_of_fund_code_id',
@@ -22,7 +22,7 @@ class ClothingAllowance extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
-        'effective_date' => 'date',
+        'start_date' => 'date',
         'end_date' => 'date',
     ];
 

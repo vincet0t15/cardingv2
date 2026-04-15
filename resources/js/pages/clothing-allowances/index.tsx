@@ -62,7 +62,8 @@ export default function ClothingAllowancesIndex({ employees, offices, employment
     } = useForm({
         employee_id: 0,
         amount: '',
-        effective_date: new Date().toISOString().split('T')[0],
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: '' as string | undefined,
     });
 
     const officeOptions = offices.map((o) => ({ value: o.id.toString(), label: o.name }));
@@ -345,8 +346,11 @@ export default function ClothingAllowancesIndex({ employees, offices, employment
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            {employee.latest_clothing_allowance?.effective_date
-                                                ? new Date(employee.latest_clothing_allowance.effective_date).toLocaleDateString()
+                                            {employee.latest_clothing_allowance?.start_date
+                                                ? new Date(employee.latest_clothing_allowance.start_date).toLocaleDateString() +
+                                                  (employee.latest_clothing_allowance.end_date
+                                                      ? ` - ${new Date(employee.latest_clothing_allowance.end_date).toLocaleDateString()}`
+                                                      : ' - Present')
                                                 : '-'}
                                         </TableCell>
                                         <TableCell className="text-right">
@@ -409,15 +413,27 @@ export default function ClothingAllowancesIndex({ employees, offices, employment
                             />
                             {errors.amount && <p className="mt-1 text-sm text-red-500">{errors.amount}</p>}
                         </div>
-                        <div>
-                            <Label htmlFor="effective_date">Effective Date</Label>
-                            <Input
-                                id="effective_date"
-                                type="date"
-                                value={clothingAllowanceData.effective_date}
-                                onChange={(e) => setClothingAllowanceData('effective_date', e.target.value)}
-                            />
-                            {errors.effective_date && <p className="mt-1 text-sm text-red-500">{errors.effective_date}</p>}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label htmlFor="start_date">Start Date</Label>
+                                <Input
+                                    id="start_date"
+                                    type="date"
+                                    value={clothingAllowanceData.start_date}
+                                    onChange={(e) => setClothingAllowanceData('start_date', e.target.value)}
+                                />
+                                {errors.start_date && <p className="mt-1 text-sm text-red-500">{errors.start_date}</p>}
+                            </div>
+                            <div>
+                                <Label htmlFor="end_date">End Date (Optional)</Label>
+                                <Input
+                                    id="end_date"
+                                    type="date"
+                                    value={clothingAllowanceData.end_date || ''}
+                                    onChange={(e) => setClothingAllowanceData('end_date', e.target.value || undefined)}
+                                />
+                                {errors.end_date && <p className="mt-1 text-sm text-red-500">{errors.end_date}</p>}
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>

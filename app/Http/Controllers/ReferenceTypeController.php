@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ReferenceType;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class ReferenceTypeController extends Controller
@@ -42,7 +43,7 @@ class ReferenceTypeController extends Controller
         ReferenceType::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
-            'created_by' => auth()->id(),
+            'created_by' => Auth::id(),
         ]);
 
         return redirect()->back()->with('success', 'Reference Type created successfully.');

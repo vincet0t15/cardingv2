@@ -31,7 +31,8 @@ function AddHazardPayDialog({
     const { data, setData, post, processing, reset } = useForm({
         employee_id: employee.id,
         amount: '',
-        effective_date: new Date().toISOString().split('T')[0],
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: '' as string | undefined,
         source_of_fund_code_id: null as number | null,
     });
 
@@ -53,7 +54,7 @@ function AddHazardPayDialog({
                 <form onSubmit={onSubmit}>
                     <DialogHeader>
                         <DialogTitle>Add Hazard Pay</DialogTitle>
-                        <DialogDescription>Enter the hazard pay amount and effective date.</DialogDescription>
+                        <DialogDescription>Enter the hazard pay amount and date range.</DialogDescription>
                     </DialogHeader>
                     <div className="mt-4 space-y-4">
                         <div className="flex flex-col gap-1">
@@ -68,9 +69,15 @@ function AddHazardPayDialog({
                                 required
                             />
                         </div>
-                        <div className="flex flex-col gap-1">
-                            <Label>Effective Date</Label>
-                            <DatePicker value={data.effective_date} onChange={(value) => setData('effective_date', value)} />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1">
+                                <Label>Start Date</Label>
+                                <DatePicker value={data.start_date} onChange={(value) => setData('start_date', value)} />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <Label>End Date (Optional)</Label>
+                                <DatePicker value={data.end_date} onChange={(value) => setData('end_date', value)} />
+                            </div>
                         </div>
                         <div className="flex flex-col gap-1">
                             <Label>Source of Fund Code (Optional)</Label>
@@ -116,7 +123,8 @@ function EditHazardPayDialog({
 }) {
     const { data, setData, put, processing, reset } = useForm({
         amount: String(hazardPay.amount),
-        effective_date: hazardPay.effective_date,
+        start_date: hazardPay.start_date,
+        end_date: hazardPay.end_date || undefined,
         source_of_fund_code_id: hazardPay.source_of_fund_code?.id || (null as number | null),
     });
 
@@ -141,7 +149,7 @@ function EditHazardPayDialog({
                 <form onSubmit={onSubmit}>
                     <DialogHeader>
                         <DialogTitle>Edit Hazard Pay</DialogTitle>
-                        <DialogDescription>Update the hazard pay amount and effective date.</DialogDescription>
+                        <DialogDescription>Update the hazard pay amount and date range.</DialogDescription>
                     </DialogHeader>
                     <div className="mt-4 space-y-4">
                         <div className="flex flex-col gap-1">
@@ -156,9 +164,15 @@ function EditHazardPayDialog({
                                 required
                             />
                         </div>
-                        <div className="flex flex-col gap-1">
-                            <Label>Effective Date</Label>
-                            <DatePicker value={data.effective_date} onChange={(value) => setData('effective_date', value)} />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1">
+                                <Label>Start Date</Label>
+                                <DatePicker value={data.start_date} onChange={(value) => setData('start_date', value)} />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <Label>End Date (Optional)</Label>
+                                <DatePicker value={data.end_date} onChange={(value) => setData('end_date', value)} />
+                            </div>
                         </div>
                         <div className="flex flex-col gap-1">
                             <Label>Source of Fund Code (Optional)</Label>
@@ -242,8 +256,11 @@ export function CompensationHazardPay({ employee, sourceOfFundCodes }: Compensat
                     <div className="px-6 py-5">
                         <div className="flex items-baseline justify-between">
                             <div>
-                                <p className="text-muted-foreground text-xs">Effective Date</p>
-                                <p className="mt-1 font-medium text-slate-900">{formatDate(current.effective_date)}</p>
+                                <p className="text-muted-foreground text-xs">Active Period</p>
+                                <p className="mt-1 font-medium text-slate-900">
+                                    {formatDate(current.start_date)}
+                                    {current.end_date ? ` - ${formatDate(current.end_date)}` : ' - Present'}
+                                </p>
                             </div>
                             <div className="text-right">
                                 <p className="text-muted-foreground text-xs">Amount</p>
@@ -265,7 +282,7 @@ export function CompensationHazardPay({ employee, sourceOfFundCodes }: Compensat
                             <TableHeader>
                                 <TableRow className="bg-slate-50">
                                     <TableHead className="font-semibold">Amount</TableHead>
-                                    <TableHead className="font-semibold">Effective Date</TableHead>
+                                    <TableHead className="font-semibold">Date Range</TableHead>
                                     <TableHead className="text-right font-semibold">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -273,7 +290,10 @@ export function CompensationHazardPay({ employee, sourceOfFundCodes }: Compensat
                                 {hazardPays.map((hp, i) => (
                                     <TableRow key={hp.id} className={i === 0 ? 'font-semibold' : ''}>
                                         <TableCell>{formatCurrency(hp.amount)}</TableCell>
-                                        <TableCell className="text-muted-foreground text-sm">{formatDate(hp.effective_date)}</TableCell>
+                                        <TableCell className="text-muted-foreground text-sm">
+                                            {formatDate(hp.start_date)}
+                                            {hp.end_date ? ` - ${formatDate(hp.end_date)}` : ' - Present'}
+                                        </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-1">
                                                 <Button variant="ghost" size="icon" onClick={() => handleEdit(hp)} className="h-8 w-8">
