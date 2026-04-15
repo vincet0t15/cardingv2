@@ -19,6 +19,10 @@ export function EditAdjustmentTypeDialog({ isOpen, onClose, adjustmentType }: Ed
         name: adjustmentType.name,
         description: adjustmentType.description || '',
         effect: adjustmentType.effect,
+        taxable: (adjustmentType as any).taxable ?? false,
+        include_in_payroll: (adjustmentType as any).include_in_payroll ?? false,
+        requires_approval: (adjustmentType as any).requires_approval ?? true,
+        restricted_roles: (adjustmentType as any).restricted_roles ? (adjustmentType as any).restricted_roles.split(',') : [],
     });
 
     useEffect(() => {
@@ -27,6 +31,10 @@ export function EditAdjustmentTypeDialog({ isOpen, onClose, adjustmentType }: Ed
                 name: adjustmentType.name,
                 description: adjustmentType.description || '',
                 effect: adjustmentType.effect,
+                taxable: (adjustmentType as any).taxable ?? false,
+                include_in_payroll: (adjustmentType as any).include_in_payroll ?? false,
+                requires_approval: (adjustmentType as any).requires_approval ?? true,
+                restricted_roles: (adjustmentType as any).restricted_roles ? (adjustmentType as any).restricted_roles.split(',') : [],
             });
         }
     }, [isOpen, adjustmentType]);

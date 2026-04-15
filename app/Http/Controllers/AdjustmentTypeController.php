@@ -39,12 +39,21 @@ class AdjustmentTypeController extends Controller
             'name' => 'required|string|max:255|unique:adjustment_types,name',
             'description' => 'nullable|string|max:1000',
             'effect' => 'required|in:positive,negative',
+            'taxable' => 'sometimes|boolean',
+            'include_in_payroll' => 'sometimes|boolean',
+            'requires_approval' => 'sometimes|boolean',
+            'restricted_roles' => 'sometimes|array',
+            'restricted_roles.*' => 'string|exists:roles,name',
         ]);
 
         AdjustmentType::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'effect' => $validated['effect'],
+            'taxable' => $validated['taxable'] ?? false,
+            'include_in_payroll' => $validated['include_in_payroll'] ?? false,
+            'requires_approval' => $validated['requires_approval'] ?? true,
+            'restricted_roles' => isset($validated['restricted_roles']) ? implode(',', $validated['restricted_roles']) : null,
             'created_by' => Auth::id(),
         ]);
 
