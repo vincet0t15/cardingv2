@@ -110,10 +110,19 @@ class ClaimController extends Controller
         $filterMonth = $request->input('month');
         $filterYear = $request->input('year', now()->year);
         $filterType = $request->input('type'); // 'travel', 'overtime', or null for all
+        $filterOffice = $request->input('office'); // office_id filter
+
+        // Get all offices for filter dropdown
+        $offices = \App\Models\Office::orderBy('name')->get();
 
         // Build query for employees with claims
         $employeesQuery = Employee::with(['office'])
             ->whereHas('claims');
+
+        // Apply office filter
+        if ($filterOffice) {
+            $employeesQuery->where('office_id', $filterOffice);
+        }
 
         // Apply filters
         if ($filterMonth) {
@@ -197,10 +206,12 @@ class ClaimController extends Controller
         return Inertia::render('Claims/Report', [
             'employees' => $employees,
             'summary' => $summary,
+            'offices' => $offices,
             'filters' => [
                 'month' => $filterMonth,
                 'year' => $filterYear,
                 'type' => $filterType,
+                'office' => $filterOffice,
             ],
         ]);
     }
@@ -213,10 +224,16 @@ class ClaimController extends Controller
         $filterMonth = $request->input('month');
         $filterYear = $request->input('year', now()->year);
         $filterType = $request->input('type'); // 'travel', 'overtime', or null for all
+        $filterOffice = $request->input('office'); // office_id filter
 
         // Build query for employees with claims
         $employeesQuery = Employee::with(['office'])
             ->whereHas('claims');
+
+        // Apply office filter
+        if ($filterOffice) {
+            $employeesQuery->where('office_id', $filterOffice);
+        }
 
         // Apply filters
         if ($filterMonth) {
@@ -304,6 +321,7 @@ class ClaimController extends Controller
                 'month' => $filterMonth,
                 'year' => $filterYear,
                 'type' => $filterType,
+                'office' => $filterOffice,
             ],
         ]);
     }

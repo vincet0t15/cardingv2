@@ -34,6 +34,7 @@ interface ReportPrintProps {
         month: string | null;
         year: number | null;
         type: string | null;
+        office: string | null;
     };
 }
 
@@ -67,6 +68,12 @@ export default function ClaimsReportPrint({ employees, summary, filters }: Repor
         if (filters.type === 'travel') return 'Travel Claims Only';
         if (filters.type === 'overtime') return 'Overtime Claims Only';
         return 'All Claim Types';
+    };
+
+    const getOfficeLabel = () => {
+        // Since we don't have the offices list in print, we'll just show if filtered
+        if (filters.office) return `Office #${filters.office}`;
+        return 'All Offices';
     };
 
     const handlePrint = () => {
@@ -107,7 +114,9 @@ export default function ClaimsReportPrint({ employees, summary, filters }: Repor
                                         CLAIMS REPORT
                                     </h2>
                                     <p className="m-[5px_0] text-[12px]">{getTypeLabel()}</p>
-                                    <p className="m-0 text-[11px]">Period: {getPeriodLabel()}</p>
+                                    <p className="m-0 text-[11px]">
+                                        Period: {getPeriodLabel()} • {getOfficeLabel()}
+                                    </p>
                                     <p className="m-0 text-[10px] text-gray-500">Generated: {currentDate}</p>
                                 </div>
 

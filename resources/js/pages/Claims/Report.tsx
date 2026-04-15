@@ -63,14 +63,19 @@ interface Summary {
 interface ReportProps {
     employees: EmployeeClaims[];
     summary: Summary;
+    offices: {
+        id: number;
+        name: string;
+    }[];
     filters: {
         month: string | null;
         year: number | null;
         type: string | null;
+        office: string | null;
     };
 }
 
-export default function ClaimsReport({ employees, summary, filters }: ReportProps) {
+export default function ClaimsReport({ employees, summary, offices, filters }: ReportProps) {
     const handleFilterChange = (key: string, value: any) => {
         router.get(
             route('claims.report'),
@@ -85,11 +90,16 @@ export default function ClaimsReport({ employees, summary, filters }: ReportProp
         );
     };
 
+    // Dynamic year range: fixed start year (2020) to current year + 5
     const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: 5 }, (_, i) => {
-        const year = currentYear - i;
-        return { value: year.toString(), label: year.toString() };
-    });
+    const startYear = 2020;
+    const endYear = currentYear + 5;
+    const years = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i).map((year) => ({
+        value: year.toString(),
+        label: year.toString(),
+    }));
+
+    const officeItems = [{ value: '', label: 'All Offices' }, ...offices.map((office) => ({ value: office.id.toString(), label: office.name }))];
 
     const getPeriodLabel = () => {
         const monthLabel = filters.month ? months.find((m) => m.value === filters.month)?.label : 'All Months';
@@ -116,7 +126,7 @@ export default function ClaimsReport({ employees, summary, filters }: ReportProp
                 {/* Filters */}
                 <Card className="mb-6">
                     <CardContent className="pt-6">
-                        <div className="grid gap-4 md:grid-cols-3">
+                        <div className="grid gap-4 md:grid-cols-4">
                             <div>
                                 <label className="mb-2 block text-sm font-medium">Month</label>
                                 <CustomComboBox
@@ -134,6 +144,16 @@ export default function ClaimsReport({ employees, summary, filters }: ReportProp
                                     placeholder="Select year"
                                     value={(filters.year || currentYear).toString()}
                                     onSelect={(value) => handleFilterChange('year', value ?? '')}
+                                    showClear={true}
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-2 block text-sm font-medium">Office</label>
+                                <CustomComboBox
+                                    items={officeItems}
+                                    placeholder="Select office"
+                                    value={filters.office || null}
+                                    onSelect={(value) => handleFilterChange('office', value ?? '')}
                                     showClear={true}
                                 />
                             </div>

@@ -1,5 +1,6 @@
 import PrintFFooter from '@/components/print-footer';
 import { Button } from '@/components/ui/button';
+import type { Adjustment } from '@/types';
 import type { Claim } from '@/types/claim';
 import type { Employee } from '@/types/employee';
 import type { EmployeeDeduction } from '@/types/employeeDeduction';
@@ -10,6 +11,7 @@ interface PrintReportPageProps {
     employee: Employee;
     allDeductions: EmployeeDeduction[];
     allClaims: Claim[];
+    allAdjustments: Adjustment[];
     filterMonth?: string | null;
     filterYear?: string | null;
     printType?: 'all' | 'deductions' | 'claims';
@@ -60,6 +62,7 @@ export default function EmployeePrintReport({
     employee,
     allDeductions,
     allClaims,
+    allAdjustments,
     filterMonth,
     filterYear,
     printType = 'all',
@@ -105,6 +108,30 @@ export default function EmployeePrintReport({
 
     const totalAllDeductions = allDeductions.reduce((sum, d) => sum + Number(d.amount), 0);
     const totalAllClaims = allClaims.reduce((sum, c) => sum + Number(c.amount), 0);
+    const totalAllAdjustments = allAdjustments.reduce((sum, a) => sum + Number(a.amount), 0);
+
+    // Group adjustments by year-month
+    const adjustmentsByPeriod: Record<string, { year: number; month: number; items: Adjustment[]; total: number }> = {};
+    for (const a of allAdjustments) {
+        const key = `${a.pay_period_year}-${String(a.pay_period_month).padStart(2, '0')}`;
+        if (!adjustmentsByPeriod[key]) {
+            adjustmentsByPeriod[key] = { year: a.pay_period_year, month: a.pay_period_month, items: [], total: 0 };
+        }
+        adjustmentsByPeriod[key].items.push(a);
+        adjustmentsByPeriod[key].total += Number(a.amount);
+    }
+    const adjustmentPeriods = Object.values(adjustmentsByPeriod).sort((a, b) => b.year - a.year || b.month - a.month);
+
+    // Helper function to sum adjustments for a specific period
+    function sumAdjustmentsForPeriod(adjustments: Adjustment[], year: number, month?: number): number {
+        return adjustments
+            .filter((a) => {
+                const matchYear = a.pay_period_year === year;
+                const matchMonth = month ? a.pay_period_month === month : true;
+                return matchYear && matchMonth;
+            })
+            .reduce((sum, a) => sum + Number(a.amount), 0);
+    }
 
     // Helper function to sum compensation across all periods
     function sumCompensation(history: { amount: number; effective_date: string }[] | undefined): number {
@@ -127,6 +154,7 @@ export default function EmployeePrintReport({
     let rata: number;
     let hazardPay: number;
     let clothingAllowance: number;
+    let adjustments: number;
     let showGrossAndNet: boolean = true;
     let isAllTimeView: boolean = false;
     let isYearlyView: boolean = false;
@@ -137,28 +165,29 @@ export default function EmployeePrintReport({
         rata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, parseInt(filterYear), parseInt(filterMonth)) : 0;
         hazardPay = getEffectiveAmount(employee.hazardPays, parseInt(filterYear), parseInt(filterMonth));
         clothingAllowance = getEffectiveAmount(employee.clothingAllowances, parseInt(filterYear), parseInt(filterMonth));
-        showGrossAndNet = true; // Specific period - calculations make sense
+        adjustments = sumAdjustmentsForPeriod(allAdjustments, parseInt(filterYear), parseInt(filterMonth));
+        showGrossAndNet = true;
     } else if (filterYear) {
-        // Year only - sum ALL records within that year
         salary = sumCompensationForYear(employee.salaries, parseInt(filterYear));
         pera = sumCompensationForYear(employee.peras, parseInt(filterYear));
         rata = employee.is_rata_eligible ? sumCompensationForYear(employee.ratas, parseInt(filterYear)) : 0;
         hazardPay = sumCompensationForYear(employee.hazardPays, parseInt(filterYear));
         clothingAllowance = sumCompensationForYear(employee.clothingAllowances, parseInt(filterYear));
+        adjustments = sumAdjustmentsForPeriod(allAdjustments, parseInt(filterYear));
         showGrossAndNet = true;
         isYearlyView = true;
     } else {
-        // All time - sum ALL salary/pera/rata across all periods
         salary = sumCompensation(employee.salaries);
         pera = sumCompensation(employee.peras);
         rata = employee.is_rata_eligible ? sumCompensation(employee.ratas) : 0;
         hazardPay = sumCompensation(employee.hazardPays);
         clothingAllowance = sumCompensation(employee.clothingAllowances);
+        adjustments = totalAllAdjustments;
         showGrossAndNet = true; // Now we can show gross/net for all-time view
         isAllTimeView = true;
     }
 
-    const grossPay = salary + pera + rata + hazardPay + clothingAllowance;
+    const grossPay = salary + pera + rata + hazardPay + clothingAllowance + adjustments;
     const netPay = grossPay - totalAllDeductions;
 
     const currentDate = new Date().toLocaleDateString('en-PH', {
@@ -179,10 +208,11 @@ export default function EmployeePrintReport({
         return 'All Records';
     };
 
-    // Get unique months from both deductions and claims
+    // Get unique months from deductions, claims, and adjustments
     const allPeriods = new Set<string>();
     deductionPeriods.forEach((p) => allPeriods.add(`${p.year}-${String(p.month).padStart(2, '0')}`));
     claimPeriods.forEach((p) => allPeriods.add(`${p.year}-${String(p.month).padStart(2, '0')}`));
+    adjustmentPeriods.forEach((p) => allPeriods.add(`${p.year}-${String(p.month).padStart(2, '0')}`));
     const sortedPeriods = Array.from(allPeriods).sort((a, b) => b.localeCompare(a));
 
     const handlePrint = () => {
@@ -278,8 +308,15 @@ export default function EmployeePrintReport({
                                                 {formatCurrency(clothingAllowance)}
                                                 {(isAllTimeView || isYearlyView) && ' *'}
                                             </td>
+                                            <td className="border border-black p-2 font-bold">Adjustments</td>
+                                            <td className="border border-black p-2 text-right">
+                                                {formatCurrency(adjustments)}
+                                                {(isAllTimeView || isYearlyView) && ' *'}
+                                            </td>
+                                        </tr>
+                                        <tr>
                                             <td className="border border-black p-2 font-bold">Gross Pay</td>
-                                            <td className="border border-black p-2 text-right font-medium">
+                                            <td className="border border-black p-2 text-right font-medium" colSpan={3}>
                                                 {formatCurrency(grossPay)}
                                                 {(isAllTimeView || isYearlyView) && ' *'}
                                             </td>
@@ -320,11 +357,12 @@ export default function EmployeePrintReport({
                                         const [year, month] = periodKey.split('-').map(Number);
                                         const deductionPeriod = deductionPeriods.find((p) => p.year === year && p.month === month);
                                         const claimPeriod = claimPeriods.find((p) => p.year === year && p.month === month);
+                                        const adjustmentPeriod = adjustmentPeriods.find((p) => p.year === year && p.month === month);
 
                                         // Skip if this period doesn't match the print type
                                         if (printType === 'deductions' && !deductionPeriod) return null;
                                         if (printType === 'claims' && !claimPeriod) return null;
-                                        if (!deductionPeriod && !claimPeriod) return null;
+                                        if (!deductionPeriod && !claimPeriod && !adjustmentPeriod) return null;
 
                                         return (
                                             <div key={periodKey} className="break-inside-avoid">
@@ -417,13 +455,61 @@ export default function EmployeePrintReport({
                                                         </table>
                                                     </>
                                                 )}
+
+                                                {/* Adjustments Section */}
+                                                {adjustmentPeriod && (
+                                                    <>
+                                                        <div className="mt-3 mb-2 text-[11px]">
+                                                            Adjustments:{' '}
+                                                            <span className="font-bold text-blue-600">{formatCurrency(adjustmentPeriod.total)}</span>
+                                                        </div>
+                                                        <table className="w-full border-collapse border border-black">
+                                                            <thead>
+                                                                <tr className="bg-gray-100">
+                                                                    <th className="border border-black px-2 py-1 text-left text-[10px] font-semibold">
+                                                                        Type
+                                                                    </th>
+                                                                    <th className="border border-black px-2 py-1 text-left text-[10px] font-semibold">
+                                                                        Reference
+                                                                    </th>
+                                                                    <th className="w-24 border border-black px-2 py-1 text-right text-[10px] font-semibold">
+                                                                        Amount
+                                                                    </th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {adjustmentPeriod.items.map((a) => (
+                                                                    <tr key={a.id}>
+                                                                        <td className="border border-black px-2 py-1 text-[10px] uppercase">
+                                                                            {a.adjustment_type ?? '—'}
+                                                                        </td>
+                                                                        <td className="border border-black px-2 py-1 text-[10px]">
+                                                                            {a.reference_type ?? '—'}
+                                                                        </td>
+                                                                        <td className="border border-black px-2 py-1 text-right text-[10px] text-blue-600">
+                                                                            {formatCurrency(Number(a.amount))}
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                                <tr className="bg-gray-50 font-bold">
+                                                                    <td className="border border-black px-2 py-1 text-[10px] uppercase" colSpan={2}>
+                                                                        TOTAL
+                                                                    </td>
+                                                                    <td className="border border-black px-2 py-1 text-right text-[10px] text-blue-600">
+                                                                        {formatCurrency(adjustmentPeriod.total)}
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </>
+                                                )}
                                             </div>
                                         );
                                     })}
                                 </div>
 
                                 {/* Yearly Summary */}
-                                {(claimYears.length > 0 || deductionPeriods.length > 0) && (
+                                {(claimYears.length > 0 || deductionPeriods.length > 0 || adjustmentPeriods.length > 0) && (
                                     <div className="mt-6 break-inside-avoid">
                                         <div className="mb-2 border-b border-black pb-1">
                                             <h3 className="m-0 text-[13px] font-bold uppercase">Yearly Summary</h3>
@@ -434,17 +520,27 @@ export default function EmployeePrintReport({
                                                     <th className="border border-black px-2 py-1 text-left">Year</th>
                                                     <th className="border border-black px-2 py-1 text-right">Total Deductions</th>
                                                     <th className="border border-black px-2 py-1 text-right">Total Claims</th>
+                                                    <th className="border border-black px-2 py-1 text-right">Total Adjustments</th>
                                                     <th className="border border-black px-2 py-1 text-right">Net</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {Array.from(new Set([...deductionPeriods.map((p) => p.year), ...claimYears.map((c) => c.year)]))
+                                                {Array.from(
+                                                    new Set([
+                                                        ...deductionPeriods.map((p) => p.year),
+                                                        ...claimYears.map((c) => c.year),
+                                                        ...adjustmentPeriods.map((p) => p.year),
+                                                    ]),
+                                                )
                                                     .sort((a, b) => b - a)
                                                     .map((year) => {
                                                         const yearDeductions = deductionPeriods
                                                             .filter((p) => p.year === year)
                                                             .reduce((sum, p) => sum + p.total, 0);
                                                         const yearClaims = claimYears.find((c) => c.year === year)?.total ?? 0;
+                                                        const yearAdjustments = adjustmentPeriods
+                                                            .filter((p) => p.year === year)
+                                                            .reduce((sum, p) => sum + p.total, 0);
 
                                                         return (
                                                             <tr key={year}>
@@ -455,8 +551,11 @@ export default function EmployeePrintReport({
                                                                 <td className="border border-black px-2 py-1 text-right text-green-600">
                                                                     {formatCurrency(yearClaims)}
                                                                 </td>
+                                                                <td className="border border-black px-2 py-1 text-right text-blue-600">
+                                                                    {formatCurrency(yearAdjustments)}
+                                                                </td>
                                                                 <td className="border border-black px-2 py-1 text-right font-bold">
-                                                                    {formatCurrency(yearClaims - yearDeductions)}
+                                                                    {formatCurrency(yearClaims + yearAdjustments - yearDeductions)}
                                                                 </td>
                                                             </tr>
                                                         );
@@ -469,8 +568,11 @@ export default function EmployeePrintReport({
                                                     <td className="border border-black px-2 py-1 text-right text-green-600">
                                                         {formatCurrency(totalAllClaims)}
                                                     </td>
+                                                    <td className="border border-black px-2 py-1 text-right text-blue-600">
+                                                        {formatCurrency(totalAllAdjustments)}
+                                                    </td>
                                                     <td className="border border-black px-2 py-1 text-right">
-                                                        {formatCurrency(totalAllClaims - totalAllDeductions)}
+                                                        {formatCurrency(totalAllClaims + totalAllAdjustments - totalAllDeductions)}
                                                     </td>
                                                 </tr>
                                             </tbody>

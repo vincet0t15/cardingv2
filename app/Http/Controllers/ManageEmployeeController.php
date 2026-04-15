@@ -269,6 +269,8 @@ class ManageEmployeeController extends Controller
             'latestSalary',
             'latestPera',
             'latestRata',
+            'latestHazardPay',
+            'latestClothingAllowance',
             'salaries' => function ($query) {
                 $query->orderBy('effective_date', 'desc');
             },
@@ -276,6 +278,12 @@ class ManageEmployeeController extends Controller
                 $query->orderBy('effective_date', 'desc');
             },
             'ratas' => function ($query) {
+                $query->orderBy('effective_date', 'desc');
+            },
+            'hazardPays' => function ($query) {
+                $query->orderBy('effective_date', 'desc');
+            },
+            'clothingAllowances' => function ($query) {
                 $query->orderBy('effective_date', 'desc');
             },
         ]);
@@ -308,10 +316,25 @@ class ManageEmployeeController extends Controller
 
         $allClaims = $claimsQuery->orderBy('claim_date', 'desc')->get();
 
+        // Get all adjustments (approved and processed only for reports)
+        $adjustmentsQuery = Adjustment::with(['adjustmentType', 'referenceType'])
+            ->where('employee_id', $employee->id)
+            ->whereIn('status', ['approved', 'processed']);
+
+        if ($filterMonth) {
+            $adjustmentsQuery->where('pay_period_month', $filterMonth);
+        }
+        if ($filterYear) {
+            $adjustmentsQuery->where('pay_period_year', $filterYear);
+        }
+
+        $allAdjustments = $adjustmentsQuery->orderBy('created_at', 'desc')->get();
+
         return Inertia::render('employees/Manage/print', [
             'employee' => $employee,
             'allDeductions' => $allDeductions,
             'allClaims' => $allClaims,
+            'allAdjustments' => $allAdjustments,
             'filterMonth' => $filterMonth,
             'filterYear' => $filterYear,
             'printType' => $printType,
