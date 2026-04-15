@@ -51,21 +51,64 @@ function getEffectiveAmountForDateRange(
     periodYear: number,
     periodMonth: number,
 ): number {
-    if (!history || history.length === 0) return 0;
+    if (!history || history.length === 0) {
+        console.log('getEffectiveAmountForDateRange: No history data');
+        return 0;
+    }
+
+    console.log('getEffectiveAmountForDateRange called with:', {
+        historyLength: history.length,
+        periodYear,
+        periodMonth,
+        firstRecord: history[0],
+    });
 
     const periodStart = new Date(periodYear, periodMonth - 1, 1);
-    const periodEnd = new Date(periodYear, periodMonth, 0);
+    const periodEnd = new Date(periodYear, periodMonth, 0, 23, 59, 59, 999);
+
+    console.log('Period range:', {
+        periodStart: periodStart.toISOString(),
+        periodEnd: periodEnd.toISOString(),
+    });
 
     const effectiveRecord = history
         .filter((record) => {
-            const startDate = new Date(record.start_date);
-            const endDate = record.end_date ? new Date(record.end_date) : null;
+            // Parse dates in local timezone to avoid UTC issues
+            const startDateParts = record.start_date.split('-');
+            const startDate = new Date(parseInt(startDateParts[0]), parseInt(startDateParts[1]) - 1, parseInt(startDateParts[2]));
 
+            let endDate: Date | null = null;
+            if (record.end_date) {
+                const endDateParts = record.end_date.split('-');
+                endDate = new Date(parseInt(endDateParts[0]), parseInt(endDateParts[1]) - 1, parseInt(endDateParts[2]), 23, 59, 59, 999);
+            }
+
+            // Check if the record's date range overlaps with the period
             const isActive = startDate <= periodEnd;
-            return endDate ? isActive && endDate >= periodStart : isActive;
-        })
-        .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())[0];
+            const matches = endDate ? isActive && endDate >= periodStart : isActive;
 
+            console.log('Record check:', {
+                start_date: record.start_date,
+                end_date: record.end_date,
+                startDate: startDate.toLocaleDateString(),
+                endDate: endDate?.toLocaleDateString(),
+                isActive,
+                matches,
+                amount: record.amount,
+            });
+
+            return matches;
+        })
+        .sort((a, b) => {
+            const aParts = a.start_date.split('-');
+            const bParts = b.start_date.split('-');
+            return (
+                new Date(parseInt(bParts[0]), parseInt(bParts[1]) - 1, parseInt(bParts[2])).getTime() -
+                new Date(parseInt(aParts[0]), parseInt(aParts[1]) - 1, parseInt(aParts[2])).getTime()
+            );
+        })[0];
+
+    console.log('Effective record:', effectiveRecord);
     return Number(effectiveRecord?.amount ?? 0);
 }
 

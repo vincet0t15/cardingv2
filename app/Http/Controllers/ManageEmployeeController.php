@@ -281,10 +281,10 @@ class ManageEmployeeController extends Controller
                 $query->orderBy('effective_date', 'desc');
             },
             'hazardPays' => function ($query) {
-                $query->orderBy('effective_date', 'desc');
+                $query->orderBy('start_date', 'desc');
             },
             'clothingAllowances' => function ($query) {
-                $query->orderBy('effective_date', 'desc');
+                $query->orderBy('start_date', 'desc');
             },
         ]);
 

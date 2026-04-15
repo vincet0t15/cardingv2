@@ -25,8 +25,13 @@ class ClothingAllowanceController extends Controller
             ->when($month && $year, function ($query) use ($month, $year) {
                 // If month/year filter is applied, only show employees with clothing allowances in that period
                 $query->whereHas('clothingAllowances', function ($q) use ($month, $year) {
-                    $q->whereMonth('effective_date', $month)
-                        ->whereYear('effective_date', $year);
+                    $periodStart = now()->setDate($year, $month, 1)->startOfMonth();
+                    $periodEnd = now()->setDate($year, $month, 1)->endOfMonth();
+                    $q->where('start_date', '<=', $periodEnd)
+                        ->where(function ($query) use ($periodStart) {
+                            $query->whereNull('end_date')
+                                ->orWhere('end_date', '>=', $periodStart);
+                        });
                 });
             }, function ($query) {
                 // If no month/year filter, show all employees who have ANY clothing allowance record
@@ -75,8 +80,13 @@ class ClothingAllowanceController extends Controller
             ->has('clothingAllowances')
             ->when($month && $year, function ($query) use ($month, $year) {
                 $query->whereHas('clothingAllowances', function ($q) use ($month, $year) {
-                    $q->whereMonth('effective_date', $month)
-                        ->whereYear('effective_date', $year);
+                    $periodStart = now()->setDate($year, $month, 1)->startOfMonth();
+                    $periodEnd = now()->setDate($year, $month, 1)->endOfMonth();
+                    $q->where('start_date', '<=', $periodEnd)
+                        ->where(function ($query) use ($periodStart) {
+                            $query->whereNull('end_date')
+                                ->orWhere('end_date', '>=', $periodStart);
+                        });
                 });
             })
             ->with(['office', 'latestClothingAllowance'])
@@ -100,7 +110,7 @@ class ClothingAllowanceController extends Controller
         $this->authorize('viewAny', ClothingAllowance::class);
         $clothingAllowances = $employee->clothingAllowances()
             ->with('createdBy')
-            ->orderBy('effective_date', 'desc')
+            ->orderBy('start_date', 'desc')
             ->get();
 
         return Inertia::render('clothing-allowances/history', [
@@ -115,14 +125,16 @@ class ClothingAllowanceController extends Controller
         $validated = $request->validate([
             'employee_id' => 'required|exists:employees,id',
             'amount' => 'required|numeric|min:0',
-            'effective_date' => 'required|date',
+            'start_date' => 'required|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
             'source_of_fund_code_id' => 'nullable|exists:source_of_fund_codes,id',
         ]);
 
         ClothingAllowance::create([
             'employee_id' => $validated['employee_id'],
             'amount' => $validated['amount'],
-            'effective_date' => $validated['effective_date'],
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'] ?? null,
             'source_of_fund_code_id' => $validated['source_of_fund_code_id'] ?? null,
             'created_by' => Auth::id(),
         ]);
@@ -136,13 +148,15 @@ class ClothingAllowanceController extends Controller
 
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0',
-            'effective_date' => 'required|date',
+            'start_date' => 'required|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
             'source_of_fund_code_id' => 'nullable|exists:source_of_fund_codes,id',
         ]);
 
         $clothingAllowance->update([
             'amount' => $validated['amount'],
-            'effective_date' => $validated['effective_date'],
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'] ?? null,
             'source_of_fund_code_id' => $validated['source_of_fund_code_id'] ?? null,
         ]);
 
