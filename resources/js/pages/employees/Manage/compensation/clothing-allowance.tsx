@@ -210,7 +210,16 @@ const formatCurrency = (amount: number | undefined) => {
     return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(amount);
 };
 
-const formatDate = (date: string) => new Date(date).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+const formatDate = (date?: string | null) => {
+    if (!date) return '—';
+    const d = new Date(date);
+    if (Number.isNaN(d.getTime())) return '—';
+    // Format as: 15 Apr 2026 (short month, day first) for compact readability
+    const day = d.getDate();
+    const monthShort = d.toLocaleString('en-PH', { month: 'short' });
+    const year = d.getFullYear();
+    return `${day} ${monthShort} ${year}`;
+};
 
 export function CompensationClothingAllowance({ employee, sourceOfFundCodes }: CompensationClothingAllowanceProps) {
     const [openDialog, setOpenDialog] = useState(false);

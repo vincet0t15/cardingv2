@@ -126,7 +126,7 @@ export function SalaryDialog({
     // Get the salary options for the dropdown
     const salaryOptions = sortedSalaries.map((s) => ({
         value: String(s.id),
-        label: `${formatCurrency(Number(s.amount))} - Effective: ${new Date(s.effective_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+        label: `${formatCurrency(Number(s.amount))} - Effective: ${formatDate(s.effective_date)}`,
     }));
 
     const onSubmit: FormEventHandler<HTMLFormElement> = (e) => {
@@ -216,11 +216,7 @@ export function SalaryDialog({
                                             {currentSalary ? (
                                                 <>
                                                     {formatCurrency(Number(currentSalary.amount))} - Effective:{' '}
-                                                    {new Date(currentSalary.effective_date).toLocaleDateString('en-US', {
-                                                        year: 'numeric',
-                                                        month: 'long',
-                                                        day: 'numeric',
-                                                    })}
+                                                    {formatDate(currentSalary.effective_date)}
                                                 </>
                                             ) : (
                                                 'No salary found'

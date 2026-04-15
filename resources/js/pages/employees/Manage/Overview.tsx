@@ -23,8 +23,14 @@ function formatCurrency(amount: number | undefined | null) {
 }
 
 function formatDate(dateStr: string | undefined) {
+function formatDate(dateStr?: string | undefined) {
     if (!dateStr) return '—';
-    return new Date(dateStr).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return '—';
+    const day = d.getDate();
+    const monthShort = d.toLocaleString('en-PH', { month: 'short' });
+    const year = d.getFullYear();
+    return `${day} ${monthShort} ${year}`;
 }
 
 function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalClaimsAllTime, salaryHistory = [] }: OverviewProps) {
