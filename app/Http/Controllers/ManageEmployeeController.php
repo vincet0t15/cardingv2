@@ -71,7 +71,7 @@ class ManageEmployeeController extends Controller
         $paginatedPeriods = $periodsQuery->paginate(50)->withQueryString();
 
         $periodsList = $paginatedPeriods->map(function ($p) {
-            return "{$p->pay_period_year}-" . str_pad($p->pay_period_month, 2, '0', STR_PAD_LEFT);
+            return "{$p->pay_period_year}-".str_pad($p->pay_period_month, 2, '0', STR_PAD_LEFT);
         })->values()->toArray();
 
         // Build pair-safe period filters to avoid cross-joining years and months separately
@@ -99,14 +99,14 @@ class ManageEmployeeController extends Controller
             ->get();
 
         $groupedDeductions = $deductionsData->groupBy(function ($d) {
-            return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+            return "{$d->pay_period_year}-".str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
         })->toArray();
 
         $takenPeriods = EmployeeDeduction::where('employee_id', $employee->id)
             ->selectRaw('DISTINCT pay_period_year, pay_period_month')
             ->get()
             ->map(function ($d) {
-                return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+                return "{$d->pay_period_year}-".str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
             })
             ->values()
             ->toArray();
@@ -152,19 +152,23 @@ class ManageEmployeeController extends Controller
             ->pluck('year')
             ->toArray();
 
-        // All deductions & claims (unpaginated) for Overview + Reports
-        $allDeductions = EmployeeDeduction::where('employee_id', $employee->id)
+        // All deductions & claims (unpaginated) for Overview + Reports + Edit Dialog
+        $allDeductionsData = EmployeeDeduction::where('employee_id', $employee->id)
             ->with(['deductionType', 'salary'])
             ->orderBy('pay_period_year', 'desc')
             ->orderBy('pay_period_month', 'desc')
             ->get();
+
+        $allDeductions = $allDeductionsData->groupBy(function ($d) {
+            return "{$d->pay_period_year}-".str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+        })->toArray();
 
         $allClaims = Claim::where('employee_id', $employee->id)
             ->with('claimType')
             ->orderBy('claim_date', 'desc')
             ->get();
 
-        $totalDeductionsAllTime = (float) $allDeductions->sum('amount');
+        $totalDeductionsAllTime = (float) $allDeductionsData->sum('amount');
         $totalClaimsAllTime = (float) $allClaims->sum('amount');
 
         // Load adjustments for this employee (eager-load types for frontend)

@@ -53,6 +53,10 @@ class SupplierTransactionController extends Controller
 
         $supplier->transactions()->create($validated);
 
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Transaction added successfully.'], 201);
+        }
+
         return redirect()->route('suppliers.transactions.show', $supplier)
             ->with('success', 'Transaction added successfully.');
     }
@@ -85,6 +89,10 @@ class SupplierTransactionController extends Controller
 
         $transaction->update($validated);
 
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Transaction updated successfully.']);
+        }
+
         return redirect()->route('suppliers.transactions.show', $supplier)
             ->with('success', 'Transaction updated successfully.');
     }
@@ -95,6 +103,10 @@ class SupplierTransactionController extends Controller
     public function destroy(Supplier $supplier, SupplierTransaction $transaction)
     {
         $transaction->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json(['message' => 'Transaction deleted successfully.']);
+        }
 
         return redirect()->route('suppliers.transactions.show', $supplier)
             ->with('success', 'Transaction deleted successfully.');

@@ -126,17 +126,18 @@ export default function PeriodDeductionsEditForm({ setOpen, employee, deductionT
         const existingMap = new Map<number, EmployeeDeduction>();
         for (const ex of existingDeductions) existingMap.set(ex.deduction_type_id, ex);
 
-        const ops: Promise<any>[] = [];
+        const updateResults: { success: boolean; type: 'update' | 'create'; deductionTypeId: number }[] = [];
+
         for (const d of data.deductions) {
             const amount = d.amount ?? '';
             if (!amount || parseFloat(amount) <= 0) continue;
             const existing = existingMap.get(d.deduction_type_id);
-            if (existing) {
-                ops.push(
-                    new Promise((resolve, reject) => {
+
+            try {
+                if (existing) {
+                    await new Promise<void>((resolve, reject) => {
                         router.put(
                             route('employee-deductions.update', existing.id),
-
                             {
                                 amount: amount,
                                 pay_period_month: data.pay_period_month,
@@ -145,17 +146,18 @@ export default function PeriodDeductionsEditForm({ setOpen, employee, deductionT
                             {
                                 preserveScroll: true,
                                 onSuccess: () => {
-                                    toast.success('Deduction updated');
-                                    resolve(true);
+                                    updateResults.push({ success: true, type: 'update', deductionTypeId: d.deduction_type_id });
+                                    resolve();
                                 },
-                                onError: () => reject(false),
+                                onError: () => {
+                                    updateResults.push({ success: false, type: 'update', deductionTypeId: d.deduction_type_id });
+                                    reject(new Error('Update failed'));
+                                },
                             },
                         );
-                    }),
-                );
-            } else {
-                ops.push(
-                    new Promise((resolve, reject) => {
+                    });
+                } else {
+                    await new Promise<void>((resolve, reject) => {
                         router.post(
                             route('manage.employees.deductions.store', employee.id),
                             {
@@ -166,22 +168,32 @@ export default function PeriodDeductionsEditForm({ setOpen, employee, deductionT
                             },
                             {
                                 preserveScroll: true,
-                                onSuccess: () => resolve(true),
-                                onError: () => reject(false),
+                                onSuccess: () => {
+                                    updateResults.push({ success: true, type: 'create', deductionTypeId: d.deduction_type_id });
+                                    resolve();
+                                },
+                                onError: () => {
+                                    updateResults.push({ success: false, type: 'create', deductionTypeId: d.deduction_type_id });
+                                    reject(new Error('Create failed'));
+                                },
                             },
                         );
-                    }),
-                );
+                    });
+                }
+            } catch (err) {
+                toast.error(`Failed to save deduction for type ID ${d.deduction_type_id}`);
             }
         }
 
-        try {
-            await Promise.all(ops);
-            toast.success('Deductions updated successfully');
+        const failedCount = updateResults.filter((r) => !r.success).length;
+        const successCount = updateResults.filter((r) => r.success).length;
+
+        if (failedCount === 0 && successCount > 0) {
+            toast.success(`${successCount} deduction(s) updated successfully`);
             reset();
             setOpen(false);
-        } catch (err) {
-            toast.error('Failed to update deductions');
+        } else if (failedCount > 0) {
+            toast.error(`${failedCount} deduction(s) failed to update`);
         }
     };
 

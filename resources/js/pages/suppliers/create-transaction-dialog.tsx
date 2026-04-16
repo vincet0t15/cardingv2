@@ -21,7 +21,11 @@ export function CreateTransactionDialog({ open, onClose, supplierId, supplierNam
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         form.post(route('suppliers.transactions.store', supplierId), {
+            preserveState: false,
             onSuccess: () => onClose(),
+            onError: () => {
+                // Errors will be displayed by form.errors
+            },
         });
     };
 

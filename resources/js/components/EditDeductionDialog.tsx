@@ -23,14 +23,13 @@ export default function EditDeductionDialog({ isOpen, onClose, deduction }: Edit
     }, [deduction]);
 
     const submit = (e: React.FormEvent) => {
-        console.log('Submitting form with data:', data);
         e.preventDefault();
 
         if (!deduction) return;
 
         // useForm.put will send the current form `data` automatically.
         put(route('employee-deductions.update', deduction.id), {
-            preserveScroll: true,
+            preserveState: false,
             onSuccess: (resp: any) => {
                 toast.success('Deduction updated');
                 reset();

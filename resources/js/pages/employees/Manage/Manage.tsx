@@ -236,6 +236,7 @@ export default function EmployeeManagePage({
                             allEmployees={allEmployees}
                             filters={filters}
                             pagination={deductionPagination}
+                            allDeductions={allDeductions}
                         />
                     </TabsContent>
                     <TabsContent value="claims" className="mt-0 outline-none">

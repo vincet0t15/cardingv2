@@ -33,6 +33,7 @@ interface CompensationDeductionsProps {
         total: number;
     };
     allEmployees?: EmployeeType[];
+    allDeductions?: Record<string, EmployeeDeduction[]>;
 }
 
 export function CompensationDeductions({
@@ -45,6 +46,7 @@ export function CompensationDeductions({
     filters = {},
     pagination,
     allEmployees = [],
+    allDeductions = {},
 }: CompensationDeductionsProps) {
     // Use offices-style edit dialog state for period edit
     const [openEditDialog, setOpenEditDialog] = useState(false);
@@ -110,7 +112,7 @@ export function CompensationDeductions({
 
     const openPeriodEditDialog = (periodKey: string) => {
         const [year, month] = periodKey.split('-');
-        setEditDialogData({ month: String(parseInt(month)), year, existingDeductions: deductions[periodKey] ?? [] });
+        setEditDialogData({ month: String(parseInt(month)), year, existingDeductions: allDeductions[periodKey] ?? [] });
         setOpenEditDialog(true);
     };
 

@@ -43,7 +43,11 @@ export function EditTransactionDialog({ transaction, onClose, supplierId }: Prop
         e.preventDefault();
         if (!transaction) return;
         form.put(route('suppliers.transactions.update', [supplierId, transaction.id]), {
+            preserveState: false,
             onSuccess: () => onClose(),
+            onError: () => {
+                // Errors will be displayed by form.errors
+            },
         });
     };
 

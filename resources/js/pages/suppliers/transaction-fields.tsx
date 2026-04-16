@@ -23,6 +23,7 @@ export type TransactionForm = {
     net_amount: string;
     date_processed: string;
     remarks: string;
+    earmark: string;
 };
 
 export const emptyTransactionForm: TransactionForm = {
@@ -44,6 +45,7 @@ export const emptyTransactionForm: TransactionForm = {
     net_amount: '',
     date_processed: '',
     remarks: '',
+    earmark: '',
 };
 
 interface TransactionFieldsProps {
@@ -239,6 +241,15 @@ export function TransactionFields({ prefix, form }: TransactionFieldsProps) {
                         placeholder="Notes"
                     />
                 </div>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor={`${prefix}_earmark`}>Earmark</Label>
+                <Input
+                    id={`${prefix}_earmark`}
+                    value={form.data.earmark}
+                    onChange={(e) => form.setData('earmark', e.target.value)}
+                    placeholder="Earmark code or description"
+                />
             </div>
         </div>
     );
