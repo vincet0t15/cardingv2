@@ -151,7 +151,27 @@ export default function EmployeePrintReport({
 
     const totalAllDeductions = allDeductions.reduce((sum, d) => sum + Number(d.amount), 0);
     const totalAllClaims = allClaims.reduce((sum, c) => sum + Number(c.amount), 0);
-    const totalAllAdjustments = allAdjustments.reduce((sum, a) => sum + Number(a.amount), 0);
+
+    // compute signed adjustment amount based on effect
+    const computeSignedAmount = (a: any) => {
+        const amt = Number(a.amount) || 0;
+        const effect = (
+            (a.adjustmentType && a.adjustmentType.effect) ||
+            (typeof a.adjustment_type === 'object' && a.adjustment_type?.effect) ||
+            a.effect ||
+            ''
+        )
+            .toString()
+            .toLowerCase();
+
+        if (effect.includes('neg') || effect === '-' || effect.includes('subtract')) {
+            return -amt;
+        }
+
+        return amt;
+    };
+
+    const totalAllAdjustments = allAdjustments.reduce((sum, a) => sum + computeSignedAmount(a), 0);
 
     // Group adjustments by year-month
     const adjustmentsByPeriod: Record<string, { year: number; month: number; items: Adjustment[]; total: number }> = {};
@@ -161,7 +181,7 @@ export default function EmployeePrintReport({
             adjustmentsByPeriod[key] = { year: a.pay_period_year, month: a.pay_period_month, items: [], total: 0 };
         }
         adjustmentsByPeriod[key].items.push(a);
-        adjustmentsByPeriod[key].total += Number(a.amount);
+        adjustmentsByPeriod[key].total += computeSignedAmount(a);
     }
     const adjustmentPeriods = Object.values(adjustmentsByPeriod).sort((a, b) => b.year - a.year || b.month - a.month);
 
@@ -173,7 +193,7 @@ export default function EmployeePrintReport({
                 const matchMonth = month ? a.pay_period_month === month : true;
                 return matchYear && matchMonth;
             })
-            .reduce((sum, a) => sum + Number(a.amount), 0);
+            .reduce((sum, a) => sum + computeSignedAmount(a), 0);
     }
 
     // Helper function to sum compensation across all periods
@@ -435,6 +455,17 @@ export default function EmployeePrintReport({
                                                             <span className="font-bold text-red-600">{formatCurrency(deductionPeriod.total)}</span>
                                                         </div>
                                                     )}
+                                                    {adjustmentPeriod && (
+                                                        <div className="text-[11px]">
+                                                            Adjustments:{' '}
+                                                            <span
+                                                                className="font-bold"
+                                                                style={{ color: adjustmentPeriod.total < 0 ? '#b91c1c' : '#047857' }}
+                                                            >
+                                                                {formatCurrency(adjustmentPeriod.total)}
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 {/* Deductions Table */}
@@ -519,7 +550,12 @@ export default function EmployeePrintReport({
                                                     <>
                                                         <div className="mt-3 mb-2 text-[11px]">
                                                             Adjustments:{' '}
-                                                            <span className="font-bold text-blue-600">{formatCurrency(adjustmentPeriod.total)}</span>
+                                                            <span
+                                                                className="font-bold"
+                                                                style={{ color: adjustmentPeriod.total < 0 ? '#b91c1c' : '#047857' }}
+                                                            >
+                                                                {formatCurrency(adjustmentPeriod.total)}
+                                                            </span>
                                                         </div>
                                                         <table className="w-full border-collapse border border-black">
                                                             <thead>
@@ -539,13 +575,24 @@ export default function EmployeePrintReport({
                                                                 {adjustmentPeriod.items.map((a) => (
                                                                     <tr key={a.id}>
                                                                         <td className="border border-black px-2 py-1 text-[10px] uppercase">
-                                                                            {a.adjustment_type ?? '—'}
+                                                                            {(a.adjustmentType && a.adjustmentType.name) ||
+                                                                                (typeof a.adjustment_type === 'object'
+                                                                                    ? a.adjustment_type?.name
+                                                                                    : a.adjustment_type) ||
+                                                                                '—'}
                                                                         </td>
                                                                         <td className="border border-black px-2 py-1 text-[10px]">
-                                                                            {a.reference_type ?? '—'}
+                                                                            {(a.referenceType && a.referenceType.name) ||
+                                                                                (typeof a.reference_type === 'object'
+                                                                                    ? a.reference_type?.name
+                                                                                    : a.reference_type) ||
+                                                                                '—'}
                                                                         </td>
-                                                                        <td className="border border-black px-2 py-1 text-right text-[10px] text-blue-600">
-                                                                            {formatCurrency(Number(a.amount))}
+                                                                        <td
+                                                                            className="border border-black px-2 py-1 text-right text-[10px]"
+                                                                            style={{ color: computeSignedAmount(a) < 0 ? '#b91c1c' : '#047857' }}
+                                                                        >
+                                                                            {formatCurrency(computeSignedAmount(a))}
                                                                         </td>
                                                                     </tr>
                                                                 ))}
@@ -553,7 +600,10 @@ export default function EmployeePrintReport({
                                                                     <td className="border border-black px-2 py-1 text-[10px] uppercase" colSpan={2}>
                                                                         TOTAL
                                                                     </td>
-                                                                    <td className="border border-black px-2 py-1 text-right text-[10px] text-blue-600">
+                                                                    <td
+                                                                        className="border border-black px-2 py-1 text-right text-[10px]"
+                                                                        style={{ color: adjustmentPeriod.total < 0 ? '#b91c1c' : '#047857' }}
+                                                                    >
                                                                         {formatCurrency(adjustmentPeriod.total)}
                                                                     </td>
                                                                 </tr>

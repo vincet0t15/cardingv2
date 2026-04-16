@@ -165,6 +165,31 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
         });
     }, [adjustments, filterMonth, filterYear]);
 
+    // Compute signed amount for an adjustment based on its type.effect
+    const computeSignedAmount = (a: any) => {
+        const amt = Number(a.amount) || 0;
+        const effect = (
+            (a.adjustmentType && a.adjustmentType.effect) ||
+            (typeof a.adjustment_type === 'object' && a.adjustment_type?.effect) ||
+            a.effect ||
+            ''
+        )
+            .toString()
+            .toLowerCase();
+
+        if (effect.includes('neg') || effect === '-' || effect.includes('subtract')) {
+            return -amt;
+        }
+
+        // Default: treat as positive (adds to net pay)
+        return amt;
+    };
+
+    // Total adjustments for current filters (signed)
+    const totalAdjustments = useMemo(() => {
+        return filteredAdjustments.reduce((sum: number, a: any) => sum + computeSignedAmount(a), 0);
+    }, [filteredAdjustments]);
+
     // Helper function to sum compensation across all periods
     function sumCompensation(history: { amount: number; effective_date: string }[] | undefined): number {
         if (!history || history.length === 0) return 0;
@@ -230,7 +255,7 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
     }
 
     const grossPay = salary + pera + rata + hazardPay + clothingAllowance;
-    const netPay = grossPay - totalAllDeductions;
+    const netPay = grossPay - totalAllDeductions + totalAdjustments;
 
     const hasActiveFilters = filterMonth || filterYear;
 
@@ -375,7 +400,11 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                             const periodHazardPay = getEffectiveAmountForDateRange(employee.hazard_pays, period.year, period.month);
                             const periodClothingAllowance = getEffectiveAmountForDateRange(employee.clothing_allowances, period.year, period.month);
                             const periodGrossPay = periodSalary + periodPera + periodRata + periodHazardPay + periodClothingAllowance;
-                            const periodNetPay = periodGrossPay - period.total;
+                            const periodAdjustments = filteredAdjustments
+                                .filter((a: any) => Number(a.pay_period_year) === period.year && Number(a.pay_period_month) === period.month)
+                                .reduce((s: number, a: any) => s + computeSignedAmount(a), 0);
+
+                            const periodNetPay = periodGrossPay - period.total + periodAdjustments;
 
                             return (
                                 <div key={`${period.year}-${period.month}`} className="overflow-hidden rounded-lg border bg-white shadow-sm">

@@ -10,6 +10,7 @@ interface PrintReportProps {
     allClaims: Claim[];
     filterMonth?: string | null;
     filterYear?: string | null;
+    allAdjustments?: any[];
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -136,6 +137,35 @@ export const PrintReport = forwardRef<HTMLDivElement, PrintReportProps>(({ emplo
 
     const totalAllDeductions = allDeductions.reduce((sum, d) => sum + Number(d.amount), 0);
     const totalAllClaims = allClaims.reduce((sum, c) => sum + Number(c.amount), 0);
+    const allAdjustments = typeof (arguments[0] as any)?.allAdjustments !== 'undefined' ? (arguments[0] as any).allAdjustments : [];
+
+    // Helper to compute signed adjustment amount based on effect
+    const computeSignedAmount = (a: any) => {
+        const amt = Number(a.amount) || 0;
+        const effect = (
+            (a.adjustmentType && a.adjustmentType.effect) ||
+            (typeof a.adjustment_type === 'object' && a.adjustment_type?.effect) ||
+            a.effect ||
+            ''
+        )
+            .toString()
+            .toLowerCase();
+
+        if (effect.includes('neg') || effect === '-' || effect.includes('subtract')) {
+            return -amt;
+        }
+
+        return amt;
+    };
+
+    // Filter adjustments by current filters
+    const filteredAllAdjustments = allAdjustments.filter((a: any) => {
+        if (filterMonth && Number(a.pay_period_month) !== parseInt(filterMonth)) return false;
+        if (filterYear && Number(a.pay_period_year) !== parseInt(filterYear)) return false;
+        return true;
+    });
+
+    const totalAllAdjustments = filteredAllAdjustments.reduce((s: number, a: any) => s + computeSignedAmount(a), 0);
 
     // Determine which compensation values to show based on filters
     let salary: number;
@@ -161,7 +191,7 @@ export const PrintReport = forwardRef<HTMLDivElement, PrintReportProps>(({ emplo
     }
 
     const grossPay = salary + pera + rata + hazardPay;
-    const netPay = grossPay - totalAllDeductions;
+    const netPay = grossPay - totalAllDeductions + totalAllAdjustments;
 
     const currentDate = new Date().toLocaleDateString('en-PH', {
         year: 'numeric',
@@ -293,11 +323,30 @@ export const PrintReport = forwardRef<HTMLDivElement, PrintReportProps>(({ emplo
                                                                 <span className="font-bold text-green-600">{formatCurrency(claimPeriod.total)}</span>
                                                             </span>
                                                         )}
+                                                        {(() => {
+                                                            const periodAdj = (allAdjustments || [])
+                                                                .filter(
+                                                                    (a: any) =>
+                                                                        Number(a.pay_period_year) === year && Number(a.pay_period_month) === month,
+                                                                )
+                                                                .reduce((s: number, a: any) => s + computeSignedAmount(a), 0);
+                                                            return periodAdj !== 0 ? (
+                                                                <span>
+                                                                    {' • '}Adjustments:{' '}
+                                                                    <span
+                                                                        className="font-bold"
+                                                                        style={{ color: periodAdj < 0 ? '#b91c1c' : '#047857' }}
+                                                                    >
+                                                                        {formatCurrency(periodAdj)}
+                                                                    </span>
+                                                                </span>
+                                                            ) : null;
+                                                        })()}
                                                     </div>
                                                 </div>
 
                                                 {/* Two column layout for deductions and claims */}
-                                                <div className="grid grid-cols-2 gap-4">
+                                                <div className="grid grid-cols-3 gap-4">
                                                     {/* Deductions Table */}
                                                     <table className="w-full border-collapse border border-black">
                                                         <thead>
@@ -384,6 +433,83 @@ export const PrintReport = forwardRef<HTMLDivElement, PrintReportProps>(({ emplo
                                                             )}
                                                         </tbody>
                                                     </table>
+
+                                                    {/* Adjustments Table */}
+                                                    <table className="w-full border-collapse border border-black">
+                                                        <thead>
+                                                            <tr className="bg-gray-100">
+                                                                <th className="border border-black px-2 py-1 text-left text-[10px]">Type</th>
+                                                                <th className="border border-black px-2 py-1 text-left text-[10px]">Reference</th>
+                                                                <th className="w-24 border border-black px-2 py-1 text-right text-[10px]">Amount</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {(() => {
+                                                                const periodAdjustments = (allAdjustments || []).filter(
+                                                                    (a: any) =>
+                                                                        Number(a.pay_period_year) === year && Number(a.pay_period_month) === month,
+                                                                );
+                                                                if (periodAdjustments.length === 0) {
+                                                                    return (
+                                                                        <tr>
+                                                                            <td
+                                                                                colSpan={3}
+                                                                                className="border border-black px-2 py-2 text-center text-gray-500 italic"
+                                                                            >
+                                                                                No adjustments
+                                                                            </td>
+                                                                        </tr>
+                                                                    );
+                                                                }
+
+                                                                const totalAdj = periodAdjustments.reduce(
+                                                                    (s: number, a: any) => s + computeSignedAmount(a),
+                                                                    0,
+                                                                );
+
+                                                                return (
+                                                                    <>
+                                                                        {periodAdjustments.map((a: any) => (
+                                                                            <tr key={a.id}>
+                                                                                <td className="border border-black px-2 py-1 uppercase">
+                                                                                    {(a.adjustmentType && a.adjustmentType.name) ||
+                                                                                        (typeof a.adjustment_type === 'object'
+                                                                                            ? a.adjustment_type?.name
+                                                                                            : a.adjustment_type) ||
+                                                                                        '—'}
+                                                                                </td>
+                                                                                <td className="border border-black px-2 py-1">
+                                                                                    {(a.referenceType && a.referenceType.name) ||
+                                                                                        (typeof a.reference_type === 'object'
+                                                                                            ? a.reference_type?.name
+                                                                                            : a.reference_type) ||
+                                                                                        '—'}
+                                                                                </td>
+                                                                                <td
+                                                                                    className="border border-black px-2 py-1 text-right"
+                                                                                    style={{
+                                                                                        color: computeSignedAmount(a) < 0 ? '#b91c1c' : '#047857',
+                                                                                    }}
+                                                                                >
+                                                                                    {formatCurrency(computeSignedAmount(a))}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                        <tr className="bg-gray-50 font-bold">
+                                                                            <td className="border border-black px-2 py-1">TOTAL</td>
+                                                                            <td className="border border-black px-2 py-1" />
+                                                                            <td
+                                                                                className="border border-black px-2 py-1 text-right"
+                                                                                style={{ color: totalAdj < 0 ? '#b91c1c' : '#047857' }}
+                                                                            >
+                                                                                {formatCurrency(totalAdj)}
+                                                                            </td>
+                                                                        </tr>
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                        </tbody>
+                                                    </table>
                                                 </div>
                                             </div>
                                         );
@@ -402,6 +528,7 @@ export const PrintReport = forwardRef<HTMLDivElement, PrintReportProps>(({ emplo
                                                     <th className="border border-black px-2 py-1 text-left">Year</th>
                                                     <th className="border border-black px-2 py-1 text-right">Total Deductions</th>
                                                     <th className="border border-black px-2 py-1 text-right">Total Claims</th>
+                                                    <th className="border border-black px-2 py-1 text-right">Total Adjustments</th>
                                                     <th className="border border-black px-2 py-1 text-right">Net</th>
                                                 </tr>
                                             </thead>
@@ -413,6 +540,9 @@ export const PrintReport = forwardRef<HTMLDivElement, PrintReportProps>(({ emplo
                                                             .filter((p) => p.year === year)
                                                             .reduce((sum, p) => sum + p.total, 0);
                                                         const yearClaims = claimYears.find((c) => c.year === year)?.total ?? 0;
+                                                        const yearAdjustments = (allAdjustments || [])
+                                                            .filter((a: any) => Number(a.pay_period_year) === year)
+                                                            .reduce((s: number, a: any) => s + computeSignedAmount(a), 0);
 
                                                         return (
                                                             <tr key={year}>
@@ -423,8 +553,13 @@ export const PrintReport = forwardRef<HTMLDivElement, PrintReportProps>(({ emplo
                                                                 <td className="border border-black px-2 py-1 text-right text-green-600">
                                                                     {formatCurrency(yearClaims)}
                                                                 </td>
+                                                                <td className="border border-black px-2 py-1 text-right">
+                                                                    <span style={{ color: yearAdjustments < 0 ? '#b91c1c' : '#047857' }}>
+                                                                        {formatCurrency(yearAdjustments)}
+                                                                    </span>
+                                                                </td>
                                                                 <td className="border border-black px-2 py-1 text-right font-bold">
-                                                                    {formatCurrency(yearClaims - yearDeductions)}
+                                                                    {formatCurrency(yearClaims - yearDeductions + yearAdjustments)}
                                                                 </td>
                                                             </tr>
                                                         );
@@ -438,7 +573,12 @@ export const PrintReport = forwardRef<HTMLDivElement, PrintReportProps>(({ emplo
                                                         {formatCurrency(totalAllClaims)}
                                                     </td>
                                                     <td className="border border-black px-2 py-1 text-right">
-                                                        {formatCurrency(totalAllClaims - totalAllDeductions)}
+                                                        <span style={{ color: totalAllAdjustments < 0 ? '#b91c1c' : '#047857' }}>
+                                                            {formatCurrency(totalAllAdjustments)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="border border-black px-2 py-1 text-right">
+                                                        {formatCurrency(totalAllClaims - totalAllDeductions + totalAllAdjustments)}
                                                     </td>
                                                 </tr>
                                             </tbody>

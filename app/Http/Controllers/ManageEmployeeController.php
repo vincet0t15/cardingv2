@@ -364,10 +364,10 @@ class ManageEmployeeController extends Controller
 
         $allClaims = $claimsQuery->orderBy('claim_date', 'desc')->get();
 
-        // Get all adjustments (approved and processed only for reports)
+        // Get all adjustments (exclude rejected only) so pending adjustments also appear in reports/print
         $adjustmentsQuery = Adjustment::with(['adjustmentType', 'referenceType'])
             ->where('employee_id', $employee->id)
-            ->whereIn('status', ['approved', 'processed']);
+            ->where('status', '!=', 'rejected');
 
         if ($filterMonth) {
             $adjustmentsQuery->where('pay_period_month', $filterMonth);
