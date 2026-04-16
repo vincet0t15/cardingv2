@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import type { DeductionType } from '@/types/deductionType';
 import type { Employee } from '@/types/employee';
 import type { EmployeeDeduction } from '@/types/employeeDeduction';
-import { useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import { type FormEventHandler, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -96,8 +96,8 @@ export function SalaryDialog({
             existingDeductions.length > 0 && existingDeductions[0].salary_id
                 ? getSalaryAmount(existingDeductions[0].salary_id)
                 : currentSalary
-                ? String(currentSalary.amount)
-                : '0',
+                  ? String(currentSalary.amount)
+                  : '0',
         deductions: deductionTypes.map((dt) => {
             const existing = existingDeductions.find((e) => e.deduction_type_id === dt.id);
             return {
@@ -153,7 +153,7 @@ export function SalaryDialog({
         label: `${formatCurrency(Number(s.amount))} - Effective: ${formatDate(s.effective_date)}`,
     }));
 
-    const onSubmit: FormEventHandler<HTMLFormElement> = (e) => {
+    const onSubmit: FormEventHandler<HTMLFormElement> = async (e) => {
         e.preventDefault();
 
         if (isPeriodTaken) {
@@ -171,6 +171,75 @@ export function SalaryDialog({
         // Ensure salary_id is null instead of empty string before submit
         if (!data.salary_id) setData('salary_id', null);
 
+        if (isEditing) {
+            // Map existing deductions by deduction_type_id for updates
+            const existingMap = new Map<number, EmployeeDeduction>();
+            for (const ex of existingDeductions) {
+                existingMap.set(ex.deduction_type_id, ex);
+            }
+
+            const ops: Promise<any>[] = [];
+
+            for (const d of data.deductions) {
+                const amount = d.amount ?? '';
+                if (!amount || parseFloat(amount) <= 0) {
+                    continue;
+                }
+
+                const existing = existingMap.get(d.deduction_type_id);
+                if (existing) {
+                    // Update existing deduction by id
+                    // Update existing deduction by id — wrap callback-style router.put in a Promise
+                    ops.push(
+                        new Promise((resolve, reject) => {
+                            router.put(
+                                route('employee-deductions.update', existing.id),
+                                { amount: amount },
+                                {
+                                    preserveScroll: true,
+                                    onSuccess: () => resolve(true),
+                                    onError: () => reject(false),
+                                },
+                            );
+                        }),
+                    );
+                } else {
+                    // Create new deduction for this employee and period
+                    // Create new deduction for this employee and period — wrap router.post in a Promise
+                    ops.push(
+                        new Promise((resolve, reject) => {
+                            router.post(
+                                route('manage.employees.deductions.store', employee.id),
+                                {
+                                    pay_period_month: data.pay_period_month,
+                                    pay_period_year: data.pay_period_year,
+                                    salary_id: data.salary_id ?? null,
+                                    deductions: [{ deduction_type_id: d.deduction_type_id, amount: d.amount }],
+                                },
+                                {
+                                    preserveScroll: true,
+                                    onSuccess: () => resolve(true),
+                                    onError: () => reject(false),
+                                },
+                            );
+                        }),
+                    );
+                }
+            }
+
+            try {
+                await Promise.all(ops);
+                toast.success('Deductions updated successfully');
+                reset();
+                onClose();
+            } catch (err) {
+                toast.error('Failed to update deductions');
+            }
+
+            return;
+        }
+
+        // Not editing -> create (bulk)
         post(route('manage.employees.deductions.store', employee.id), {
             onSuccess: () => {
                 toast.success('Deductions saved successfully');
