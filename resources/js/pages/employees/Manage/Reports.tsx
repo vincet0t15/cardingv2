@@ -190,6 +190,26 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
         return filteredAdjustments.reduce((sum: number, a: any) => sum + computeSignedAmount(a), 0);
     }, [filteredAdjustments]);
 
+    // Normalize and return an adjustment type display name (handles object or string shapes)
+    const getAdjustmentTypeName = (a: any) => {
+        if (!a) return '—';
+        if (a.adjustmentType && typeof a.adjustmentType === 'object') return a.adjustmentType.name ?? '—';
+        if (a.adjustment_type && typeof a.adjustment_type === 'object') return a.adjustment_type.name ?? '—';
+        if (typeof a.adjustment_type === 'string') return a.adjustment_type;
+        if (typeof a.adjustmentType === 'string') return a.adjustmentType;
+        return '—';
+    };
+
+    // Normalize and return a reference type display name (handles object or string shapes)
+    const getReferenceTypeName = (a: any) => {
+        if (!a) return '—';
+        if (a.referenceType && typeof a.referenceType === 'object') return a.referenceType.name ?? '—';
+        if (a.reference_type && typeof a.reference_type === 'object') return a.reference_type.name ?? '—';
+        if (typeof a.reference_type === 'string') return a.reference_type;
+        if (typeof a.referenceType === 'string') return a.referenceType;
+        return '—';
+    };
+
     // Helper function to sum compensation across all periods
     function sumCompensation(history: { amount: number; effective_date: string }[] | undefined): number {
         if (!history || history.length === 0) return 0;
@@ -524,16 +544,8 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                                             .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                                             .map((a: any) => (
                                                 <TableRow key={a.id}>
-                                                    <TableCell className="uppercase">
-                                                        {typeof a.adjustment_type === 'object'
-                                                            ? (a.adjustment_type?.name ?? '—')
-                                                            : (a.adjustment_type ?? a.adjustmentType?.name ?? '—')}
-                                                    </TableCell>
-                                                    <TableCell className="whitespace-nowrap">
-                                                        {typeof a.reference_type === 'object'
-                                                            ? (a.reference_type?.name ?? '—')
-                                                            : (a.reference_type ?? a.referenceType?.name ?? '—')}
-                                                    </TableCell>
+                                                    <TableCell className="uppercase">{getAdjustmentTypeName(a)}</TableCell>
+                                                    <TableCell className="whitespace-nowrap">{getReferenceTypeName(a)}</TableCell>
                                                     <TableCell className="text-right text-red-600">{formatCurrency(Number(a.amount))}</TableCell>
                                                     <TableCell>{`${a.pay_period_year ?? '—'}-${String(a.pay_period_month ?? '—').padStart(2, '0')}`}</TableCell>
                                                     <TableCell>
