@@ -8,10 +8,10 @@ import type { DeductionType } from '@/types/deductionType';
 import type { Employee, Employee as EmployeeType } from '@/types/employee';
 import type { EmployeeDeduction } from '@/types/employeeDeduction';
 import { router } from '@inertiajs/react';
-import { PencilIcon, Plus, Printer, Trash2, Users, X } from 'lucide-react';
+import { PencilIcon, Plus, Printer, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { SalaryDialog } from './salaryDialog';
+import EditPeriodDeductionsDialog from './EditPeriodDeductionsDialog';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -35,13 +35,6 @@ interface CompensationDeductionsProps {
     allEmployees?: EmployeeType[];
 }
 
-interface DialogState {
-    open: boolean;
-    month: string;
-    year: string;
-    existingDeductions: EmployeeDeduction[];
-}
-
 export function CompensationDeductions({
     employee,
     deductionTypes,
@@ -53,12 +46,13 @@ export function CompensationDeductions({
     pagination,
     allEmployees = [],
 }: CompensationDeductionsProps) {
-    const [dialogState, setDialogState] = useState<DialogState>({
-        open: false,
-        month: String(new Date().getMonth() + 1),
-        year: String(new Date().getFullYear()),
-        existingDeductions: [],
-    });
+    // Use offices-style edit dialog state for period edit
+    const [openEditDialog, setOpenEditDialog] = useState(false);
+    const [editDialogData, setEditDialogData] = useState<{
+        month: string;
+        year: string;
+        existingDeductions: EmployeeDeduction[];
+    } | null>(null);
 
     const goToPage = (page: number) => {
         router.get(
@@ -114,17 +108,16 @@ export function CompensationDeductions({
         window.open(route('employee-deductions.create') + '?employee_id=' + employee.id, '_blank');
     };
 
-    const openEditDialog = (periodKey: string) => {
+    const openPeriodEditDialog = (periodKey: string) => {
         const [year, month] = periodKey.split('-');
-        setDialogState({
-            open: true,
-            month: String(parseInt(month)),
-            year,
-            existingDeductions: deductions[periodKey] ?? [],
-        });
+        setEditDialogData({ month: String(parseInt(month)), year, existingDeductions: deductions[periodKey] ?? [] });
+        setOpenEditDialog(true);
     };
 
-    const closeDialog = () => setDialogState((prev: DialogState) => ({ ...prev, open: false }));
+    const closePeriodEditDialog = () => {
+        setOpenEditDialog(false);
+        setEditDialogData(null);
+    };
 
     const [deletingDeductionId, setDeletingDeductionId] = useState<number | null>(null);
     const [deletingPeriodKey, setDeletingPeriodKey] = useState<string | null>(null);
@@ -181,14 +174,6 @@ export function CompensationDeductions({
                 )}
 
                 <div className="flex-1"></div>
-
-                {allEmployees.length > 0 && (
-                    <Button variant="outline" onClick={() => router.visit(route('employee-deductions.bulk-add-page'))}>
-                        <Users className="mr-2 h-4 w-4" />
-                        Bulk Add
-                    </Button>
-                )}
-
                 <Button onClick={openNewDialog}>
                     <Plus className="h-4 w-4" />
                     Add Deductions
@@ -235,7 +220,7 @@ export function CompensationDeductions({
                                             <Trash2 className="h-3 w-3 text-red-500" />
                                             Delete
                                         </Button>
-                                        <Button variant="outline" onClick={() => openEditDialog(periodKey)}>
+                                        <Button variant="outline" onClick={() => openPeriodEditDialog(periodKey)}>
                                             <PencilIcon className="h-3 w-3" />
                                             Edit
                                         </Button>
@@ -353,17 +338,20 @@ export function CompensationDeductions({
                     </div>
                 </div>
             )}
-            {dialogState.open && (
-                <SalaryDialog
-                    open={dialogState.open}
-                    onClose={closeDialog}
-                    employee={employee}
-                    deductionTypes={deductionTypes}
-                    defaultMonth={dialogState.month}
-                    defaultYear={dialogState.year}
-                    existingDeductions={dialogState.existingDeductions}
-                    takenPeriods={takenPeriods}
-                />
+            {openEditDialog && editDialogData && (
+                <>
+                    {/* Period edit dialog (offices-style) */}
+                    <EditPeriodDeductionsDialog
+                        open={openEditDialog}
+                        setOpen={setOpenEditDialog}
+                        employee={employee}
+                        deductionTypes={deductionTypes}
+                        defaultMonth={editDialogData.month}
+                        defaultYear={editDialogData.year}
+                        existingDeductions={editDialogData.existingDeductions}
+                        takenPeriods={takenPeriods}
+                    />
+                </>
             )}
 
             {/* Delete single deduction confirmation */}
