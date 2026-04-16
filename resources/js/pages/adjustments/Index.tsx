@@ -123,13 +123,14 @@ export default function Index({ adjustments, employees, filters, statistics }: P
         );
     };
 
-    const getTypeBadge = (type: string) => {
-        const isPositive = ['Salary Refund', 'Underpayment', 'Overtime Adjustment', 'Deduction Refund', 'Holiday Pay Adjustment'].includes(type);
+    const getTypeBadge = (type: any) => {
+        const name = typeof type === 'object' ? (type?.name ?? '—') : (type ?? '—');
+        const isPositive = ['Salary Refund', 'Underpayment', 'Overtime Adjustment', 'Deduction Refund', 'Holiday Pay Adjustment'].includes(name);
 
         return (
             <Badge variant={isPositive ? 'default' : 'destructive'} className="gap-1">
                 <DollarSign className="h-3 w-3" />
-                <span>{type}</span>
+                <span>{name}</span>
             </Badge>
         );
     };

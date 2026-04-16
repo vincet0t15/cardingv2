@@ -173,6 +173,26 @@ export default function EmployeePrintReport({
 
     const totalAllAdjustments = allAdjustments.reduce((sum, a) => sum + computeSignedAmount(a), 0);
 
+    // Normalize and return an adjustment type display name (handles object or string shapes)
+    const getAdjustmentTypeName = (a: any) => {
+        if (!a) return '—';
+        if (a.adjustmentType && typeof a.adjustmentType === 'object') return a.adjustmentType.name ?? '—';
+        if (a.adjustment_type && typeof a.adjustment_type === 'object') return a.adjustment_type.name ?? '—';
+        if (typeof a.adjustment_type === 'string') return a.adjustment_type;
+        if (typeof a.adjustmentType === 'string') return a.adjustmentType;
+        return '—';
+    };
+
+    // Normalize and return a reference type display name (handles object or string shapes)
+    const getReferenceTypeName = (a: any) => {
+        if (!a) return '—';
+        if (a.referenceType && typeof a.referenceType === 'object') return a.referenceType.name ?? '—';
+        if (a.reference_type && typeof a.reference_type === 'object') return a.reference_type.name ?? '—';
+        if (typeof a.reference_type === 'string') return a.reference_type;
+        if (typeof a.referenceType === 'string') return a.referenceType;
+        return '—';
+    };
+
     // Group adjustments by year-month
     const adjustmentsByPeriod: Record<string, { year: number; month: number; items: Adjustment[]; total: number }> = {};
     for (const a of allAdjustments) {
@@ -575,18 +595,10 @@ export default function EmployeePrintReport({
                                                                 {adjustmentPeriod.items.map((a) => (
                                                                     <tr key={a.id}>
                                                                         <td className="border border-black px-2 py-1 text-[10px] uppercase">
-                                                                            {(a.adjustmentType && a.adjustmentType.name) ||
-                                                                                (typeof a.adjustment_type === 'object'
-                                                                                    ? a.adjustment_type?.name
-                                                                                    : a.adjustment_type) ||
-                                                                                '—'}
+                                                                            {getAdjustmentTypeName(a)}
                                                                         </td>
                                                                         <td className="border border-black px-2 py-1 text-[10px]">
-                                                                            {(a.referenceType && a.referenceType.name) ||
-                                                                                (typeof a.reference_type === 'object'
-                                                                                    ? a.reference_type?.name
-                                                                                    : a.reference_type) ||
-                                                                                '—'}
+                                                                            {getReferenceTypeName(a)}
                                                                         </td>
                                                                         <td
                                                                             className="border border-black px-2 py-1 text-right text-[10px]"

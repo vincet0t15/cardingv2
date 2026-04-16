@@ -1,5 +1,5 @@
-import { LucideIcon } from 'lucide-react';
 import type { InertiaLinkProps } from '@inertiajs/react';
+import { LucideIcon } from 'lucide-react';
 export interface Auth {
     user: User;
 }
@@ -58,12 +58,31 @@ export interface Adjustment {
         position?: string;
     };
     adjustment_type: string;
+    // Optional relation object when backend includes the adjustment type relation
+    adjustmentType?: {
+        id?: number;
+        name?: string;
+        description?: string | null;
+        effect?: string | null;
+        requires_approval?: boolean | null;
+        created_by?: number | null;
+        deleted_at?: string | null;
+        created_at?: string | null;
+        updated_at?: string | null;
+        [key: string]: any;
+    };
     amount: number;
     pay_period_month: number;
     pay_period_year: number;
     effectivity_date: string;
     reference_id?: string;
     reference_type?: string;
+    // Optional relation object when backend includes the reference type relation
+    referenceType?: {
+        id?: number;
+        name?: string;
+        [key: string]: any;
+    };
     status: 'pending' | 'approved' | 'rejected' | 'processed';
     reason: string;
     remarks?: string;
@@ -74,4 +93,3 @@ export interface Adjustment {
     created_at: string;
     updated_at: string;
 }
-
