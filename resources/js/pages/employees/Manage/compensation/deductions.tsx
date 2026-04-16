@@ -1,5 +1,6 @@
 import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { CustomComboBox } from '@/components/CustomComboBox';
+import EditDeductionDialog from '@/components/EditDeductionDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -148,6 +149,8 @@ export function CompensationDeductions({
         window.open(route('employees.print', [employee.id, { month, year, type: 'deductions' }]), '_blank');
     };
 
+    const [editingDeduction, setEditingDeduction] = useState<EmployeeDeduction | null>(null);
+
     const periods = periodsList;
     const currentPage = pagination?.current_page ?? 1;
     const lastPage = pagination?.last_page ?? 1;
@@ -270,7 +273,15 @@ export function CompensationDeductions({
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="text-right text-red-600">- {formatCurrency(Number(d.amount))}</TableCell>
-                                                <TableCell>
+                                                <TableCell className="flex gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7 text-slate-600 hover:text-slate-800"
+                                                        onClick={() => setEditingDeduction(d)}
+                                                    >
+                                                        <PencilIcon className="h-4 w-4" />
+                                                    </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
@@ -368,6 +379,9 @@ export function CompensationDeductions({
                     return Promise.resolve();
                 }}
             />
+
+            {/* Edit single deduction dialog */}
+            <EditDeductionDialog isOpen={!!editingDeduction} onClose={() => setEditingDeduction(null)} deduction={editingDeduction} />
 
             {/* Delete all deductions for period confirmation */}
             <ConfirmDeleteDialog
