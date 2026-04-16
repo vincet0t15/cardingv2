@@ -66,6 +66,15 @@ export function SalaryDialog({
     const formatCurrency = (amount: number) =>
         new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(amount);
 
+    const formatDate = (date?: string | null) => {
+        if (!date) return '-';
+        return new Date(date).toLocaleDateString('en-PH', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+        });
+    };
+
     // Get the salary amount to use
     const getSalaryAmount = (salaryId: number | null): string => {
         if (salaryId === null && currentSalary) {
