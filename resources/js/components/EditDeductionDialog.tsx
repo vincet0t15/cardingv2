@@ -49,7 +49,7 @@ export default function EditDeductionDialog({ isOpen, onClose, deduction }: Edit
                 <DialogHeader>
                     <DialogTitle>Edit Deduction</DialogTitle>
                     <DialogDescription>
-                        {deduction ? <div className="text-sm">{deduction.deduction_type?.name ?? 'Deduction'}</div> : 'Edit deduction'}
+                        {deduction ? <span className="text-sm">{deduction.deduction_type?.name ?? 'Deduction'}</span> : 'Edit deduction'}
                     </DialogDescription>
                 </DialogHeader>
 
