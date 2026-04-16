@@ -49,6 +49,7 @@ class SupplierTransactionController extends Controller
             'net_amount' => 'required|numeric|min:0',
             'date_processed' => 'nullable|date',
             'remarks' => 'nullable|string',
+            'earmark' => 'nullable|string|max:255',
         ]);
 
         $supplier->transactions()->create($validated);
@@ -85,6 +86,7 @@ class SupplierTransactionController extends Controller
             'net_amount' => 'required|numeric|min:0',
             'date_processed' => 'nullable|date',
             'remarks' => 'nullable|string',
+            'earmark' => 'nullable|string|max:255',
         ]);
 
         $transaction->update($validated);
