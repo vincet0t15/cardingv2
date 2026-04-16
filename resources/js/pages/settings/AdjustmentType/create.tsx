@@ -18,8 +18,6 @@ export function CreateAdjustmentTypeDialog({ isOpen, onClose }: CreateAdjustment
         name: '',
         description: '',
         effect: 'positive',
-        taxable: false,
-        include_in_payroll: false,
     });
 
     useEffect(() => {
@@ -82,21 +80,7 @@ export function CreateAdjustmentTypeDialog({ isOpen, onClose }: CreateAdjustment
                             {errors.effect && <p className="text-sm text-red-500">{errors.effect}</p>}
                         </div>
 
-                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                            <label className="flex items-center gap-2">
-                                <input type="checkbox" checked={data.taxable} onChange={(e) => setData('taxable', e.target.checked)} />
-                                <span className="text-sm">Taxable</span>
-                            </label>
-
-                            <label className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    checked={data.include_in_payroll}
-                                    onChange={(e) => setData('include_in_payroll', e.target.checked)}
-                                />
-                                <span className="text-sm">Include in Payroll</span>
-                            </label>
-                        </div>
+                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2"></div>
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={onClose}>

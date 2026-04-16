@@ -76,11 +76,11 @@ class AdjustmentTypeSeeder extends Seeder
                 $record = $type;
 
                 if ($hasTaxable) {
-                    $record['taxable'] = in_array($type['name'], ['Monetization', 'Terminal Pay']);
+                    // left intentionally blank: taxable flag no longer managed by seeder
                 }
 
                 if ($hasIncludeInPayroll) {
-                    $record['include_in_payroll'] = in_array($type['name'], ['Monetization', 'Terminal Pay']);
+                    // left intentionally blank: include_in_payroll flag no longer managed by seeder
                 }
 
                 if ($hasRequiresApproval) {

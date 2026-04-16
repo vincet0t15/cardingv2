@@ -20,8 +20,6 @@ export function EditAdjustmentTypeDialog({ isOpen, onClose, adjustmentType }: Ed
         name: adjustmentType.name,
         description: adjustmentType.description || '',
         effect: adjustmentType.effect,
-        taxable: (adjustmentType as any).taxable ?? false,
-        include_in_payroll: (adjustmentType as any).include_in_payroll ?? false,
     });
 
     useEffect(() => {
@@ -30,8 +28,6 @@ export function EditAdjustmentTypeDialog({ isOpen, onClose, adjustmentType }: Ed
                 name: adjustmentType.name,
                 description: adjustmentType.description || '',
                 effect: adjustmentType.effect,
-                taxable: (adjustmentType as any).taxable ?? false,
-                include_in_payroll: (adjustmentType as any).include_in_payroll ?? false,
             });
         }
     }, [isOpen, adjustmentType]);
