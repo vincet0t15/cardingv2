@@ -146,76 +146,77 @@ export default function EditDeductionPage({ employee, deductionTypes, existingDe
     const onSubmit: FormEventHandler<HTMLFormElement> = async (e) => {
         e.preventDefault();
 
-        const ops: { success: boolean; type: 'update' | 'create'; deductionTypeId: number }[] = [];
+        // Separate into creates and updates
+        const toCreate: typeof data.deductions = [];
+        const toUpdate: Array<{ id: number; amount: string }> = [];
 
         for (const d of data.deductions) {
             const amount = d.amount ?? '';
             if (!amount || parseFloat(amount) <= 0) continue;
 
             const existing = existingMap.get(d.deduction_type_id);
-
-            try {
-                if (existing) {
-                    await new Promise<void>((resolve, reject) => {
-                        router.put(
-                            route('employee-deductions.update', existing.id),
-                            {
-                                amount: amount,
-                                pay_period_month: data.pay_period_month,
-                                pay_period_year: data.pay_period_year,
-                            },
-                            {
-                                preserveScroll: true,
-                                onSuccess: () => {
-                                    ops.push({ success: true, type: 'update', deductionTypeId: d.deduction_type_id });
-                                    resolve();
-                                },
-                                onError: () => {
-                                    ops.push({ success: false, type: 'update', deductionTypeId: d.deduction_type_id });
-                                    reject(new Error('Update failed'));
-                                },
-                            },
-                        );
-                    });
-                } else {
-                    await new Promise<void>((resolve, reject) => {
-                        router.post(
-                            route('manage.employees.deductions.store', employee.id),
-                            {
-                                pay_period_month: data.pay_period_month,
-                                pay_period_year: data.pay_period_year,
-                                salary_id: data.salary_id ?? null,
-                                deductions: [{ deduction_type_id: d.deduction_type_id, amount: d.amount }],
-                            },
-                            {
-                                preserveScroll: true,
-                                onSuccess: () => {
-                                    ops.push({ success: true, type: 'create', deductionTypeId: d.deduction_type_id });
-                                    resolve();
-                                },
-                                onError: () => {
-                                    ops.push({ success: false, type: 'create', deductionTypeId: d.deduction_type_id });
-                                    reject(new Error('Create failed'));
-                                },
-                            },
-                        );
-                    });
-                }
-            } catch (err) {
-                const deductionType = deductionTypes.find((dt) => dt.id === d.deduction_type_id);
-                toast.error(`Failed to save deduction: ${deductionType?.name ?? d.deduction_type_id}`);
+            if (existing) {
+                toUpdate.push({ id: existing.id, amount });
+            } else {
+                toCreate.push(d);
             }
         }
 
-        const failedCount = ops.filter((r) => !r.success).length;
-        const successCount = ops.filter((r) => r.success).length;
+        const promises: Promise<void>[] = [];
 
-        if (failedCount === 0 && successCount > 0) {
-            toast.success(`${successCount} deduction(s) saved successfully`);
-            router.get(route('manage.employees.index', employee.id));
-        } else if (failedCount > 0) {
-            toast.error(`${failedCount} deduction(s) failed to save`);
+        // Batch create request
+        if (toCreate.length > 0) {
+            promises.push(
+                new Promise<void>((resolve) => {
+                    router.post(
+                        route('manage.employees.deductions.store', employee.id),
+                        {
+                            pay_period_month: data.pay_period_month,
+                            pay_period_year: data.pay_period_year,
+                            salary_id: data.salary_id ?? null,
+                            deductions: toCreate,
+                        },
+                        {
+                            preserveScroll: true,
+                            onSuccess: () => resolve(),
+                            onError: () => resolve(), // Continue even on error
+                        },
+                    );
+                }),
+            );
         }
+
+        // Parallel update requests
+        for (const update of toUpdate) {
+            promises.push(
+                new Promise<void>((resolve) => {
+                    router.put(
+                        route('employee-deductions.update', update.id),
+                        {
+                            amount: update.amount,
+                            pay_period_month: data.pay_period_month,
+                            pay_period_year: data.pay_period_year,
+                        },
+                        {
+                            preserveScroll: true,
+                            onSuccess: () => resolve(),
+                            onError: () => resolve(), // Continue even on error
+                        },
+                    );
+                }),
+            );
+        }
+
+        if (promises.length === 0) {
+            toast.error('No valid deductions to save');
+            return;
+        }
+
+        // Execute all requests in parallel
+        await Promise.all(promises);
+
+        toast.success(`${toCreate.length + toUpdate.length} deduction(s) saved successfully`);
+        router.get(route('manage.employees.index', employee.id));
     };
 
     const handleCancel = () => {
