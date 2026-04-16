@@ -167,8 +167,9 @@ class ManageEmployeeController extends Controller
         $totalDeductionsAllTime = (float) $allDeductions->sum('amount');
         $totalClaimsAllTime = (float) $allClaims->sum('amount');
 
-        // Load adjustments for this employee
-        $adjustments = Adjustment::where('employee_id', $employee->id)
+        // Load adjustments for this employee (eager-load types for frontend)
+        $adjustments = Adjustment::with(['adjustmentType', 'referenceType'])
+            ->where('employee_id', $employee->id)
             ->orderBy('created_at', 'desc')
             ->get();
 

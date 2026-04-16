@@ -357,8 +357,14 @@ class PayrollController extends Controller
                     ->where('pay_period_year', $year)
                     ->sum('amount');
 
+                // Sum adjustments for this employee and period
+                $adjustments = $employee->adjustments()
+                    ->where('pay_period_month', $monthNum)
+                    ->where('pay_period_year', $year)
+                    ->sum('amount');
+
                 $grossPay = $salary + $pera + $rata + $hazardPay + $clothingAllowance;
-                $netPay = $grossPay - $deductions;
+                $netPay = $grossPay - $deductions + (float) $adjustments;
 
                 if ($salary > 0 || $pera > 0 || $rata > 0 || $hazardPay > 0 || $clothingAllowance > 0 || $deductions > 0) {
                     $monthEmployees[] = [
@@ -373,6 +379,7 @@ class PayrollController extends Controller
                         'clothing_allowance' => $clothingAllowance,
                         'gross_pay' => $grossPay,
                         'deductions' => $deductions,
+                        'adjustments' => (float) $adjustments,
                         'net_pay' => $netPay,
                     ];
 
@@ -383,6 +390,7 @@ class PayrollController extends Controller
                     $totals['clothing_allowance'] += $clothingAllowance;
                     $totals['gross_pay'] += $grossPay;
                     $totals['deductions'] += $deductions;
+                    $totals['adjustments'] = ($totals['adjustments'] ?? 0) + (float) $adjustments;
                     $totals['net_pay'] += $netPay;
                 }
             }
@@ -462,8 +470,13 @@ class PayrollController extends Controller
                 ->where('pay_period_year', $period1Year)
                 ->sum('amount');
 
+            $adjustments1 = $employee->adjustments()
+                ->where('pay_period_month', $period1Month)
+                ->where('pay_period_year', $period1Year)
+                ->sum('amount');
+
             $grossPay1 = $salary1 + $pera1 + $rata1;
-            $netPay1 = $grossPay1 - $deductions1;
+            $netPay1 = $grossPay1 - $deductions1 + (float) $adjustments1;
 
             $salary2 = $this->payrollService->getEffectiveAmount($employee->salaries, $period2Year, $period2Month);
             $pera2 = $this->payrollService->getEffectiveAmount($employee->peras, $period2Year, $period2Month);
@@ -474,8 +487,13 @@ class PayrollController extends Controller
                 ->where('pay_period_year', $period2Year)
                 ->sum('amount');
 
+            $adjustments2 = $employee->adjustments()
+                ->where('pay_period_month', $period2Month)
+                ->where('pay_period_year', $period2Year)
+                ->sum('amount');
+
             $grossPay2 = $salary2 + $pera2 + $rata2;
-            $netPay2 = $grossPay2 - $deductions2;
+            $netPay2 = $grossPay2 - $deductions2 + (float) $adjustments2;
 
             return [
                 'id' => $employee->id,
@@ -492,6 +510,7 @@ class PayrollController extends Controller
                     'rata' => $rata1,
                     'gross_pay' => $grossPay1,
                     'deductions' => $deductions1,
+                    'adjustments' => (float) $adjustments1,
                     'net_pay' => $netPay1,
                 ],
                 'period2' => [
@@ -502,6 +521,7 @@ class PayrollController extends Controller
                     'rata' => $rata2,
                     'gross_pay' => $grossPay2,
                     'deductions' => $deductions2,
+                    'adjustments' => (float) $adjustments2,
                     'net_pay' => $netPay2,
                 ],
                 'differences' => [
@@ -510,6 +530,7 @@ class PayrollController extends Controller
                     'rata' => $rata1 - $rata2,
                     'gross_pay' => $grossPay1 - $grossPay2,
                     'deductions' => $deductions1 - $deductions2,
+                    'adjustments' => (float) $adjustments1 - (float) $adjustments2,
                     'net_pay' => $netPay1 - $netPay2,
                 ],
             ];

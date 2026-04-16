@@ -251,7 +251,7 @@ export default function EmployeeManagePage({
                         <EmployeeAdjustments employee={employee} adjustments={adjustments} statistics={adjustmentStatistics} />
                     </TabsContent>
                     <TabsContent value="reports" className="mt-0 outline-none">
-                        <Reports employee={employee} allDeductions={allDeductions} allClaims={allClaims} />
+                        <Reports employee={employee} allDeductions={allDeductions} allClaims={allClaims} adjustments={adjustments} />
                     </TabsContent>
                     <TabsContent value="settings" className="mt-0 outline-none">
                         <EmployeeSettings employee={employee} employmentStatuses={employmentStatuses} offices={offices} />

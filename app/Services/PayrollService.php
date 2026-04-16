@@ -82,8 +82,14 @@ class PayrollService
             ->where('pay_period_month', $month)
             ->where('pay_period_year', $year)
             ->sum('amount');
+        // Sum adjustments for the given pay period (can be positive or negative)
+        $adjustments = (float) $employee->adjustments()
+            ->where('pay_period_month', $month)
+            ->where('pay_period_year', $year)
+            ->sum('amount');
         $grossPay = $salary + $pera + $rata + $hazardPay + $clothingAllowance;
-        $netPay = $grossPay - $totalDeductions;
+        // Include adjustments into the final net pay calculation
+        $netPay = $grossPay - $totalDeductions + $adjustments;
 
         return [
             'salary' => $salary,
@@ -92,6 +98,7 @@ class PayrollService
             'hazard_pay' => $hazardPay,
             'clothing_allowance' => $clothingAllowance,
             'total_deductions' => $totalDeductions,
+            'adjustments' => $adjustments,
             'gross_pay' => $grossPay,
             'net_pay' => $netPay,
         ];

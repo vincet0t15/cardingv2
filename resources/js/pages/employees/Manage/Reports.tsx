@@ -13,6 +13,7 @@ interface ReportsProps {
     employee: Employee;
     allDeductions: EmployeeDeduction[];
     allClaims: Claim[];
+    adjustments?: any[];
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -91,7 +92,7 @@ interface YearlyClaimRow {
     total: number;
 }
 
-function Reports({ employee, allDeductions, allClaims }: ReportsProps) {
+function Reports({ employee, allDeductions, allClaims, adjustments = [] }: ReportsProps) {
     const [filterMonth, setFilterMonth] = useState<string | null>(null);
     const [filterYear, setFilterYear] = useState<string | null>(null);
 
@@ -154,6 +155,15 @@ function Reports({ employee, allDeductions, allClaims }: ReportsProps) {
 
     const totalAllDeductions = filteredDeductions.reduce((sum, d) => sum + Number(d.amount), 0);
     const totalAllClaims = filteredClaims.reduce((sum, c) => sum + Number(c.amount), 0);
+
+    // Filter adjustments by selected month/year
+    const filteredAdjustments = useMemo(() => {
+        return adjustments.filter((a: any) => {
+            const monthMatch = !filterMonth || Number(a.pay_period_month) === parseInt(filterMonth);
+            const yearMatch = !filterYear || Number(a.pay_period_year) === parseInt(filterYear);
+            return monthMatch && yearMatch;
+        });
+    }, [adjustments, filterMonth, filterYear]);
 
     // Helper function to sum compensation across all periods
     function sumCompensation(history: { amount: number; effective_date: string }[] | undefined): number {
@@ -453,6 +463,70 @@ function Reports({ employee, allDeductions, allClaims }: ReportsProps) {
                             );
                         })}
                     </div>
+                )}
+            </div>
+
+            {/* Adjustments Report */}
+            <div className="space-y-4">
+                <h3 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">Adjustments</h3>
+
+                {filteredAdjustments.length === 0 ? (
+                    <div className="text-muted-foreground rounded-sm border py-10 text-center text-sm">
+                        No adjustments recorded for the selected period.
+                    </div>
+                ) : (
+                    <Card>
+                        <CardContent>
+                            <div className="w-full overflow-hidden rounded-sm border shadow-sm">
+                                <Table>
+                                    <TableHeader className="bg-muted/90">
+                                        <TableRow>
+                                            <TableHead>Type</TableHead>
+                                            <TableHead>Reference</TableHead>
+                                            <TableHead className="text-right">Amount</TableHead>
+                                            <TableHead>Pay Period</TableHead>
+                                            <TableHead>Effectivity</TableHead>
+                                            <TableHead>Reason</TableHead>
+                                            <TableHead>Created</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredAdjustments
+                                            .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                                            .map((a: any) => (
+                                                <TableRow key={a.id}>
+                                                    <TableCell className="uppercase">
+                                                        {typeof a.adjustment_type === 'object'
+                                                            ? (a.adjustment_type?.name ?? '—')
+                                                            : (a.adjustment_type ?? a.adjustmentType?.name ?? '—')}
+                                                    </TableCell>
+                                                    <TableCell className="whitespace-nowrap">
+                                                        {typeof a.reference_type === 'object'
+                                                            ? (a.reference_type?.name ?? '—')
+                                                            : (a.reference_type ?? a.referenceType?.name ?? '—')}
+                                                    </TableCell>
+                                                    <TableCell className="text-right text-red-600">{formatCurrency(Number(a.amount))}</TableCell>
+                                                    <TableCell>{`${a.pay_period_year ?? '—'}-${String(a.pay_period_month ?? '—').padStart(2, '0')}`}</TableCell>
+                                                    <TableCell>
+                                                        {a.effectivity_date
+                                                            ? new Date(a.effectivity_date).toLocaleDateString('en-PH', {
+                                                                  month: 'short',
+                                                                  day: 'numeric',
+                                                                  year: 'numeric',
+                                                              })
+                                                            : '—'}
+                                                    </TableCell>
+                                                    <TableCell className="text-muted-foreground max-w-[200px] truncate">
+                                                        {a.reason ?? a.notes ?? '—'}
+                                                    </TableCell>
+                                                    <TableCell className="whitespace-nowrap">{new Date(a.created_at).toLocaleString()}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </CardContent>
+                    </Card>
                 )}
             </div>
 
