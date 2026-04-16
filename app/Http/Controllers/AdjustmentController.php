@@ -6,6 +6,8 @@ use App\Models\Adjustment;
 use App\Models\Employee;
 use App\Http\Requests\AdjustmentStoreRequest;
 use App\Http\Requests\AdjustmentUpdateRequest;
+use App\Models\AdjustmentType;
+use App\Models\ReferenceType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -108,35 +110,39 @@ class AdjustmentController extends Controller
     public function store(AdjustmentStoreRequest $request): RedirectResponse
     {
         $this->authorize('create', Adjustment::class);
+        $adjustmentTypeName = null;
+        if ($request->filled('adjustment_type_id')) {
+            $adjustmentType = AdjustmentType::find($request->adjustment_type_id);
+            $adjustmentTypeName = $adjustmentType?->name;
+        }
+
+        $referenceTypeName = null;
+        if ($request->filled('reference_type_id')) {
+            $referenceType = ReferenceType::find($request->reference_type_id);
+            $referenceTypeName = $referenceType?->name;
+        }
 
         $adjustment = Adjustment::create([
             'employee_id' => $request->employee_id,
-            'adjustment_type' => $request->adjustment_type,
+            'adjustment_type_id' => $request->adjustment_type_id,
+            'adjustment_type' => $adjustmentTypeName,
             'amount' => $request->amount,
             'pay_period_month' => $request->pay_period_month,
             'pay_period_year' => $request->pay_period_year,
             'effectivity_date' => $request->effectivity_date,
             'reference_id' => $request->reference_id,
-            'reference_type' => $request->reference_type,
+            'reference_type_id' => $request->reference_type_id,
+            'reference_type' => $referenceTypeName,
             'reason' => $request->reason,
             'remarks' => $request->remarks,
             'status' => Adjustment::STATUS_PENDING,
         ]);
 
-        // Redirect back to employee page if created from there, otherwise to adjustments list
-        $referer = $request->header('referer', '');
-        if (str_contains($referer, '/manage/employees/')) {
-            // Extract employee ID from referer URL
-            preg_match('/\/manage\/employees\/(\d+)/', $referer, $matches);
-            $employeeId = $matches[1] ?? $request->employee_id;
-
-            return redirect()
-                ->route('manage.employees.index', $employeeId)
-                ->with('success', 'Adjustment created successfully and pending approval.');
-        }
+        // Always redirect to the manage employee page after creating an adjustment
+        $employeeId = $request->employee_id;
 
         return redirect()
-            ->route('adjustments.index')
+            ->route('manage.employees.index', $employeeId)
             ->with('success', 'Adjustment created successfully and pending approval.');
     }
 
@@ -186,15 +192,29 @@ class AdjustmentController extends Controller
                 ->with('error', 'Cannot edit approved or processed adjustments.');
         }
 
+        $adjustmentTypeName = null;
+        if ($request->filled('adjustment_type_id')) {
+            $adjustmentType = AdjustmentType::find($request->adjustment_type_id);
+            $adjustmentTypeName = $adjustmentType?->name;
+        }
+
+        $referenceTypeName = null;
+        if ($request->filled('reference_type_id')) {
+            $referenceType = ReferenceType::find($request->reference_type_id);
+            $referenceTypeName = $referenceType?->name;
+        }
+
         $adjustment->update([
             'employee_id' => $request->employee_id,
-            'adjustment_type' => $request->adjustment_type,
+            'adjustment_type_id' => $request->adjustment_type_id,
+            'adjustment_type' => $adjustmentTypeName,
             'amount' => $request->amount,
             'pay_period_month' => $request->pay_period_month,
             'pay_period_year' => $request->pay_period_year,
             'effectivity_date' => $request->effectivity_date,
             'reference_id' => $request->reference_id,
-            'reference_type' => $request->reference_type,
+            'reference_type_id' => $request->reference_type_id,
+            'reference_type' => $referenceTypeName,
             'reason' => $request->reason,
             'remarks' => $request->remarks,
         ]);

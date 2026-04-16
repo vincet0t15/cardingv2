@@ -24,13 +24,13 @@ class AdjustmentUpdateRequest extends FormRequest
     {
         return [
             'employee_id' => 'required|exists:employees,id',
-            'adjustment_type' => 'required|string|in:' . implode(',', Adjustment::getAdjustmentTypes()),
+            'adjustment_type_id' => 'required|exists:adjustment_types,id',
             'amount' => 'required|numeric|min:-999999999.99|max:999999999.99',
             'pay_period_month' => 'required|integer|min:1|max:12',
             'pay_period_year' => 'required|integer|min:2020|max:2035',
             'effectivity_date' => 'required|date',
             'reference_id' => 'nullable|string|max:255',
-            'reference_type' => 'nullable|string|in:dtr,biometric,payroll,deduction',
+            'reference_type_id' => 'nullable|exists:reference_types,id',
             'reason' => 'required|string|max:1000',
             'remarks' => 'nullable|string|max:2000',
         ];
@@ -43,7 +43,7 @@ class AdjustmentUpdateRequest extends FormRequest
     {
         return [
             'employee_id.required' => 'Please select an employee.',
-            'adjustment_type.required' => 'Please select an adjustment type.',
+            'adjustment_type_id.required' => 'Please select an adjustment type.',
             'amount.required' => 'Please enter the adjustment amount.',
             'pay_period_month.required' => 'Please select the pay period month.',
             'pay_period_year.required' => 'Please select the pay period year.',
