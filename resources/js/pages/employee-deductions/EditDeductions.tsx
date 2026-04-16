@@ -162,6 +162,13 @@ export default function EditDeductionPage({ employee, deductionTypes, existingDe
             }
         }
 
+        if (toCreate.length === 0 && toUpdate.length === 0) {
+            toast.error('No valid deductions to save');
+            return;
+        }
+
+        let successCount = 0;
+        let failureCount = 0;
         const promises: Promise<void>[] = [];
 
         // Batch create request
@@ -178,8 +185,14 @@ export default function EditDeductionPage({ employee, deductionTypes, existingDe
                         },
                         {
                             preserveScroll: true,
-                            onSuccess: () => resolve(),
-                            onError: () => resolve(), // Continue even on error
+                            onSuccess: () => {
+                                successCount += toCreate.length;
+                                resolve();
+                            },
+                            onError: () => {
+                                failureCount += toCreate.length;
+                                resolve();
+                            },
                         },
                     );
                 }),
@@ -199,24 +212,32 @@ export default function EditDeductionPage({ employee, deductionTypes, existingDe
                         },
                         {
                             preserveScroll: true,
-                            onSuccess: () => resolve(),
-                            onError: () => resolve(), // Continue even on error
+                            onSuccess: () => {
+                                successCount += 1;
+                                resolve();
+                            },
+                            onError: () => {
+                                failureCount += 1;
+                                resolve();
+                            },
                         },
                     );
                 }),
             );
         }
 
-        if (promises.length === 0) {
-            toast.error('No valid deductions to save');
-            return;
-        }
-
         // Execute all requests in parallel
         await Promise.all(promises);
 
-        toast.success(`${toCreate.length + toUpdate.length} deduction(s) saved successfully`);
-        router.get(route('manage.employees.index', employee.id));
+        // Show results
+        if (successCount > 0 && failureCount === 0) {
+            toast.success(`${successCount} deduction(s) saved successfully`);
+            router.get(route('manage.employees.index', employee.id));
+        } else if (successCount > 0 && failureCount > 0) {
+            toast.warning(`${successCount} saved, ${failureCount} failed`);
+        } else if (failureCount > 0) {
+            toast.error(`Failed to save ${failureCount} deduction(s)`);
+        }
     };
 
     const handleCancel = () => {
