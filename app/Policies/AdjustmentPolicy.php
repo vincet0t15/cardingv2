@@ -12,7 +12,7 @@ class AdjustmentPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->can('view adjustments');
+        return $user->can('adjustments.view');
     }
 
     /**
@@ -20,7 +20,7 @@ class AdjustmentPolicy
      */
     public function view(User $user, Adjustment $adjustment): bool
     {
-        return $user->can('view adjustments');
+        return $user->can('adjustments.view');
     }
 
     /**
@@ -28,7 +28,7 @@ class AdjustmentPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('create adjustments');
+        return $user->can('adjustments.create');
     }
 
     /**
@@ -36,7 +36,7 @@ class AdjustmentPolicy
      */
     public function update(User $user, Adjustment $adjustment): bool
     {
-        return $user->can('edit adjustments') && $adjustment->status === 'pending';
+        return $user->can('adjustments.edit') && $adjustment->status === 'pending';
     }
 
     /**
@@ -44,7 +44,7 @@ class AdjustmentPolicy
      */
     public function approve(User $user, Adjustment $adjustment): bool
     {
-        return $user->can('approve adjustments') && $adjustment->status === 'pending';
+        return $user->can('adjustments.approve') && $adjustment->status === 'pending';
     }
 
     /**
@@ -52,7 +52,7 @@ class AdjustmentPolicy
      */
     public function process(User $user, Adjustment $adjustment): bool
     {
-        return $user->can('process adjustments') && $adjustment->status === 'approved';
+        return $user->can('adjustments.process') && $adjustment->status === 'approved';
     }
 
     /**
@@ -60,7 +60,7 @@ class AdjustmentPolicy
      */
     public function delete(User $user, Adjustment $adjustment): bool
     {
-        return $user->can('delete adjustments') &&
+        return $user->can('adjustments.delete') &&
             in_array($adjustment->status, ['pending', 'rejected']);
     }
 }

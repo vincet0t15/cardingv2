@@ -193,6 +193,9 @@ class RoleSeeder extends Seeder
         $employeePermissions = [
             'adjustments.view',
             'adjustments.create',
+            'adjustments.edit',
+            'adjustment_types.view',
+            'reference_types.view',
         ];
         $employeeRole->syncPermissions(
             Permission::whereIn('name', $employeePermissions)->get()
