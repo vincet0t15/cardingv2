@@ -252,7 +252,46 @@ class EmployeeDeductionController extends Controller
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0',
             'notes' => 'nullable|string',
+            'pay_period_month' => 'nullable|integer|min:1|max:12',
+            'pay_period_year' => 'nullable|integer|min:2020|max:2100',
         ]);
+
+        // If a new pay period is provided and it differs from the current one,
+        // attempt to move/merge the deduction to avoid creating duplicates.
+        $newMonth = $validated['pay_period_month'] ?? $employeeDeduction->pay_period_month;
+        $newYear = $validated['pay_period_year'] ?? $employeeDeduction->pay_period_year;
+
+        if ($newMonth != $employeeDeduction->pay_period_month || $newYear != $employeeDeduction->pay_period_year) {
+            $existing = EmployeeDeduction::where('employee_id', $employeeDeduction->employee_id)
+                ->where('deduction_type_id', $employeeDeduction->deduction_type_id)
+                ->where('pay_period_month', $newMonth)
+                ->where('pay_period_year', $newYear)
+                ->first();
+
+            if ($existing) {
+                // Merge: update target with incoming amount/notes and remove the old record
+                $existing->amount = $validated['amount'];
+                if (array_key_exists('notes', $validated)) {
+                    $existing->notes = $validated['notes'];
+                }
+                $existing->save();
+
+                $employeeDeduction->delete();
+
+                return redirect()->back()->with('success', 'Deduction moved and updated successfully');
+            }
+
+            // No conflict — update the current record's period and other fields
+            $employeeDeduction->pay_period_month = $newMonth;
+            $employeeDeduction->pay_period_year = $newYear;
+            $employeeDeduction->amount = $validated['amount'];
+            if (array_key_exists('notes', $validated)) {
+                $employeeDeduction->notes = $validated['notes'];
+            }
+            $employeeDeduction->save();
+
+            return redirect()->back()->with('success', 'Deduction moved and updated successfully');
+        }
 
         $employeeDeduction->update($validated);
 

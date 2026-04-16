@@ -11,7 +11,7 @@ import { router } from '@inertiajs/react';
 import { PencilIcon, Plus, Printer, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import EditPeriodDeductionsDialog from './EditPeriodDeductionsDialog';
+import PeriodDeductionsDialog from './PeriodDeductionsDialog';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -339,19 +339,16 @@ export function CompensationDeductions({
                 </div>
             )}
             {openEditDialog && editDialogData && (
-                <>
-                    {/* Period edit dialog (offices-style) */}
-                    <EditPeriodDeductionsDialog
-                        open={openEditDialog}
-                        setOpen={setOpenEditDialog}
-                        employee={employee}
-                        deductionTypes={deductionTypes}
-                        defaultMonth={editDialogData.month}
-                        defaultYear={editDialogData.year}
-                        existingDeductions={editDialogData.existingDeductions}
-                        takenPeriods={takenPeriods}
-                    />
-                </>
+                <PeriodDeductionsDialog
+                    open={openEditDialog}
+                    setOpen={setOpenEditDialog}
+                    employee={employee}
+                    deductionTypes={deductionTypes}
+                    defaultMonth={editDialogData.month}
+                    defaultYear={editDialogData.year}
+                    existingDeductions={editDialogData.existingDeductions}
+                    takenPeriods={takenPeriods}
+                />
             )}
 
             {/* Delete single deduction confirmation */}
