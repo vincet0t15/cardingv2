@@ -90,14 +90,14 @@ export function SalaryDialog({
         pay_period_year: defaultYear,
         // If editing, preserve the salary_id from existing deductions so
         // backend `updateOrCreate` can find the existing records instead
-        // of creating duplicates.
-        salary_id: existingDeductions.length > 0 && existingDeductions[0].salary_id ? String(existingDeductions[0].salary_id) : null,
+        // of creating duplicates. Use numeric id or null (not empty string).
+        salary_id: existingDeductions.length > 0 && existingDeductions[0].salary_id ? existingDeductions[0].salary_id : null,
         salary_amount:
             existingDeductions.length > 0 && existingDeductions[0].salary_id
                 ? getSalaryAmount(existingDeductions[0].salary_id)
                 : currentSalary
-                  ? String(currentSalary.amount)
-                  : '0',
+                ? String(currentSalary.amount)
+                : '0',
         deductions: deductionTypes.map((dt) => {
             const existing = existingDeductions.find((e) => e.deduction_type_id === dt.id);
             return {
@@ -110,7 +110,7 @@ export function SalaryDialog({
     const { data, setData, post, processing, reset } = useForm<{
         pay_period_month: string;
         pay_period_year: string;
-        salary_id: string | null;
+        salary_id: number | null;
         salary_amount: string;
         deductions: { deduction_type_id: number; amount: string }[];
     }>(getInitialData());
@@ -121,9 +121,6 @@ export function SalaryDialog({
             const initial = getInitialData();
             setData(initial);
 
-            // If the initial data includes a salary_id (editing a period that
-            // was saved with a salary), reflect that in the radio/combo UI so
-            // updateOrCreate uses the same salary_id key.
             if (initial.salary_id) {
                 setSalaryOption('previous');
                 setSelectedSalaryId(Number(initial.salary_id));
@@ -142,7 +139,7 @@ export function SalaryDialog({
 
     const handleSalaryChange = (salaryId: number | null) => {
         setSelectedSalaryId(salaryId);
-        setData('salary_id', salaryId ? String(salaryId) : null);
+        setData('salary_id', salaryId ?? null);
         setData('salary_amount', getSalaryAmount(salaryId));
     };
 
@@ -170,6 +167,9 @@ export function SalaryDialog({
             toast.error('Please enter at least one deduction amount.');
             return;
         }
+
+        // Ensure salary_id is null instead of empty string before submit
+        if (!data.salary_id) setData('salary_id', null);
 
         post(route('manage.employees.deductions.store', employee.id), {
             onSuccess: () => {
