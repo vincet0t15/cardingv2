@@ -10,6 +10,7 @@ import { useEffect } from 'react';
 interface CreateAdjustmentTypeDialogProps {
     isOpen: boolean;
     onClose: () => void;
+    roles: string[];
 }
 
 export function CreateAdjustmentTypeDialog({ isOpen, onClose }: CreateAdjustmentTypeDialogProps) {
@@ -19,10 +20,30 @@ export function CreateAdjustmentTypeDialog({ isOpen, onClose }: CreateAdjustment
         effect: 'positive',
         taxable: false,
         include_in_payroll: false,
-        requires_approval: true,
         restricted_roles: [] as string[],
     });
-
+    <div className="space-y-1">
+        <Label htmlFor="restricted_roles">Restricted Roles</Label>
+        <select
+            id="restricted_roles"
+            multiple
+            value={data.restricted_roles}
+            onChange={(e) =>
+                setData(
+                    'restricted_roles',
+                    Array.from(e.target.selectedOptions).map((o) => o.value),
+                )
+            }
+            className="w-full rounded-md border px-3 py-2 text-sm"
+        >
+            {roles.map((r) => (
+                <option key={r} value={r}>
+                    {r}
+                </option>
+            ))}
+        </select>
+        {errors.restricted_roles && <p className="text-sm text-red-500">{errors.restricted_roles}</p>}
+    </div>;
     useEffect(() => {
         if (!isOpen) {
             reset();
@@ -89,24 +110,13 @@ export function CreateAdjustmentTypeDialog({ isOpen, onClose }: CreateAdjustment
                             </label>
 
                             <label className="flex items-center gap-2">
-                                <input type="checkbox" checked={data.include_in_payroll} onChange={(e) => setData('include_in_payroll', e.target.checked)} />
+                                <input
+                                    type="checkbox"
+                                    checked={data.include_in_payroll}
+                                    onChange={(e) => setData('include_in_payroll', e.target.checked)}
+                                />
                                 <span className="text-sm">Include in Payroll</span>
                             </label>
-
-                            <label className="flex items-center gap-2">
-                                <input type="checkbox" checked={data.requires_approval} onChange={(e) => setData('requires_approval', e.target.checked)} />
-                                <span className="text-sm">Requires Approval</span>
-                            </label>
-
-                            <div className="space-y-1">
-                                <Label htmlFor="restricted_roles">Restricted Roles (comma-separated)</Label>
-                                <Input
-                                    id="restricted_roles"
-                                    value={data.restricted_roles.join(',')}
-                                    onChange={(e) => setData('restricted_roles', e.target.value.split(',').map((s) => s.trim()).filter(Boolean))}
-                                    placeholder="e.g., hr,finance"
-                                />
-                            </div>
                         </div>
                     </div>
                     <DialogFooter>

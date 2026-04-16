@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AdjustmentType;
+use Spatie\Permission\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -28,6 +29,7 @@ class AdjustmentTypeController extends Controller
             'filters' => [
                 'search' => $search,
             ],
+            'roles' => Role::pluck('name')->toArray(),
         ]);
     }
 
@@ -41,7 +43,6 @@ class AdjustmentTypeController extends Controller
             'effect' => 'required|in:positive,negative',
             'taxable' => 'sometimes|boolean',
             'include_in_payroll' => 'sometimes|boolean',
-            'requires_approval' => 'sometimes|boolean',
             'restricted_roles' => 'sometimes|array',
             'restricted_roles.*' => 'string|exists:roles,name',
         ]);
@@ -52,7 +53,6 @@ class AdjustmentTypeController extends Controller
             'effect' => $validated['effect'],
             'taxable' => $validated['taxable'] ?? false,
             'include_in_payroll' => $validated['include_in_payroll'] ?? false,
-            'requires_approval' => $validated['requires_approval'] ?? true,
             'restricted_roles' => isset($validated['restricted_roles']) ? implode(',', $validated['restricted_roles']) : null,
             'created_by' => Auth::id(),
         ]);
@@ -70,7 +70,6 @@ class AdjustmentTypeController extends Controller
             'effect' => 'required|in:positive,negative',
             'taxable' => 'sometimes|boolean',
             'include_in_payroll' => 'sometimes|boolean',
-            'requires_approval' => 'sometimes|boolean',
             'restricted_roles' => 'sometimes|array',
             'restricted_roles.*' => 'string|exists:roles,name',
         ]);
@@ -81,7 +80,6 @@ class AdjustmentTypeController extends Controller
             'effect' => $validated['effect'],
             'taxable' => $validated['taxable'] ?? false,
             'include_in_payroll' => $validated['include_in_payroll'] ?? false,
-            'requires_approval' => $validated['requires_approval'] ?? true,
             'restricted_roles' => isset($validated['restricted_roles']) ? implode(',', $validated['restricted_roles']) : null,
         ]);
 

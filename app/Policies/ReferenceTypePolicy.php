@@ -24,14 +24,14 @@ class ReferenceTypePolicy
 
     public function create(User $user): Response
     {
-        return $user->hasPermissionTo('reference_types.create')
+        return $user->hasPermissionTo('reference_types.store')
             ? Response::allow()
             : Response::deny('You do not have permission to create reference types.');
     }
 
     public function update(User $user, ReferenceType $referenceType): Response
     {
-        return $user->hasPermissionTo('reference_types.update')
+        return $user->hasPermissionTo('reference_types.edit')
             ? Response::allow()
             : Response::deny('You do not have permission to update reference types.');
     }

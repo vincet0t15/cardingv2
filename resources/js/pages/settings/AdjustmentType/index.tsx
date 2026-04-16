@@ -30,9 +30,10 @@ const breadcrumbs: BreadcrumbItem[] = [
 interface AdjustmentTypeProps {
     adjustmentTypes: PaginatedDataResponse<AdjustmentType>;
     filters: FilterProps;
+    roles: string[];
 }
 
-export default function AdjustmentTypeIndex({ adjustmentTypes, filters }: AdjustmentTypeProps) {
+export default function AdjustmentTypeIndex({ adjustmentTypes, filters, roles }: AdjustmentTypeProps) {
     const { data, setData } = useForm({
         search: filters.search || '',
     });
@@ -156,13 +157,16 @@ export default function AdjustmentTypeIndex({ adjustmentTypes, filters }: Adjust
                 <div>
                     <Pagination data={adjustmentTypes} />
                 </div>
-                {openCreateDialog && <CreateAdjustmentTypeDialog isOpen={openCreateDialog} onClose={() => setOpenCreateDialog(false)} />}
+                {openCreateDialog && (
+                    <CreateAdjustmentTypeDialog isOpen={openCreateDialog} onClose={() => setOpenCreateDialog(false)} roles={roles} />
+                )}
 
                 {openEditDialog && selectedAdjustmentType && (
                     <EditAdjustmentTypeDialog
                         isOpen={openEditDialog}
                         onClose={() => setOpenEditDialog(false)}
                         adjustmentType={selectedAdjustmentType}
+                        roles={roles}
                     />
                 )}
                 {openDeleteDialog && selectedAdjustmentType && (

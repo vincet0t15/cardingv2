@@ -12,6 +12,7 @@ interface EditAdjustmentTypeDialogProps {
     isOpen: boolean;
     onClose: () => void;
     adjustmentType: AdjustmentType;
+    roles: string[];
 }
 
 export function EditAdjustmentTypeDialog({ isOpen, onClose, adjustmentType }: EditAdjustmentTypeDialogProps) {
@@ -21,7 +22,6 @@ export function EditAdjustmentTypeDialog({ isOpen, onClose, adjustmentType }: Ed
         effect: adjustmentType.effect,
         taxable: (adjustmentType as any).taxable ?? false,
         include_in_payroll: (adjustmentType as any).include_in_payroll ?? false,
-        requires_approval: (adjustmentType as any).requires_approval ?? true,
         restricted_roles: (adjustmentType as any).restricted_roles ? (adjustmentType as any).restricted_roles.split(',') : [],
     });
 
@@ -33,7 +33,6 @@ export function EditAdjustmentTypeDialog({ isOpen, onClose, adjustmentType }: Ed
                 effect: adjustmentType.effect,
                 taxable: (adjustmentType as any).taxable ?? false,
                 include_in_payroll: (adjustmentType as any).include_in_payroll ?? false,
-                requires_approval: (adjustmentType as any).requires_approval ?? true,
                 restricted_roles: (adjustmentType as any).restricted_roles ? (adjustmentType as any).restricted_roles.split(',') : [],
             });
         }
@@ -91,6 +90,29 @@ export function EditAdjustmentTypeDialog({ isOpen, onClose, adjustmentType }: Ed
                             {errors.effect && <p className="text-sm text-red-500">{errors.effect}</p>}
                         </div>
                     </div>
+                    <div className="space-y-1">
+                        <Label htmlFor="restricted_roles">Restricted Roles</Label>
+                        <select
+                            id="restricted_roles"
+                            multiple
+                            value={data.restricted_roles}
+                            onChange={(e) =>
+                                setData(
+                                    'restricted_roles',
+                                    Array.from(e.target.selectedOptions).map((o) => o.value),
+                                )
+                            }
+                            className="w-full rounded-md border px-3 py-2 text-sm"
+                        >
+                            {roles.map((r) => (
+                                <option key={r} value={r}>
+                                    {r}
+                                </option>
+                            ))}
+                        </select>
+                        {errors.restricted_roles && <p className="text-sm text-red-500">{errors.restricted_roles}</p>}
+                    </div>
+
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={onClose}>
                             Cancel
