@@ -176,7 +176,7 @@ export function CompensationDeductions({
 
                 <Button onClick={openNewDialog}>
                     <Plus className="h-4 w-4" />
-                    Add Deductions1
+                    Add Deductions
                 </Button>
             </div>
 

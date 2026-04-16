@@ -110,7 +110,7 @@ export function SalaryDialog({
     // Reset form when dialog opens
     useEffect(() => {
         if (open) {
-            reset();
+            setData(getInitialData());
             setSalaryOption('current');
             setSelectedSalaryId(null);
         }
@@ -187,7 +187,7 @@ export function SalaryDialog({
                                 items={MONTHS}
                                 placeholder="Select month"
                                 value={data.pay_period_month}
-                                onSelect={(value) => !isEditing && setData('pay_period_month', value ?? '')}
+                                onSelect={(value) => setData('pay_period_month', value ?? '')}
                             />
                         </div>
                         <div className="flex flex-col gap-1">
@@ -196,7 +196,7 @@ export function SalaryDialog({
                                 items={YEARS.map((y) => ({ value: String(y), label: String(y) }))}
                                 placeholder="Select year"
                                 value={data.pay_period_year}
-                                onSelect={(value) => !isEditing && setData('pay_period_year', value ?? '')}
+                                onSelect={(value) => setData('pay_period_year', value ?? '')}
                             />
                         </div>
                     </div>
