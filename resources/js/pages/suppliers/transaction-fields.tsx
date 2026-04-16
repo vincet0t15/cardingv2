@@ -134,7 +134,7 @@ export function TransactionFields({ prefix, form }: TransactionFieldsProps) {
                     />
                 </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor={`${prefix}_dr_date`}>D.R. Date</Label>
                     <DatePicker
@@ -151,6 +151,15 @@ export function TransactionFields({ prefix, form }: TransactionFieldsProps) {
                         value={form.data.dr_no}
                         onChange={(e) => form.setData('dr_no', e.target.value)}
                         placeholder="DR Number"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor={`${prefix}_earmark`}>Earmark No.</Label>
+                    <Input
+                        id={`${prefix}_earmark`}
+                        value={form.data.earmark}
+                        onChange={(e) => form.setData('earmark', e.target.value)}
+                        placeholder="Earmark Number"
                     />
                 </div>
             </div>
@@ -241,15 +250,6 @@ export function TransactionFields({ prefix, form }: TransactionFieldsProps) {
                         placeholder="Notes"
                     />
                 </div>
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor={`${prefix}_earmark`}>Earmark</Label>
-                <Input
-                    id={`${prefix}_earmark`}
-                    value={form.data.earmark}
-                    onChange={(e) => form.setData('earmark', e.target.value)}
-                    placeholder="Earmark code or description"
-                />
             </div>
         </div>
     );

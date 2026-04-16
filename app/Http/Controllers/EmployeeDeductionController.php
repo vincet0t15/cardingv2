@@ -200,12 +200,57 @@ class EmployeeDeductionController extends Controller
         // Get taken periods for this employee
         $takenPeriods = EmployeeDeduction::where('employee_id', $employeeId)
             ->get()
-            ->map(fn($d) => "{$d->pay_period_year}-{$d->pay_period_month}")
+            ->map(fn ($d) => "{$d->pay_period_year}-{$d->pay_period_month}")
             ->toArray();
 
         return Inertia::render('employee-deductions/AddDeduction', [
             'employee' => $employee,
             'deductionTypes' => $deductionTypes,
+            'takenPeriods' => $takenPeriods,
+        ]);
+    }
+
+    public function edit(Request $request): Response
+    {
+        $employeeId = $request->input('employee_id');
+        $month = $request->input('month');
+        $year = $request->input('year');
+
+        if (! $employeeId || ! $month || ! $year) {
+            abort(404, 'Employee ID, month, and year are required');
+        }
+
+        $employee = Employee::with([
+            'salaries' => function ($query) {
+                $query->orderBy('effective_date', 'desc');
+            },
+            'peras' => function ($query) {
+                $query->orderBy('effective_date', 'desc');
+            },
+            'ratas' => function ($query) {
+                $query->orderBy('effective_date', 'desc');
+            },
+        ])->findOrFail($employeeId);
+
+        $deductionTypes = DeductionType::where('is_active', true)->orderBy('name')->get();
+
+        // Get existing deductions for this period
+        $existingDeductions = EmployeeDeduction::where('employee_id', $employeeId)
+            ->where('pay_period_month', $month)
+            ->where('pay_period_year', $year)
+            ->with(['deductionType', 'salary'])
+            ->get();
+
+        // Get taken periods for this employee
+        $takenPeriods = EmployeeDeduction::where('employee_id', $employeeId)
+            ->get()
+            ->map(fn ($d) => "{$d->pay_period_year}-{$d->pay_period_month}")
+            ->toArray();
+
+        return Inertia::render('employee-deductions/EditDeductions', [
+            'employee' => $employee,
+            'deductionTypes' => $deductionTypes,
+            'existingDeductions' => $existingDeductions,
             'takenPeriods' => $takenPeriods,
         ]);
     }

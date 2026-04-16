@@ -5,9 +5,9 @@ use App\Http\Controllers\AdjustmentController;
 use App\Http\Controllers\AdjustmentTypeController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\BackupController;
-use App\Http\Controllers\ClothingAllowanceController;
 use App\Http\Controllers\ClaimController;
 use App\Http\Controllers\ClaimTypeController;
+use App\Http\Controllers\ClothingAllowanceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeductionTypeController;
 use App\Http\Controllers\DocumentTypeController;
@@ -176,6 +176,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/', [EmployeeDeductionController::class, 'index'])->name('employee-deductions.index');
         Route::get('/print', [EmployeeDeductionController::class, 'print'])->name('employee-deductions.print');
         Route::get('/add', [EmployeeDeductionController::class, 'create'])->name('employee-deductions.create');
+        Route::get('/edit', [EmployeeDeductionController::class, 'edit'])->name('employee-deductions.edit');
         Route::post('/', [EmployeeDeductionController::class, 'store'])->name('employee-deductions.store');
         Route::put('{employeeDeduction}', [EmployeeDeductionController::class, 'update'])->name('employee-deductions.update');
         Route::delete('{employeeDeduction}', [EmployeeDeductionController::class, 'destroy'])->name('employee-deductions.destroy');
@@ -308,5 +309,5 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware(['permission:reference_types.delete'])->delete('settings/reference-types/{referenceType}', [ReferenceTypeController::class, 'destroy'])->name('reference-types.destroy');
 });
 
-require __DIR__ . '/settings.php';
-require __DIR__ . '/auth.php';
+require __DIR__.'/settings.php';
+require __DIR__.'/auth.php';
