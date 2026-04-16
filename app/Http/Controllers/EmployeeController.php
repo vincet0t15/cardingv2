@@ -39,7 +39,7 @@ class EmployeeController extends Controller
             $q->where('name', 'Plantilla');
         })->count();
         $cosjoCount = (clone $query)->whereHas('employmentStatus', function ($q) {
-            $q->where('name', 'COS/JO');
+            $q->whereIn('name', ['COS', 'JO', 'COS/JO', 'Co-Term']);
         })->count();
         $uniqueOfficesCount = $query->distinct('office_id')->count('office_id');
 
