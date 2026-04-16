@@ -276,7 +276,9 @@ class EmployeeDeductionController extends Controller
                 }
                 $existing->save();
 
-                $employeeDeduction->delete();
+                if ($request->wantsJson()) {
+                    return response()->json(['message' => 'Deduction moved and updated successfully']);
+                }
 
                 return redirect()->back()->with('success', 'Deduction moved and updated successfully');
             }
@@ -290,10 +292,18 @@ class EmployeeDeductionController extends Controller
             }
             $employeeDeduction->save();
 
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Deduction moved and updated successfully']);
+            }
+
             return redirect()->back()->with('success', 'Deduction moved and updated successfully');
         }
 
         $employeeDeduction->update($validated);
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Deduction updated successfully']);
+        }
 
         return redirect()->back()->with('success', 'Deduction updated successfully');
     }

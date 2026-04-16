@@ -265,6 +265,10 @@ class ManageEmployeeController extends Controller
             }
         });
 
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Deductions saved successfully']);
+        }
+
         return redirect()->back()->with('success', 'Deductions saved successfully');
     }
 

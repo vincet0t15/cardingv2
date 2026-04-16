@@ -136,6 +136,7 @@ export default function PeriodDeductionsEditForm({ setOpen, employee, deductionT
                     new Promise((resolve, reject) => {
                         router.put(
                             route('employee-deductions.update', existing.id),
+
                             {
                                 amount: amount,
                                 pay_period_month: data.pay_period_month,
@@ -143,7 +144,10 @@ export default function PeriodDeductionsEditForm({ setOpen, employee, deductionT
                             },
                             {
                                 preserveScroll: true,
-                                onSuccess: () => resolve(true),
+                                onSuccess: () => {
+                                    toast.success('Deduction updated');
+                                    resolve(true);
+                                },
                                 onError: () => reject(false),
                             },
                         );
