@@ -9,6 +9,7 @@ import type { EmployeeDeduction } from '@/types/employeeDeduction';
 import { router } from '@inertiajs/react';
 import { PencilIcon, Plus, Printer, Trash2, Users, X } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { SalaryDialog } from './salaryDialog';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -129,9 +130,16 @@ export function CompensationDeductions({
 
     const handleDeleteDeduction = (deductionId: number) => setDeletingDeductionId(deductionId);
 
-    const performDeleteDeduction = async (id: number) => {
+    const performDeleteDeduction = (id: number) => {
         return router.delete(route('manage.employees.deductions.destroy', [employee.id, id]), {
             preserveScroll: true,
+            onSuccess: () => {
+                toast.success('Deduction deleted successfully');
+                setDeletingDeductionId(null);
+            },
+            onError: () => {
+                toast.error('Failed to delete deduction');
+            },
         });
     };
 
@@ -380,6 +388,13 @@ export function CompensationDeductions({
                     return router.delete(route('manage.employees.deductions.destroyPeriod', [employee.id]), {
                         data: { pay_period_month: String(parseInt(m)), pay_period_year: y },
                         preserveScroll: true,
+                        onSuccess: () => {
+                            toast.success('Successfully deleted deductions for the period');
+                            setDeletingPeriodKey(null);
+                        },
+                        onError: () => {
+                            toast.error('Failed to delete deductions for the period');
+                        },
                     });
                 }}
             />
