@@ -187,5 +187,15 @@ class RoleSeeder extends Seeder
         // Ensure HR and Finance roles exist (some seeders reference them)
         $hrRole = Role::firstOrCreate(['name' => 'hr', 'guard_name' => 'web']);
         $financeRole = Role::firstOrCreate(['name' => 'finance', 'guard_name' => 'web']);
+
+        // Employee role - can view and create adjustments
+        $employeeRole = Role::firstOrCreate(['name' => 'employee', 'guard_name' => 'web']);
+        $employeePermissions = [
+            'adjustments.view',
+            'adjustments.create',
+        ];
+        $employeeRole->syncPermissions(
+            Permission::whereIn('name', $employeePermissions)->get()
+        );
     }
 }

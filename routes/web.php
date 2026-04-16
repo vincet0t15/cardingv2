@@ -285,7 +285,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/', [AdjustmentController::class, 'index'])->name('adjustments.index');
         Route::middleware(['permission:adjustments.create'])->get('/create', [AdjustmentController::class, 'create'])->name('adjustments.create');
         Route::middleware(['permission:adjustments.create'])->post('/', [AdjustmentController::class, 'store'])->name('adjustments.store');
-        Route::get('/{adjustment}/edit', [AdjustmentController::class, 'edit'])->name('adjustments.edit');
+        Route::middleware(['permission:adjustments.edit'])->get('/{adjustment}/edit', [AdjustmentController::class, 'edit'])->name('adjustments.edit');
         Route::middleware(['permission:adjustments.edit'])->put('/{adjustment}', [AdjustmentController::class, 'update'])->name('adjustments.update');
         Route::middleware(['permission:adjustments.approve'])->post('/{adjustment}/approve', [AdjustmentController::class, 'approve'])->name('adjustments.approve');
         Route::middleware(['permission:adjustments.reject'])->post('/{adjustment}/reject', [AdjustmentController::class, 'reject'])->name('adjustments.reject');
