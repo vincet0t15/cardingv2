@@ -71,7 +71,7 @@ class ManageEmployeeController extends Controller
         $paginatedPeriods = $periodsQuery->paginate(50)->withQueryString();
 
         $periodsList = $paginatedPeriods->map(function ($p) {
-            return "{$p->pay_period_year}-".str_pad($p->pay_period_month, 2, '0', STR_PAD_LEFT);
+            return "{$p->pay_period_year}-" . str_pad($p->pay_period_month, 2, '0', STR_PAD_LEFT);
         })->values()->toArray();
 
         // Build pair-safe period filters to avoid cross-joining years and months separately
@@ -99,14 +99,14 @@ class ManageEmployeeController extends Controller
             ->get();
 
         $groupedDeductions = $deductionsData->groupBy(function ($d) {
-            return "{$d->pay_period_year}-".str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+            return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
         })->toArray();
 
         $takenPeriods = EmployeeDeduction::where('employee_id', $employee->id)
             ->selectRaw('DISTINCT pay_period_year, pay_period_month')
             ->get()
             ->map(function ($d) {
-                return "{$d->pay_period_year}-".str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+                return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
             })
             ->values()
             ->toArray();
@@ -160,7 +160,7 @@ class ManageEmployeeController extends Controller
             ->get();
 
         $allDeductions = $allDeductionsData->groupBy(function ($d) {
-            return "{$d->pay_period_year}-".str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+            return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
         })->toArray();
 
         $allClaims = Claim::where('employee_id', $employee->id)
