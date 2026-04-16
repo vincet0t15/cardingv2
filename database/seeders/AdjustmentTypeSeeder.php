@@ -70,7 +70,6 @@ class AdjustmentTypeSeeder extends Seeder
             $hasTaxable = Schema::hasColumn('adjustment_types', 'taxable');
             $hasIncludeInPayroll = Schema::hasColumn('adjustment_types', 'include_in_payroll');
             $hasRequiresApproval = Schema::hasColumn('adjustment_types', 'requires_approval');
-            $hasRestrictedRoles = Schema::hasColumn('adjustment_types', 'restricted_roles');
             $hasCreatedBy = Schema::hasColumn('adjustment_types', 'created_by');
 
             foreach ($adjustmentTypes as $type) {
@@ -86,10 +85,6 @@ class AdjustmentTypeSeeder extends Seeder
 
                 if ($hasRequiresApproval) {
                     $record['requires_approval'] = true;
-                }
-
-                if ($hasRestrictedRoles) {
-                    $record['restricted_roles'] = in_array($type['name'], ['Terminal Pay']) ? 'hr,finance' : null;
                 }
 
                 if ($hasCreatedBy) {

@@ -19,7 +19,6 @@ class AdjustmentType extends Model
         'effect',
         'taxable',
         'include_in_payroll',
-        'restricted_roles',
         'created_by',
     ];
 

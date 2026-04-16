@@ -1,3 +1,4 @@
+import { CustomComboBox } from '@/components/CustomComboBox';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -12,7 +13,6 @@ interface EditAdjustmentTypeDialogProps {
     isOpen: boolean;
     onClose: () => void;
     adjustmentType: AdjustmentType;
-    roles: string[];
 }
 
 export function EditAdjustmentTypeDialog({ isOpen, onClose, adjustmentType }: EditAdjustmentTypeDialogProps) {
@@ -22,7 +22,6 @@ export function EditAdjustmentTypeDialog({ isOpen, onClose, adjustmentType }: Ed
         effect: adjustmentType.effect,
         taxable: (adjustmentType as any).taxable ?? false,
         include_in_payroll: (adjustmentType as any).include_in_payroll ?? false,
-        restricted_roles: (adjustmentType as any).restricted_roles ? (adjustmentType as any).restricted_roles.split(',') : [],
     });
 
     useEffect(() => {
@@ -33,7 +32,6 @@ export function EditAdjustmentTypeDialog({ isOpen, onClose, adjustmentType }: Ed
                 effect: adjustmentType.effect,
                 taxable: (adjustmentType as any).taxable ?? false,
                 include_in_payroll: (adjustmentType as any).include_in_payroll ?? false,
-                restricted_roles: (adjustmentType as any).restricted_roles ? (adjustmentType as any).restricted_roles.split(',') : [],
             });
         }
     }, [isOpen, adjustmentType]);
@@ -78,39 +76,18 @@ export function EditAdjustmentTypeDialog({ isOpen, onClose, adjustmentType }: Ed
                             <Label htmlFor="effect" className="required">
                                 Effect
                             </Label>
-                            <select
-                                id="effect"
+                            <CustomComboBox
+                                items={[
+                                    { value: 'positive', label: 'Positive (Adds to salary)' },
+                                    { value: 'negative', label: 'Negative (Deducts from salary)' },
+                                ]}
+                                placeholder="Select effect"
                                 value={data.effect}
-                                onChange={(e) => setData('effect', e.target.value as 'positive' | 'negative')}
-                                className="border-input bg-background ring-offset-background focus-visible:ring-ring w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-                            >
-                                <option value="positive">Positive (Adds to salary)</option>
-                                <option value="negative">Negative (Deducts from salary)</option>
-                            </select>
+                                onSelect={(v) => setData('effect', v ?? '')}
+                                showClear={false}
+                            />
                             {errors.effect && <p className="text-sm text-red-500">{errors.effect}</p>}
                         </div>
-                    </div>
-                    <div className="space-y-1">
-                        <Label htmlFor="restricted_roles">Restricted Roles</Label>
-                        <select
-                            id="restricted_roles"
-                            multiple
-                            value={data.restricted_roles}
-                            onChange={(e) =>
-                                setData(
-                                    'restricted_roles',
-                                    Array.from(e.target.selectedOptions).map((o) => o.value),
-                                )
-                            }
-                            className="w-full rounded-md border px-3 py-2 text-sm"
-                        >
-                            {roles.map((r) => (
-                                <option key={r} value={r}>
-                                    {r}
-                                </option>
-                            ))}
-                        </select>
-                        {errors.restricted_roles && <p className="text-sm text-red-500">{errors.restricted_roles}</p>}
                     </div>
 
                     <DialogFooter>
