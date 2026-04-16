@@ -221,7 +221,7 @@ class ManageEmployeeController extends Controller
                 'claim_year' => $claimYear,
                 'claim_type_id' => $claimTypeId,
             ],
-            'allDeductions' => $allDeductions,
+            'allDeductions' => $allDeductionsData,
             'allClaims' => $allClaims,
             'totalDeductionsAllTime' => $totalDeductionsAllTime,
             'totalClaimsAllTime' => $totalClaimsAllTime,
