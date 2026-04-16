@@ -1,14 +1,21 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import type { Employee } from '@/types/employee';
 import { Link } from '@inertiajs/react';
-import { DollarSign, Plus, RefreshCcw } from 'lucide-react';
+import { Plus, RefreshCcw } from 'lucide-react';
+
+interface AdjustmentType {
+    id: number;
+    name: string;
+}
 
 interface Adjustment {
     id: number;
     employee_id: number;
-    adjustment_type: string;
+    adjustment_type: string | AdjustmentType;
+    adjustment_type_id?: number;
+    adjustmentType?: AdjustmentType;
     amount: number;
     pay_period_month: number;
     pay_period_year: number;
@@ -55,15 +62,21 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
         });
     };
 
-    const getTypeBadge = (type: string) => {
-        const isPositive = ['Salary Refund', 'Underpayment', 'Overtime Adjustment', 'Deduction Refund', 'Holiday Pay Adjustment'].includes(type);
+    const getTypeBadge = (adjustment: Adjustment) => {
+        let typeName: string = '—';
+        if (adjustment.adjustment_type) {
+            if (typeof adjustment.adjustment_type === 'object' && 'name' in adjustment.adjustment_type) {
+                typeName = String(adjustment.adjustment_type.name);
+            } else if (typeof adjustment.adjustment_type === 'string') {
+                typeName = adjustment.adjustment_type;
+            }
+        }
+        const isPositive = ['Salary Refund', 'Underpayment', 'Overtime Adjustment', 'Deduction Refund', 'Holiday Pay Adjustment'].includes(typeName);
 
-        return (
-            <Badge variant={isPositive ? 'default' : 'destructive'} className="gap-1">
-                <DollarSign className="h-3 w-3" />
-                <span>{type}</span>
-            </Badge>
-        );
+        if (isPositive) {
+            return <Badge variant="default">{typeName}</Badge>;
+        }
+        return <Badge variant="destructive">{typeName}</Badge>;
     };
 
     return (
@@ -82,59 +95,6 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
                         New Adjustment
                     </Link>
                 </Button>
-            </div>
-
-            {/* Summary Cards */}
-            <div className="grid gap-4 md:grid-cols-5">
-                <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-amber-50 to-orange-50 shadow-sm">
-                    <div className="absolute top-0 right-0 h-20 w-20 bg-amber-400 opacity-10 blur-2xl" />
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-amber-700">Pending</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-amber-900">{statistics.total_pending}</div>
-                    </CardContent>
-                </Card>
-
-                <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-sm">
-                    <div className="absolute top-0 right-0 h-20 w-20 bg-blue-400 opacity-10 blur-2xl" />
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-blue-700">Approved</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-blue-900">{statistics.total_approved}</div>
-                    </CardContent>
-                </Card>
-
-                <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-emerald-50 to-teal-50 shadow-sm">
-                    <div className="absolute top-0 right-0 h-20 w-20 bg-emerald-400 opacity-10 blur-2xl" />
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-emerald-700">Processed</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-emerald-900">{statistics.total_processed}</div>
-                    </CardContent>
-                </Card>
-
-                <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-red-50 to-pink-50 shadow-sm">
-                    <div className="absolute top-0 right-0 h-20 w-20 bg-red-400 opacity-10 blur-2xl" />
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-red-700">Rejected</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-red-900">{statistics.total_rejected}</div>
-                    </CardContent>
-                </Card>
-
-                <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-purple-50 to-pink-50 shadow-sm">
-                    <div className="absolute top-0 right-0 h-20 w-20 bg-purple-400 opacity-10 blur-2xl" />
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-purple-700">Total Amount</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-xl font-bold text-purple-900">{formatCurrency(statistics.total_amount)}</div>
-                    </CardContent>
-                </Card>
             </div>
 
             {/* Adjustments Table */}
@@ -160,7 +120,7 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
                                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                                     {adjustments.map((adjustment) => (
                                         <tr key={adjustment.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                            <td className="px-4 py-3">{getTypeBadge(adjustment.adjustment_type)}</td>
+                                            <td className="px-4 py-3">{getTypeBadge(adjustment)}</td>
                                             <td className="px-4 py-3 text-right">
                                                 <span
                                                     className={`font-semibold ${
