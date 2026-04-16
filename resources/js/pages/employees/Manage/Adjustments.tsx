@@ -1,9 +1,11 @@
+import { CustomComboBox } from '@/components/CustomComboBox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Employee } from '@/types/employee';
 import { Link } from '@inertiajs/react';
-import { Plus, RefreshCcw } from 'lucide-react';
+import { Plus, RefreshCcw, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 interface AdjustmentType {
     id: number;
@@ -46,6 +48,35 @@ interface EmployeeAdjustmentsProps {
 }
 
 export default function EmployeeAdjustments({ employee, adjustments, statistics }: EmployeeAdjustmentsProps) {
+    const [filterMonth, setFilterMonth] = useState<string | null>(null);
+    const [filterYear, setFilterYear] = useState<string | null>(null);
+
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+    // Extract available years from adjustments
+    const availableYears = useMemo(() => {
+        const years = new Set<number>();
+        adjustments.forEach((a) => years.add(a.pay_period_year));
+        return Array.from(years).sort((a, b) => b - a);
+    }, [adjustments]);
+
+    // Filter adjustments by month and year
+    const filteredAdjustments = useMemo(() => {
+        return adjustments.filter((a) => {
+            const monthMatch = !filterMonth || a.pay_period_month === parseInt(filterMonth);
+            const yearMatch = !filterYear || a.pay_period_year === parseInt(filterYear);
+            return monthMatch && yearMatch;
+        });
+    }, [adjustments, filterMonth, filterYear]);
+
+    const hasActiveFilters = filterMonth || filterYear;
+
+    const clearFilters = () => {
+        setFilterMonth(null);
+        setFilterYear(null);
+    };
+
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-PH', {
             style: 'currency',
@@ -97,10 +128,36 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
                 </Button>
             </div>
 
+            {/* Filters */}
+            <Card>
+                <CardContent className="p-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <CustomComboBox
+                            items={FULL_MONTHS.map((month, index) => ({ value: String(index + 1), label: month }))}
+                            placeholder="All Months"
+                            value={filterMonth}
+                            onSelect={(value) => setFilterMonth(value)}
+                        />
+                        <CustomComboBox
+                            items={availableYears.map((year) => ({ value: String(year), label: String(year) }))}
+                            placeholder="All Years"
+                            value={filterYear}
+                            onSelect={(value) => setFilterYear(value)}
+                        />
+                        {hasActiveFilters && (
+                            <Button variant="ghost" onClick={clearFilters}>
+                                <X className="mr-1 h-4 w-4" />
+                                Clear Filters
+                            </Button>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Adjustments Table */}
             <Card>
                 <CardContent className="p-0">
-                    {adjustments.length > 0 ? (
+                    {filteredAdjustments.length > 0 ? (
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead className="bg-slate-50 dark:bg-slate-900/50">
@@ -118,7 +175,7 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                                    {adjustments.map((adjustment) => (
+                                    {filteredAdjustments.map((adjustment) => (
                                         <tr key={adjustment.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50">
                                             <td className="px-4 py-3">{getTypeBadge(adjustment)}</td>
                                             <td className="px-4 py-3 text-right">
