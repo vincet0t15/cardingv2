@@ -36,10 +36,10 @@ class EmployeeController extends Controller
         // Get total counts before pagination
         $totalEmployees = $query->count();
         $plantillaCount = (clone $query)->whereHas('employmentStatus', function ($q) {
-            $q->where('name', 'Plantilla');
+            $q->whereIn('name', ['Plantilla', 'Co-Term']);
         })->count();
         $cosjoCount = (clone $query)->whereHas('employmentStatus', function ($q) {
-            $q->whereIn('name', ['COS', 'JO', 'COS/JO', 'Co-Term']);
+            $q->whereIn('name', ['COS', 'JO', 'COS/JO']);
         })->count();
         $uniqueOfficesCount = $query->distinct('office_id')->count('office_id');
 
