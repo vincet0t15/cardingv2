@@ -334,10 +334,10 @@ export default function ClothingAllowancesIndex({ employees, offices, employment
                                                 </div>
                                             </div>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
                                             {employee.latest_clothing_allowance ? (
                                                 <div className="flex flex-col">
-                                                    <span className="font-medium">
+                                                    <span className="font-medium text-indigo-900 dark:text-indigo-200">
                                                         {formatCurrency(Number(employee.latest_clothing_allowance.amount))}
                                                     </span>
                                                 </div>

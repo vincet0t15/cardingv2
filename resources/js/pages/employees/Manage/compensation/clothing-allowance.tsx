@@ -256,8 +256,8 @@ export function CompensationClothingAllowance({ employee, sourceOfFundCodes }: C
             {/* Current Clothing Allowance */}
             {current && (
                 <div className="overflow-hidden rounded-lg border bg-gradient-to-br from-blue-50 to-white shadow-sm">
-                    <div className="border-b bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
-                        <div className="flex items-center gap-2 text-white">
+                    <div className="border-b px-6 py-4">
+                        <div className="flex items-center gap-2">
                             <TrendingUp className="h-5 w-5" />
                             <h3 className="text-sm font-semibold tracking-wide uppercase">Current Clothing Allowance</h3>
                         </div>

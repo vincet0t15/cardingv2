@@ -333,10 +333,12 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
                                                 </div>
                                             </div>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20">
                                             {employee.latest_hazard_pay ? (
                                                 <div className="flex flex-col">
-                                                    <span className="font-medium">{formatCurrency(Number(employee.latest_hazard_pay.amount))}</span>
+                                                    <span className="font-medium text-amber-900 dark:text-amber-200">
+                                                        {formatCurrency(Number(employee.latest_hazard_pay.amount))}
+                                                    </span>
                                                 </div>
                                             ) : (
                                                 <span className="text-muted-foreground">-</span>
