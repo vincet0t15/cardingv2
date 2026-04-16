@@ -24,14 +24,14 @@ class AdjustmentTypePolicy
 
     public function create(User $user): Response
     {
-        return $user->hasPermissionTo('adjustment_types.create')
+        return $user->hasPermissionTo('adjustment_types.store')
             ? Response::allow()
             : Response::deny('You do not have permission to create adjustment types.');
     }
 
     public function update(User $user, AdjustmentType $adjustmentType): Response
     {
-        return $user->hasPermissionTo('adjustment_types.update')
+        return $user->hasPermissionTo('adjustment_types.edit')
             ? Response::allow()
             : Response::deny('You do not have permission to update adjustment types.');
     }
