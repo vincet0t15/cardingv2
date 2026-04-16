@@ -10,27 +10,31 @@ class GeneralFundSeeder extends Seeder
 {
     public function run(): void
     {
-        // Create General Funds
-        $gf = GeneralFund::create([
-            'code' => 'GF',
+        // Create General Funds (idempotent)
+        $gf = GeneralFund::updateOrCreate([
+            'code' => 'GF'
+        ], [
             'description' => 'General Fund',
             'status' => true,
         ]);
 
-        $sef = GeneralFund::create([
-            'code' => 'SEF',
+        $sef = GeneralFund::updateOrCreate([
+            'code' => 'SEF'
+        ], [
             'description' => 'Special Educational Fund',
             'status' => true,
         ]);
 
-        $df = GeneralFund::create([
-            'code' => 'DF',
+        $df = GeneralFund::updateOrCreate([
+            'code' => 'DF'
+        ], [
             'description' => 'Development Fund',
             'status' => true,
         ]);
 
-        $tf = GeneralFund::create([
-            'code' => 'TF',
+        $tf = GeneralFund::updateOrCreate([
+            'code' => 'TF'
+        ], [
             'description' => 'Trust Fund',
             'status' => true,
         ]);
@@ -45,44 +49,52 @@ class GeneralFundSeeder extends Seeder
         ];
 
         foreach ($gfCodes as $gfCode) {
-            SourceOfFundCode::create([
-                'code' => $gfCode['code'],
-                'description' => $gfCode['description'],
-                'status' => true,
-                'is_category' => false,
-                'parent_id' => null,
-                'general_fund_id' => $gf->id,
-            ]);
+            SourceOfFundCode::updateOrCreate(
+                ['code' => $gfCode['code']],
+                [
+                    'description' => $gfCode['description'],
+                    'status' => true,
+                    'is_category' => false,
+                    'parent_id' => null,
+                    'general_fund_id' => $gf->id,
+                ]
+            );
         }
 
         // Create source of fund codes for SEF
-        SourceOfFundCode::create([
-            'code' => '1010_SEF1%',
-            'description' => 'Special Educational Fund 1%',
-            'status' => true,
-            'is_category' => false,
-            'parent_id' => null,
-            'general_fund_id' => $sef->id,
-        ]);
+        SourceOfFundCode::updateOrCreate(
+            ['code' => '1010_SEF1%'],
+            [
+                'description' => 'Special Educational Fund 1%',
+                'status' => true,
+                'is_category' => false,
+                'parent_id' => null,
+                'general_fund_id' => $sef->id,
+            ]
+        );
 
         // Create source of fund codes for DF
-        SourceOfFundCode::create([
-            'code' => '1010_DF20%',
-            'description' => 'Development Fund 20%',
-            'status' => true,
-            'is_category' => false,
-            'parent_id' => null,
-            'general_fund_id' => $df->id,
-        ]);
+        SourceOfFundCode::updateOrCreate(
+            ['code' => '1010_DF20%'],
+            [
+                'description' => 'Development Fund 20%',
+                'status' => true,
+                'is_category' => false,
+                'parent_id' => null,
+                'general_fund_id' => $df->id,
+            ]
+        );
 
         // Create source of fund codes for TF
-        SourceOfFundCode::create([
-            'code' => '1010_TF',
-            'description' => 'Trust Fund',
-            'status' => true,
-            'is_category' => false,
-            'parent_id' => null,
-            'general_fund_id' => $tf->id,
-        ]);
+        SourceOfFundCode::updateOrCreate(
+            ['code' => '1010_TF'],
+            [
+                'description' => 'Trust Fund',
+                'status' => true,
+                'is_category' => false,
+                'parent_id' => null,
+                'general_fund_id' => $tf->id,
+            ]
+        );
     }
 }

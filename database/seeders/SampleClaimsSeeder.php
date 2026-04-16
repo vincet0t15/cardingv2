@@ -65,18 +65,20 @@ class SampleClaimsSeeder extends Seeder
             ];
 
             foreach ($sampleNames as $index => $nameData) {
-                \Illuminate\Support\Facades\DB::table('employees')->insert([
-                    'first_name' => $nameData[0],
-                    'middle_name' => $nameData[1],
-                    'last_name' => $nameData[2],
-                    'suffix' => $nameData[3],
-                    'position' => 'Employee ' . ($index + 1),
-                    'office_id' => $offices[$index % $offices->count()]->id,
-                    'employment_status_id' => $employmentStatuses->first()->id,
-                    'created_by' => $systemUser->id,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                Employee::updateOrCreate(
+                    [
+                        'first_name' => $nameData[0],
+                        'last_name' => $nameData[2],
+                        'office_id' => $offices[$index % $offices->count()]->id,
+                    ],
+                    [
+                        'middle_name' => $nameData[1],
+                        'suffix' => $nameData[3],
+                        'position' => 'Employee ' . ($index + 1),
+                        'employment_status_id' => $employmentStatuses->first()->id,
+                        'created_by' => $systemUser->id,
+                    ]
+                );
             }
 
             $employees = Employee::with('office')->get();
@@ -84,6 +86,15 @@ class SampleClaimsSeeder extends Seeder
         }
 
         $this->command->info('Creating sample travel and overtime claims...');
+
+        // Skip creating claims if similar claims already exist for current year
+        if (\App\Models\Claim::whereYear('claim_date', now()->year)
+            ->whereIn('claim_type_id', [$travelType->id, $overtimeType->id])
+            ->exists()
+        ) {
+            $this->command->info('Claims for current year already exist; skipping sample claims creation.');
+            return;
+        }
 
         // Create travel claims for top 10 employees (varying amounts and frequencies)
         $travelData = [

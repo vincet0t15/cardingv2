@@ -18,6 +18,11 @@ class EmploymentStatusSeeder extends Seeder
             ['name' => 'COS/JO', 'created_by' => 1],
         ];
 
-        EmploymentStatus::insert($data);
+        foreach ($data as $item) {
+            EmploymentStatus::updateOrCreate(
+                ['name' => $item['name']],
+                $item
+            );
+        }
     }
 }

@@ -107,6 +107,11 @@ class OfficeSeeder extends Seeder
 
         ];
 
-        Office::insert($offices);
+        foreach ($offices as $office) {
+            Office::updateOrCreate(
+                ['code' => $office['code']],
+                $office
+            );
+        }
     }
 }

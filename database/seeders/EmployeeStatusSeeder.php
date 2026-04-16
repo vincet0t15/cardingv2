@@ -21,6 +21,11 @@ class EmployeeStatusSeeder extends Seeder
         ];
 
 
-        EmployeeStatus::insert($data);
+        foreach ($data as $item) {
+            EmployeeStatus::updateOrCreate(
+                ['name' => $item['name']],
+                $item
+            );
+        }
     }
 }
