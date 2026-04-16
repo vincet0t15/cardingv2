@@ -88,8 +88,16 @@ export function SalaryDialog({
     const getInitialData = () => ({
         pay_period_month: defaultMonth,
         pay_period_year: defaultYear,
-        salary_id: null as string | null,
-        salary_amount: currentSalary ? String(currentSalary.amount) : '0',
+        // If editing, preserve the salary_id from existing deductions so
+        // backend `updateOrCreate` can find the existing records instead
+        // of creating duplicates.
+        salary_id: existingDeductions.length > 0 && existingDeductions[0].salary_id ? String(existingDeductions[0].salary_id) : null,
+        salary_amount:
+            existingDeductions.length > 0 && existingDeductions[0].salary_id
+                ? getSalaryAmount(existingDeductions[0].salary_id)
+                : currentSalary
+                  ? String(currentSalary.amount)
+                  : '0',
         deductions: deductionTypes.map((dt) => {
             const existing = existingDeductions.find((e) => e.deduction_type_id === dt.id);
             return {
@@ -110,9 +118,19 @@ export function SalaryDialog({
     // Reset form when dialog opens
     useEffect(() => {
         if (open) {
-            setData(getInitialData());
-            setSalaryOption('current');
-            setSelectedSalaryId(null);
+            const initial = getInitialData();
+            setData(initial);
+
+            // If the initial data includes a salary_id (editing a period that
+            // was saved with a salary), reflect that in the radio/combo UI so
+            // updateOrCreate uses the same salary_id key.
+            if (initial.salary_id) {
+                setSalaryOption('previous');
+                setSelectedSalaryId(Number(initial.salary_id));
+            } else {
+                setSalaryOption('current');
+                setSelectedSalaryId(null);
+            }
         }
     }, [open]);
 

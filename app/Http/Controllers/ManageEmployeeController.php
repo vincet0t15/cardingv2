@@ -277,6 +277,27 @@ class ManageEmployeeController extends Controller
         return redirect()->back()->with('success', 'Deduction deleted successfully');
     }
 
+    /**
+     * Delete all deductions for a specific pay period for the given employee.
+     * Expects `pay_period_month` and `pay_period_year` as request inputs.
+     */
+    public function destroyDeductionsForPeriod(Request $request, Employee $employee)
+    {
+        $this->authorize('update', $employee);
+
+        $validated = $request->validate([
+            'pay_period_month' => 'required|integer|min:1|max:12',
+            'pay_period_year' => 'required|integer|min:2020|max:2100',
+        ]);
+
+        $deleted = EmployeeDeduction::where('employee_id', $employee->id)
+            ->where('pay_period_month', $validated['pay_period_month'])
+            ->where('pay_period_year', $validated['pay_period_year'])
+            ->delete();
+
+        return redirect()->back()->with('success', "Successfully deleted {$deleted} deduction(s) for the period");
+    }
+
     public function print(Request $request, Employee $employee)
     {
         $this->authorize('view', $employee);

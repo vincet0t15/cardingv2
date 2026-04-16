@@ -1,3 +1,4 @@
+import ConfirmDeleteDialog from '@/components/ConfirmDeleteDialog';
 import { CustomComboBox } from '@/components/CustomComboBox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -123,12 +124,15 @@ export function CompensationDeductions({
 
     const closeDialog = () => setDialogState((prev: DialogState) => ({ ...prev, open: false }));
 
-    const handleDeleteDeduction = (deductionId: number) => {
-        if (confirm('Are you sure you want to delete this deduction?')) {
-            router.delete(route('manage.employees.deductions.destroy', [employee.id, deductionId]), {
-                preserveScroll: true,
-            });
-        }
+    const [deletingDeductionId, setDeletingDeductionId] = useState<number | null>(null);
+    const [deletingPeriodKey, setDeletingPeriodKey] = useState<string | null>(null);
+
+    const handleDeleteDeduction = (deductionId: number) => setDeletingDeductionId(deductionId);
+
+    const performDeleteDeduction = async (id: number) => {
+        return router.delete(route('manage.employees.deductions.destroy', [employee.id, id]), {
+            preserveScroll: true,
+        });
     };
 
     const handlePrintDeductions = (periodKey: string) => {
@@ -215,6 +219,10 @@ export function CompensationDeductions({
                                         <Button variant="outline" onClick={() => handlePrintDeductions(periodKey)}>
                                             <Printer className="h-3 w-3" />
                                             Print
+                                        </Button>
+                                        <Button variant="outline" onClick={() => setDeletingPeriodKey(periodKey)}>
+                                            <Trash2 className="h-3 w-3 text-red-500" />
+                                            Delete
                                         </Button>
                                         <Button variant="outline" onClick={() => openEditDialog(periodKey)}>
                                             <PencilIcon className="h-3 w-3" />
@@ -338,6 +346,43 @@ export function CompensationDeductions({
                     takenPeriods={takenPeriods}
                 />
             )}
+
+            {/* Delete single deduction confirmation */}
+            <ConfirmDeleteDialog
+                isOpen={deletingDeductionId !== null}
+                onClose={() => setDeletingDeductionId(null)}
+                title="Delete Deduction"
+                description={'Are you sure you want to delete this deduction? This action cannot be undone.'}
+                onConfirm={() => {
+                    if (deletingDeductionId) {
+                        return performDeleteDeduction(deletingDeductionId);
+                    }
+                    return Promise.resolve();
+                }}
+            />
+
+            {/* Delete all deductions for period confirmation */}
+            <ConfirmDeleteDialog
+                isOpen={deletingPeriodKey !== null}
+                onClose={() => setDeletingPeriodKey(null)}
+                title="Delete All Deductions for Period"
+                description={
+                    deletingPeriodKey
+                        ? `Are you sure you want to delete ALL deductions for ${(() => {
+                              const [y, m] = deletingPeriodKey.split('-');
+                              return `${MONTHS[parseInt(m) - 1]} ${y}`;
+                          })()}? This cannot be undone.`
+                        : ''
+                }
+                onConfirm={() => {
+                    if (!deletingPeriodKey) return Promise.resolve();
+                    const [y, m] = deletingPeriodKey.split('-');
+                    return router.delete(route('manage.employees.deductions.destroyPeriod', [employee.id]), {
+                        data: { pay_period_month: String(parseInt(m)), pay_period_year: y },
+                        preserveScroll: true,
+                    });
+                }}
+            />
         </div>
     );
 }
