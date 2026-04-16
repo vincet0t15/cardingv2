@@ -7,7 +7,7 @@ import type { DeductionType } from '@/types/deductionType';
 import type { Employee } from '@/types/employee';
 import type { EmployeeDeduction } from '@/types/employeeDeduction';
 import { Head, router, useForm } from '@inertiajs/react';
-import { type FormEventHandler, useState } from 'react';
+import { type FormEventHandler, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 const MONTHS = [
@@ -119,10 +119,12 @@ export default function EditDeductionPage({ employee, deductionTypes, existingDe
         }),
     });
 
-    if (data.salary_id) {
-        setSalaryOption('previous');
-        setSelectedSalaryId(Number(data.salary_id));
-    }
+    useEffect(() => {
+        if (data.salary_id) {
+            setSalaryOption('previous');
+            setSelectedSalaryId(Number(data.salary_id));
+        }
+    }, [data.salary_id]);
 
     const handleAmountChange = (index: number, value: string) => {
         const updated = [...data.deductions];
