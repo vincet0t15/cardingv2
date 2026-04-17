@@ -87,6 +87,14 @@ function TransactionCard({
                             <DocRow label="Invoice" date={txn.sale_invoice_date} number={txn.sale_invoice_no} />
                             <DocRow label="OR" date={txn.or_date} number={txn.or_no} />
                             <DocRow label="DR" date={txn.dr_date} number={txn.dr_no} />
+                            {txn.earmark && (
+                                <div className="flex items-center justify-between py-1">
+                                    <span className="text-muted-foreground text-xs font-medium">Earmark No.</span>
+                                    <div className="text-right text-xs">
+                                        <span className="font-medium">{txn.earmark}</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         {txn.qty_period_covered && (
                             <>

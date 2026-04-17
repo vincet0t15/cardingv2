@@ -30,6 +30,7 @@ export interface SupplierTransaction {
     ewt: number;
     vat: number;
     net_amount: number;
+    earmark: string | null;
     date_processed: string | null;
     remarks: string | null;
     created_at: string;
