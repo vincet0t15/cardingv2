@@ -97,6 +97,7 @@ export default function PrintTransaction({ supplier, transaction }: Props) {
                                         <DocRow label="Sales Invoice" date={transaction.sale_invoice_date} number={transaction.sale_invoice_no} />
                                         <DocRow label="Official Receipt (OR)" date={transaction.or_date} number={transaction.or_no} />
                                         <DocRow label="Delivery Receipt (DR)" date={transaction.dr_date} number={transaction.dr_no} />
+                                        <DocRow label="Earmark No." date={null} number={transaction.earmark} />
                                     </tbody>
                                 </table>
 

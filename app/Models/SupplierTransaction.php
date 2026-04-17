@@ -26,6 +26,7 @@ class SupplierTransaction extends Model
         'net_amount',
         'date_processed',
         'remarks',
+        'earmark',
     ];
 
     protected $casts = [
