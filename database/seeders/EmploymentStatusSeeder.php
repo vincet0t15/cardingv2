@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\EmploymentStatus;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class EmploymentStatusSeeder extends Seeder
@@ -15,13 +14,13 @@ class EmploymentStatusSeeder extends Seeder
     {
         $data = [
             ['name' => 'Plantilla', 'created_by' => 1],
-            ['name' => 'COS/JO', 'created_by' => 1],
+            ['name' => 'Contractual', 'created_by' => 1],
         ];
 
         foreach ($data as $item) {
             EmploymentStatus::updateOrCreate(
                 ['name' => $item['name']],
-                $item
+                ['created_by' => $item['created_by']]
             );
         }
     }

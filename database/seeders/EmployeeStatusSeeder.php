@@ -22,10 +22,10 @@ class EmployeeStatusSeeder extends Seeder
 
 
         foreach ($data as $item) {
-            EmployeeStatus::updateOrCreate(
-                ['name' => $item['name']],
-                $item
-            );
-        }
+    EmployeeStatus::updateOrCreate(
+        ['name' => $item['name']], // Search criteria
+        ['created_by' => $item['created_by']] // Data to update/insert
+    );
+}
     }
 }

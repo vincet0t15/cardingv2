@@ -34,7 +34,9 @@ class Office extends Model
         parent::boot();
 
         static::creating(function ($office) {
-            $office->created_by = Auth::id();
+            if (empty($office->created_by) && Auth::check()) {
+                $office->created_by = Auth::id();
+            }
         });
     }
 }
