@@ -1,0 +1,77 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: carding_app
+    volumes:
+      - ./:/var/www
+    env_file:
+      - .env.docker
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - carding_network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: carding_app_nginx
+    ports:
+      - '8002:80' # Binago ito para ma-access via Server IP (inalis ang 127.0.0.1)
+    volumes:
+      - ./:/var/www
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - carding_network
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    container_name: carding_app_mysql
+    command: >
+      --max_allowed_packet=2G
+      --net_read_timeout=600
+      --net_write_timeout=600
+      --wait_timeout=28800
+      --interactive_timeout=28800
+    environment:
+      MYSQL_ROOT_PASSWORD: carding_db_password
+      MYSQL_DATABASE: carding_db
+      MYSQL_USER: carding_db_user
+      MYSQL_PASSWORD: carding_db_password
+    volumes:
+      - carding_app_mysql:/var/lib/mysql
+    ports:
+      - '127.0.0.1:3308:3306' # Naka-bind pa rin sa localhost para safe
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      interval: 5s
+      retries: 10
+    networks:
+      - carding_network
+    restart: unless-stopped
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: carding_app_phpmyadmin
+    environment:
+      PMA_HOST: mysql
+    ports:
+      - '127.0.0.1:8082:80' # Naka-bind pa rin sa localhost para safe
+    depends_on:
+      - mysql
+    networks:
+      - carding_network
+    restart: unless-stopped
+
+
+networks:
+  carding_network:
+    driver: bridge
+
+volumes:
+  carding_app_mysql:
