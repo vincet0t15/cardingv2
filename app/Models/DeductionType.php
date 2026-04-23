@@ -11,6 +11,7 @@ class DeductionType extends Model
     protected $fillable = [
         'name',
         'code',
+        'category_id',
         'description',
         'is_active',
     ];
@@ -22,6 +23,11 @@ class DeductionType extends Model
     public function employeeDeductions()
     {
         return $this->hasMany(EmployeeDeduction::class);
+    }
+
+    public function category()
+    {
+        return $this->belongsTo(DeductionCategory::class, 'category_id');
     }
 
     /**

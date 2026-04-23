@@ -899,14 +899,7 @@ export default function Dashboard({
                                     color: 'from-blue-500 to-indigo-600',
                                     bgHover: 'hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/20 dark:hover:to-indigo-900/20',
                                 },
-                                {
-                                    icon: FileText,
-                                    title: 'Deduction Types',
-                                    desc: 'Manage categories',
-                                    route: 'deduction-types.index',
-                                    color: 'from-purple-500 to-pink-600',
-                                    bgHover: 'hover:from-purple-50 hover:to-pink-50 dark:hover:from-purple-900/20 dark:hover:to-pink-900/20',
-                                },
+                                // Deduction Types quick action removed
                                 {
                                     icon: Calculator,
                                     title: 'Add Employee',

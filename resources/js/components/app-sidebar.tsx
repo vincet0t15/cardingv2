@@ -16,7 +16,6 @@ import {
     Key,
     LayoutGrid,
     LucideMoveVertical,
-    MinusSquare,
     Receipt,
     ReceiptCent,
     RefreshCcw,
@@ -131,9 +130,9 @@ const mainNavItems: NavGroup[] = [
                 icon: UserRoundPen,
             },
             {
-                title: 'Deduction Types',
-                href: '/settings/deduction-types',
-                icon: MinusSquare,
+                title: 'Deduction Categories',
+                href: '/settings/deduction-categories',
+                icon: Tag,
             },
             {
                 title: 'Document Types',

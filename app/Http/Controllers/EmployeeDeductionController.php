@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DeductionType;
+use App\Models\DeductionCategory;
 use App\Models\Employee;
 use App\Models\EmployeeDeduction;
 use App\Models\EmploymentStatus;
@@ -87,6 +88,14 @@ class EmployeeDeductionController extends Controller
             ->get();
 
         $deductionTypes = DeductionType::where('is_active', true)->orderBy('name')->get();
+
+        $deductionCategories = DeductionCategory::with(['deductionTypes' => function ($q) {
+            $q->where('is_active', true)->orderBy('name');
+        }])->orderBy('name')->get();
+
+        $deductionCategories = DeductionCategory::with(['deductionTypes' => function ($q) {
+            $q->where('is_active', true)->orderBy('name');
+        }])->orderBy('name')->get();
         $offices = Office::orderBy('name')->get();
         $employmentStatuses = EmploymentStatus::orderBy('name')->get();
 
@@ -152,6 +161,10 @@ class EmployeeDeductionController extends Controller
             ->get();
 
         $deductionTypes = DeductionType::where('is_active', true)->orderBy('name')->get();
+
+        $deductionCategories = DeductionCategory::with(['deductionTypes' => function ($q) {
+            $q->where('is_active', true)->orderBy('name');
+        }])->orderBy('name')->get();
         $officeName = $officeId ? Office::find($officeId)?->name : null;
 
         return Inertia::render('EmployeeDeductions/Print', [
@@ -197,15 +210,20 @@ class EmployeeDeductionController extends Controller
 
         $deductionTypes = DeductionType::where('is_active', true)->orderBy('name')->get();
 
+        $deductionCategories = DeductionCategory::with(['deductionTypes' => function ($q) {
+            $q->where('is_active', true)->orderBy('name');
+        }])->orderBy('name')->get();
+
         // Get taken periods for this employee
         $takenPeriods = EmployeeDeduction::where('employee_id', $employeeId)
             ->get()
-            ->map(fn ($d) => "{$d->pay_period_year}-{$d->pay_period_month}")
+            ->map(fn($d) => "{$d->pay_period_year}-{$d->pay_period_month}")
             ->toArray();
 
         return Inertia::render('employee-deductions/AddDeduction', [
             'employee' => $employee,
             'deductionTypes' => $deductionTypes,
+            'deductionCategories' => $deductionCategories,
             'takenPeriods' => $takenPeriods,
         ]);
     }
@@ -244,7 +262,7 @@ class EmployeeDeductionController extends Controller
         // Get taken periods for this employee
         $takenPeriods = EmployeeDeduction::where('employee_id', $employeeId)
             ->get()
-            ->map(fn ($d) => "{$d->pay_period_year}-{$d->pay_period_month}")
+            ->map(fn($d) => "{$d->pay_period_year}-{$d->pay_period_month}")
             ->toArray();
 
         return Inertia::render('employee-deductions/EditDeductions', [

@@ -10,6 +10,7 @@ use App\Http\Controllers\ClaimTypeController;
 use App\Http\Controllers\ClothingAllowanceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeductionTypeController;
+use App\Http\Controllers\DeductionCategoryController;
 use App\Http\Controllers\DocumentTypeController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EmployeeDeductionController;
@@ -221,6 +222,12 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware(['permission:deduction_types.edit'])->put('settings/deduction-types/{deductionType}', [DeductionTypeController::class, 'update'])->name('deduction-types.update');
     Route::middleware(['permission:deduction_types.delete'])->delete('settings/deduction-types/{deductionType}', [DeductionTypeController::class, 'destroy'])->name('deduction-types.destroy');
 
+    // DEDUCTION CATEGORIES (requires deduction_categories.* permissions)
+    Route::middleware(['permission:deduction_categories.view'])->get('settings/deduction-categories', [DeductionCategoryController::class, 'index'])->name('deduction-categories.index');
+    Route::middleware(['permission:deduction_categories.create'])->post('settings/deduction-categories', [DeductionCategoryController::class, 'store'])->name('deduction-categories.store');
+    Route::middleware(['permission:deduction_categories.edit'])->put('settings/deduction-categories/{deductionCategory}', [DeductionCategoryController::class, 'update'])->name('deduction-categories.update');
+    Route::middleware(['permission:deduction_categories.delete'])->delete('settings/deduction-categories/{deductionCategory}', [DeductionCategoryController::class, 'destroy'])->name('deduction-categories.destroy');
+
     // DOCUMENT TYPES (requires document_types.* permissions)
     Route::middleware(['permission:document_types.view'])->get('settings/document-types', [DocumentTypeController::class, 'index'])->name('document-types.index');
     Route::middleware(['permission:document_types.create'])->post('settings/document-types', [DocumentTypeController::class, 'store'])->name('document-types.store');
@@ -309,5 +316,5 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware(['permission:reference_types.delete'])->delete('settings/reference-types/{referenceType}', [ReferenceTypeController::class, 'destroy'])->name('reference-types.destroy');
 });
 
-require __DIR__.'/settings.php';
-require __DIR__.'/auth.php';
+require __DIR__ . '/settings.php';
+require __DIR__ . '/auth.php';

@@ -23,7 +23,7 @@ export function NavMain({ items = [] }: { items: NavGroup[] }) {
             '/general-funds': 'text-yellow-600',
             '/settings/offices': 'text-teal-500',
             '/settings/employment-statuses': 'text-green-500',
-            '/settings/deduction-types': 'text-purple-500',
+            // '/settings/deduction-types': 'text-purple-500',
             '/settings/document-types': 'text-sky-500',
             '/settings/claim-types': 'text-rose-500',
             '/settings/backup': 'text-slate-500',

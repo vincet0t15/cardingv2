@@ -15,6 +15,8 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(RoleSeeder::class);
+        $this->call(\Database\Seeders\DeductionCategoryPermissionSeeder::class);
+        $this->call(\Database\Seeders\AssignDeductionPermissionsSeeder::class);
 
         $password = env('ADMIN_DEFAULT_PASSWORD', 'ChangeMe!@2026Secure');
         $adminUser = User::updateOrCreate(

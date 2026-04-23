@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DeductionType;
+use App\Models\DeductionCategory;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -24,6 +25,9 @@ class DeductionTypeController extends Controller
 
         return Inertia::render('deduction-types/index', [
             'deductionTypes' => $deductionTypes,
+            'categories' => DeductionCategory::orderBy('name')->get()->map(function ($c) {
+                return ['id' => $c->id, 'name' => $c->name];
+            })->toArray(),
             'filters' => [
                 'search' => $search,
             ],
@@ -36,6 +40,7 @@ class DeductionTypeController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:deduction_types,code',
+            'category_id' => 'nullable|exists:deduction_categories,id',
             'description' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
@@ -51,6 +56,7 @@ class DeductionTypeController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:deduction_types,code,' . $deductionType->id,
+            'category_id' => 'nullable|exists:deduction_categories,id',
             'description' => 'nullable|string',
             'is_active' => 'boolean',
         ]);

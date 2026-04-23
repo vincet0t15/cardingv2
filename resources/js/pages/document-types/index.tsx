@@ -59,7 +59,7 @@ export default function DocumentTypesIndex({ documentTypes, filters }: DocumentT
         name: '',
         code: '',
         description: '',
-        is_active: true,
+        is_active: true as boolean,
     });
 
     const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

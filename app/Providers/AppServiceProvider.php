@@ -22,6 +22,7 @@ use App\Policies\ClaimPolicy;
 use App\Policies\ClaimTypePolicy;
 use App\Policies\ClothingAllowancePolicy;
 use App\Policies\DeductionTypePolicy;
+use App\Policies\DeductionCategoryPolicy;
 use App\Policies\DocumentTypePolicy;
 use App\Policies\EmployeePolicy;
 use App\Policies\EmploymentStatusPolicy;
@@ -54,6 +55,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Office::class, OfficePolicy::class);
         Gate::policy(EmploymentStatus::class, EmploymentStatusPolicy::class);
         Gate::policy(DeductionType::class, DeductionTypePolicy::class);
+        Gate::policy(\App\Models\DeductionCategory::class, DeductionCategoryPolicy::class);
         Gate::policy(DocumentType::class, DocumentTypePolicy::class);
         Gate::policy(ClaimType::class, ClaimTypePolicy::class);
         Gate::policy(HazardPay::class, HazardPayPolicy::class);

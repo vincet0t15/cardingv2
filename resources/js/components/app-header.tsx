@@ -20,7 +20,6 @@ import {
     LayoutGrid,
     LucideMoveVertical,
     Menu,
-    MinusSquare,
     Receipt,
     ReceiptCent,
     Settings,
@@ -109,11 +108,6 @@ const mainNavItems: NavGroup[] = [
                 title: 'Employment Statuses',
                 href: '/settings/employment-statuses',
                 icon: UserRoundPen,
-            },
-            {
-                title: 'Deduction Types',
-                href: '/settings/deduction-types',
-                icon: MinusSquare,
             },
             {
                 title: 'Document Types',
