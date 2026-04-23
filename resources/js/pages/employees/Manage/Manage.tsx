@@ -55,10 +55,13 @@ interface EmployeeManageProps {
     // Overview & Reports
     allDeductions?: EmployeeDeduction[];
     allClaims?: Claim[];
+    allClaimsGrouped?: Record<string, Claim[]>;
+    allClothingAllowances?: { id: number; amount: string | number; start_date: string; end_date: string | null; source_of_fund_code?: { code: string; description: string | null } | null }[];
     totalDeductionsAllTime?: number;
     totalClaimsAllTime?: number;
     // Adjustments
     adjustments?: any[];
+    allAdjustmentsGrouped?: Record<string, any[]>;
     adjustmentStatistics?: {
         total_pending: number;
         total_approved: number;
@@ -87,9 +90,12 @@ export default function EmployeeManagePage({
     claimFilters = {},
     allDeductions = [],
     allClaims = [],
+    allClaimsGrouped = {},
+    allClothingAllowances = [],
     totalDeductionsAllTime = 0,
     totalClaimsAllTime = 0,
     adjustments = [],
+    allAdjustmentsGrouped = {},
     adjustmentStatistics = { total_pending: 0, total_approved: 0, total_processed: 0, total_rejected: 0, total_amount: 0 },
 }: EmployeeManageProps) {
     const { url } = usePage();
@@ -245,6 +251,7 @@ export default function EmployeeManagePage({
                             claims={allClaims}
                             totalDeductionsAllTime={totalDeductionsAllTime}
                             totalClaimsAllTime={totalClaimsAllTime}
+                            adjustments={adjustments}
                         />
                     </TabsContent>
                     <TabsContent value="compensation" className="mt-0 outline-none">
@@ -261,6 +268,9 @@ export default function EmployeeManagePage({
                             allEmployees={allEmployees}
                             filters={filters}
                             pagination={deductionPagination}
+                            allClothingAllowances={allClothingAllowances}
+                            allClaimsGrouped={allClaimsGrouped}
+                            allAdjustmentsGrouped={allAdjustmentsGrouped}
                         />
                     </TabsContent>
                     <TabsContent value="claims" className="mt-0 outline-none">

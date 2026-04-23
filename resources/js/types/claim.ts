@@ -9,6 +9,7 @@ export interface Claim {
     amount: number;
     purpose: string;
     remarks: string | null;
+    reference_number?: string | null;
     created_at: string;
     updated_at: string;
     claim_type?: ClaimType;

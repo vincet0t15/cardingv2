@@ -4,7 +4,7 @@ import { Separator } from '@/components/ui/separator';
 import type { Claim } from '@/types/claim';
 import type { Employee } from '@/types/employee';
 import type { EmployeeDeduction } from '@/types/employeeDeduction';
-import { Building2, CalendarDays, CoinsIcon, CreditCard, DollarSign, HardHat, Receipt, Shirt, TrendingDown, User } from 'lucide-react';
+import { Building2, CalendarDays, CoinsIcon, CreditCard, DollarSign, HardHat, Receipt, Shirt, TrendingDown, TrendingUp, User } from 'lucide-react';
 
 interface OverviewProps {
     employee: Employee;
@@ -13,6 +13,7 @@ interface OverviewProps {
     totalDeductionsAllTime: number;
     totalClaimsAllTime: number;
     salaryHistory?: Array<{ amount: number; effective_date: string }>;
+    adjustments?: any[];
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -32,7 +33,7 @@ function formatDate(dateStr?: string | undefined) {
     return `${day} ${monthShort} ${year}`;
 }
 
-function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalClaimsAllTime, salaryHistory = [] }: OverviewProps) {
+function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalClaimsAllTime, salaryHistory = [], adjustments = [] }: OverviewProps) {
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
     const currentPeriodKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
@@ -59,6 +60,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
     const yearsOfService = hireDate ? Math.floor((new Date().getTime() - new Date(hireDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 0;
 
     const recentClaims = claims.slice(0, 5);
+    const recentAdjustments = adjustments.slice(0, 5);
 
     return (
         <div className="space-y-6">
@@ -418,6 +420,39 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                                         </div>
                                         <div className="text-right">
                                             <div className="font-semibold text-green-600">{formatCurrency(claim.amount)}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* Recent Adjustments */}
+            {recentAdjustments.length > 0 && (
+                <div>
+                    <h3 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">Recent Adjustments</h3>
+                    <Card>
+                        <CardContent className="pt-4">
+                            <div className="space-y-3">
+                                {recentAdjustments.map((adj) => (
+                                    <div
+                                        key={adj.id}
+                                        className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3 last:border-0 dark:border-slate-700"
+                                    >
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <TrendingUp className="text-muted-foreground h-4 w-4" />
+                                                <span className="text-sm font-medium">{adj.adjustment_type?.name ?? 'Adjustment'}</span>
+                                            </div>
+                                            <p className="text-muted-foreground mt-1 text-xs">{adj.reason}</p>
+                                            <p className="text-muted-foreground mt-1 text-xs">{formatDate(adj.effectivity_date)}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className={`font-semibold ${Number(adj.amount) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                {Number(adj.amount) >= 0 ? '+' : ''}{formatCurrency(adj.amount)}
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

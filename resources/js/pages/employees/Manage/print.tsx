@@ -12,6 +12,7 @@ interface PrintReportPageProps {
     allDeductions: EmployeeDeduction[];
     allClaims: Claim[];
     allAdjustments: Adjustment[];
+    allClothingAllowances?: { id: number; amount: string | number; start_date: string; end_date?: string | null }[];
     filterMonth?: string | null;
     filterYear?: string | null;
     printType?: 'all' | 'deductions' | 'claims';
@@ -106,10 +107,13 @@ export default function EmployeePrintReport({
     allDeductions,
     allClaims,
     allAdjustments,
+    allClothingAllowances,
     filterMonth,
     filterYear,
     printType = 'all',
 }: PrintReportPageProps) {
+    const clothingHistory = allClothingAllowances || employee.clothing_allowances || [];
+    
     // Group deductions by year-month
     const deductionsByPeriod: Record<string, MonthlyDeductionRow> = {};
     for (const d of allDeductions) {
@@ -262,7 +266,7 @@ export default function EmployeePrintReport({
         pera = getEffectiveAmount(employee.peras, parseInt(filterYear), parseInt(filterMonth));
         rata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, parseInt(filterYear), parseInt(filterMonth)) : 0;
         hazardPay = getEffectiveAmountForDateRange(employee.hazard_pays, parseInt(filterYear), parseInt(filterMonth));
-        clothingAllowance = getEffectiveAmountForDateRange(employee.clothing_allowances, parseInt(filterYear), parseInt(filterMonth));
+        clothingAllowance = getEffectiveAmountForDateRange(clothingHistory, parseInt(filterYear), parseInt(filterMonth));
         adjustments = sumAdjustmentsForPeriod(allAdjustments, parseInt(filterYear), parseInt(filterMonth));
         showGrossAndNet = true;
     } else if (filterYear) {
@@ -270,7 +274,7 @@ export default function EmployeePrintReport({
         pera = sumCompensationForYear(employee.peras, parseInt(filterYear));
         rata = employee.is_rata_eligible ? sumCompensationForYear(employee.ratas, parseInt(filterYear)) : 0;
         hazardPay = sumCompensationForYearDateRange(employee.hazard_pays, parseInt(filterYear));
-        clothingAllowance = sumCompensationForYearDateRange(employee.clothing_allowances, parseInt(filterYear));
+        clothingAllowance = sumCompensationForYearDateRange(clothingHistory, parseInt(filterYear));
         adjustments = sumAdjustmentsForPeriod(allAdjustments, parseInt(filterYear));
         showGrossAndNet = true;
         isYearlyView = true;
@@ -279,13 +283,13 @@ export default function EmployeePrintReport({
         pera = sumCompensation(employee.peras);
         rata = employee.is_rata_eligible ? sumCompensation(employee.ratas) : 0;
         hazardPay = sumCompensationForDateRange(employee.hazard_pays);
-        clothingAllowance = sumCompensationForDateRange(employee.clothing_allowances);
+        clothingAllowance = sumCompensationForDateRange(clothingHistory);
         adjustments = totalAllAdjustments;
         showGrossAndNet = true; // Now we can show gross/net for all-time view
         isAllTimeView = true;
     }
 
-    const grossPay = salary + pera + rata + hazardPay + clothingAllowance + adjustments;
+    const grossPay = salary + pera + rata + hazardPay + clothingAllowance + totalAllClaims + adjustments;
     const netPay = grossPay - totalAllDeductions;
 
     const currentDate = new Date().toLocaleDateString('en-PH', {
@@ -406,10 +410,9 @@ export default function EmployeePrintReport({
                                                 {formatCurrency(clothingAllowance)}
                                                 {(isAllTimeView || isYearlyView) && ' *'}
                                             </td>
-                                            <td className="border border-black p-2 font-bold">Adjustments</td>
-                                            <td className="border border-black p-2 text-right">
-                                                {formatCurrency(adjustments)}
-                                                {(isAllTimeView || isYearlyView) && ' *'}
+                                            <td className="border border-black p-2 font-bold">Claims</td>
+                                            <td className="border border-black p-2 text-right text-blue-600">
+                                                {formatCurrency(totalAllClaims)}
                                             </td>
                                         </tr>
                                         <tr>
