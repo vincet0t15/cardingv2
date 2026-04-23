@@ -53,15 +53,12 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
         Number(employee.latest_clothing_allowance?.amount ?? 0);
     const netThisMonth = grossPay - currentMonthDeductionTotal;
 
-    // Calculate employment duration
-    // Determine hire date: prefer earliestSalary if available (added on backend), fallback to earliest in salaries array, then employee.created_at
-    const hireDate = employee.earliest_salary?.effective_date ?? (employee.salaries && employee.salaries.length ? employee.salaries[employee.salaries.length - 1].effective_date : employee.created_at);
+    const hireDate =
+        employee.earliest_salary?.effective_date ??
+        (employee.salaries && employee.salaries.length ? employee.salaries[employee.salaries.length - 1].effective_date : employee.created_at);
     const yearsOfService = hireDate ? Math.floor((new Date().getTime() - new Date(hireDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 0;
 
-    // Recent claims (last 5)
     const recentClaims = claims.slice(0, 5);
-
-    // Salary history (last 3 changes)
 
     return (
         <div className="space-y-6">
@@ -74,7 +71,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                     </Badge>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                    <Card className="transition-shadow hover:shadow-md">
+                    <Card className="border-blue-200 bg-blue-50 transition-shadow hover:shadow-md">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Basic Salary</CardTitle>
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
@@ -87,7 +84,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         </CardContent>
                     </Card>
 
-                    <Card className="transition-shadow hover:shadow-md">
+                    <Card className="border-green-200 bg-green-50 transition-shadow hover:shadow-md">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">PERA</CardTitle>
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
@@ -100,7 +97,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         </CardContent>
                     </Card>
 
-                    <Card className="transition-shadow hover:shadow-md">
+                    <Card className="border-purple-200 bg-purple-50 transition-shadow hover:shadow-md">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">RATA</CardTitle>
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30">
@@ -122,7 +119,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         </CardContent>
                     </Card>
 
-                    <Card className="transition-shadow hover:shadow-md">
+                    <Card className="border-orange-200 bg-orange-50 transition-shadow hover:shadow-md">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Hazard Pay</CardTitle>
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/30">
@@ -140,7 +137,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         </CardContent>
                     </Card>
 
-                    <Card className="transition-shadow hover:shadow-md">
+                    <Card className="border-pink-200 bg-pink-50 transition-shadow hover:shadow-md">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Clothing Allow.</CardTitle>
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-pink-100 dark:bg-pink-900/30">

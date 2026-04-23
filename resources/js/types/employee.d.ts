@@ -33,6 +33,9 @@ export interface Employee {
     latest_hazard_pay?: HazardPay;
     latest_clothing_allowance?: ClothingAllowance;
     current_pera?: number | null;
+    card_color?: string | null;
+    earliest_salary?: Salary | null;
+    created_at?: string | null;
 }
 
 export type EmployeeCreateRequest = {

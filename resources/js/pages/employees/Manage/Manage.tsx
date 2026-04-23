@@ -157,9 +157,16 @@ export default function EmployeeManagePage({
                         </Avatar>
                         <div className="flex-1 space-y-3">
                             <div className="flex flex-wrap items-center gap-3">
-                                <h1 className="text-3xl font-bold tracking-tight uppercase">
-                                    {employee.last_name}, {employee.first_name}
-                                </h1>
+                                <h1 className="text-3xl font-bold tracking-tight uppercase flex items-center gap-3">
+                                        {employee.card_color ? (
+                                            <span
+                                                className="inline-block h-4 w-4 flex-shrink-0 rounded-full border border-white shadow"
+                                                style={{ backgroundColor: employee.card_color }}
+                                                aria-hidden
+                                            />
+                                        ) : null}
+                                        <span>{employee.last_name}, {employee.first_name}</span>
+                                    </h1>
                                 <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
                                     {employee.employment_status?.name}
                                 </Badge>
