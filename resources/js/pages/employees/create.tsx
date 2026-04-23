@@ -119,11 +119,30 @@ export default function CreateEmployee({ employmentStatuses, offices, similarEmp
         // Submit the form with force_create flag using router.post
         const formData = new FormData();
         Object.entries(data).forEach(([key, value]) => {
-            if (value !== null && value !== undefined) {
-                formData.append(key, value as string | Blob);
+            if (value === null || value === undefined) return;
+
+            // Handle File objects directly
+            if (key === 'photo' && value instanceof File) {
+                formData.append(key, value);
+                return;
             }
+
+            // Normalize booleans to '1'/'0' for Laravel boolean validation
+            if (typeof value === 'boolean') {
+                formData.append(key, value ? '1' : '0');
+                return;
+            }
+
+            // Arrays or objects should be JSON-stringified
+            if (typeof value === 'object') {
+                formData.append(key, JSON.stringify(value));
+                return;
+            }
+
+            // Fallback: append primitive values as strings
+            formData.append(key, String(value));
         });
-        formData.append('force_create', 'true');
+        formData.append('force_create', '1');
 
         router.post(route('employees.store'), formData, {
             onSuccess: (response: { props: FlashProps }) => {
@@ -134,6 +153,7 @@ export default function CreateEmployee({ employmentStatuses, offices, similarEmp
             onError: () => {
                 toast.error('Failed to create employee');
             },
+            forceFormData: true,
         });
     };
 
