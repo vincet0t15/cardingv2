@@ -214,7 +214,7 @@ class EmployeeController extends Controller
             'is_rata_eligible' => 'nullable|boolean',
             'employment_status_id' => 'required|exists:employment_statuses,id',
             'office_id' => 'required|exists:offices,id',
-            'photo' => ['nullable', 'image', 'max:2048', 'mimes:jpg,jpeg,png,webp'],
+            'photo' => ['nullable', 'image', 'max:6144', 'mimes:jpg,jpeg,png,webp'],
         ]);
 
         if ($request->hasFile('photo')) {
