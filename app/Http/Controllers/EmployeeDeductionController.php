@@ -11,6 +11,7 @@ use App\Models\Office;
 use App\Services\PayrollService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -88,6 +89,22 @@ class EmployeeDeductionController extends Controller
             ->get();
 
         $deductionTypes = DeductionType::where('is_active', true)->orderBy('name')->get();
+
+        $deductionCategories = DeductionCategory::with(['deductionTypes' => function ($q) {
+            $q->where('is_active', true)->orderBy('name');
+        }])->orderBy('name')->get();
+
+        $deductionCategories = DeductionCategory::with(['deductionTypes' => function ($q) {
+            $q->where('is_active', true)->orderBy('name');
+        }])->orderBy('name')->get();
+
+        $deductionCategories = DeductionCategory::with(['deductionTypes' => function ($q) {
+            $q->where('is_active', true)->orderBy('name');
+        }])->orderBy('name')->get();
+
+        $deductionCategories = DeductionCategory::with(['deductionTypes' => function ($q) {
+            $q->where('is_active', true)->orderBy('name');
+        }])->orderBy('name')->get();
 
         $deductionCategories = DeductionCategory::with(['deductionTypes' => function ($q) {
             $q->where('is_active', true)->orderBy('name');
@@ -265,9 +282,14 @@ class EmployeeDeductionController extends Controller
             ->map(fn($d) => "{$d->pay_period_year}-{$d->pay_period_month}")
             ->toArray();
 
+        $deductionCategories = DeductionCategory::with(['deductionTypes' => function ($q) {
+            $q->where('is_active', true)->orderBy('name');
+        }])->orderBy('name')->get();
+
         return Inertia::render('employee-deductions/EditDeductions', [
             'employee' => $employee,
             'deductionTypes' => $deductionTypes,
+            'deductionCategories' => $deductionCategories,
             'existingDeductions' => $existingDeductions,
             'takenPeriods' => $takenPeriods,
         ]);
@@ -310,7 +332,7 @@ class EmployeeDeductionController extends Controller
         return redirect()->back()->with('success', 'Deduction added successfully');
     }
 
-    public function update(Request $request, EmployeeDeduction $employeeDeduction): RedirectResponse
+    public function update(Request $request, EmployeeDeduction $employeeDeduction): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0',
@@ -319,8 +341,7 @@ class EmployeeDeductionController extends Controller
             'pay_period_year' => 'nullable|integer|min:2020|max:2100',
         ]);
 
-        // If a new pay period is provided and it differs from the current one,
-        // attempt to move/merge the deduction to avoid creating duplicates.
+
         $newMonth = $validated['pay_period_month'] ?? $employeeDeduction->pay_period_month;
         $newYear = $validated['pay_period_year'] ?? $employeeDeduction->pay_period_year;
 
@@ -332,7 +353,6 @@ class EmployeeDeductionController extends Controller
                 ->first();
 
             if ($existing) {
-                // Merge: update target with incoming amount/notes and remove the old record
                 $existing->amount = $validated['amount'];
                 if (array_key_exists('notes', $validated)) {
                     $existing->notes = $validated['notes'];
@@ -346,7 +366,6 @@ class EmployeeDeductionController extends Controller
                 return redirect()->back()->with('success', 'Deduction moved and updated successfully');
             }
 
-            // No conflict — update the current record's period and other fields
             $employeeDeduction->pay_period_month = $newMonth;
             $employeeDeduction->pay_period_year = $newYear;
             $employeeDeduction->amount = $validated['amount'];
@@ -373,7 +392,7 @@ class EmployeeDeductionController extends Controller
 
     public function destroy(EmployeeDeduction $employeeDeduction): RedirectResponse
     {
-        // Permission is checked via route middleware
+
         $employeeDeduction->delete();
 
         return redirect()->back()->with('success', 'Deduction deleted successfully');

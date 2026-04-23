@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
-import type { DeductionType } from '@/types/deductionType';
+import type { DeductionCategory, DeductionType } from '@/types/deductionType';
 import type { Employee } from '@/types/employee';
 import type { EmployeeDeduction } from '@/types/employeeDeduction';
 import { Head, router, useForm } from '@inertiajs/react';
@@ -33,11 +33,18 @@ const YEARS = Array.from({ length: endYear - startYear + 1 }, (_, i) => String(s
 interface EditDeductionPageProps {
     employee: Employee;
     deductionTypes: DeductionType[];
+    deductionCategories?: DeductionCategory[];
     existingDeductions: EmployeeDeduction[];
     takenPeriods: string[];
 }
 
-export default function EditDeductionPage({ employee, deductionTypes, existingDeductions, takenPeriods }: EditDeductionPageProps) {
+export default function EditDeductionPage({
+    employee,
+    deductionTypes,
+    deductionCategories = [],
+    existingDeductions,
+    takenPeriods,
+}: EditDeductionPageProps) {
     const [salaryOption, setSalaryOption] = useState<'current' | 'previous'>('current');
     const [selectedSalaryId, setSelectedSalaryId] = useState<number | null>(null);
 
@@ -359,24 +366,85 @@ export default function EditDeductionPage({ employee, deductionTypes, existingDe
 
                     <div className="rounded-md border p-6 shadow-sm">
                         <h3 className="mb-4 text-lg font-semibold">Deduction Amounts</h3>
-                        <div className="grid grid-cols-3 gap-4">
-                            {deductionTypes.map((deductionType, index) => (
-                                <div key={deductionType.id} className="flex flex-col gap-1">
-                                    <Label htmlFor={`deduction-${deductionType.id}`}>
-                                        {deductionType.name}
-                                        <span className="text-muted-foreground ml-1 text-xs">({deductionType.code})</span>
-                                    </Label>
-                                    <Input
-                                        id={`deduction-${deductionType.id}`}
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        placeholder="0.00"
-                                        value={data.deductions[index]?.amount ?? ''}
-                                        onChange={(e) => handleAmountChange(index, e.target.value)}
-                                    />
-                                </div>
-                            ))}
+                        <div className="space-y-6">
+                            {/* group types client-side by category id */}
+                            {(() => {
+                                const byCat: Record<number, DeductionType[]> = {};
+                                deductionTypes.forEach((dt) => {
+                                    const key = dt.category_id ?? 0;
+                                    if (!byCat[key]) byCat[key] = [];
+                                    byCat[key].push(dt);
+                                });
+
+                                return (deductionCategories.length > 0 ? deductionCategories : []).map((cat) => {
+                                    const types = byCat[cat.id] || [];
+                                    if (types.length === 0) return null;
+                                    return (
+                                        <div key={cat.id}>
+                                            <h4 className="mb-2 text-sm font-semibold">
+                                                <span className="inline-block rounded-md bg-indigo-50 px-2 py-1 text-indigo-700">{cat.name}</span>
+                                            </h4>
+                                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                                {types.map((deductionType) => {
+                                                    const idx = deductionTypes.findIndex((dt) => dt.id === deductionType.id);
+                                                    return (
+                                                        <div key={deductionType.id} className="flex flex-col gap-1">
+                                                            <Label htmlFor={`deduction-${deductionType.id}`}>
+                                                                {deductionType.name}
+                                                                <span className="text-muted-foreground ml-1 text-xs">({deductionType.code})</span>
+                                                            </Label>
+                                                            <Input
+                                                                id={`deduction-${deductionType.id}`}
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.01"
+                                                                placeholder="0.00"
+                                                                value={data.deductions[idx]?.amount ?? ''}
+                                                                onChange={(e) => handleAmountChange(idx, e.target.value)}
+                                                            />
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                });
+                            })()}
+
+                            {/* Uncategorized */}
+                            {(() => {
+                                const uncategorized = deductionTypes.filter((dt) => !dt.category_id);
+                                if (uncategorized.length === 0) return null;
+                                return (
+                                    <div>
+                                        <h4 className="mb-2 text-sm font-semibold">
+                                            <span className="inline-block rounded-md bg-indigo-50 px-2 py-1 text-indigo-700">Uncategorized</span>
+                                        </h4>
+                                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                            {uncategorized.map((deductionType) => {
+                                                const idx = deductionTypes.findIndex((dt) => dt.id === deductionType.id);
+                                                return (
+                                                    <div key={deductionType.id} className="flex flex-col gap-1">
+                                                        <Label htmlFor={`deduction-${deductionType.id}`}>
+                                                            {deductionType.name}
+                                                            <span className="text-muted-foreground ml-1 text-xs">({deductionType.code})</span>
+                                                        </Label>
+                                                        <Input
+                                                            id={`deduction-${deductionType.id}`}
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.01"
+                                                            placeholder="0.00"
+                                                            value={data.deductions[idx]?.amount ?? ''}
+                                                            onChange={(e) => handleAmountChange(idx, e.target.value)}
+                                                        />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
 
