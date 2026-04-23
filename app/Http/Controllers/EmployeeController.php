@@ -89,6 +89,22 @@ class EmployeeController extends Controller
     {
         $this->authorize('create', Employee::class);
 
+        // Debug: log incoming create request to help diagnose why force_create isn't applied
+        try {
+            Log::debug('EmployeeController@store incoming', [
+                'force_create' => $request->input('force_create'),
+                'first_name' => $request->input('first_name'),
+                'middle_name' => $request->input('middle_name'),
+                'last_name' => $request->input('last_name'),
+                'office_id' => $request->input('office_id'),
+                'employment_status_id' => $request->input('employment_status_id'),
+                'has_photo' => $request->hasFile('photo'),
+            ]);
+        } catch (\Throwable $e) {
+            // avoid breaking the request flow if logging fails
+            Log::error('Failed to log EmployeeController@store incoming: ' . $e->getMessage());
+        }
+
         // Check for duplicate names
         $firstName = trim($request->input('first_name'));
         $lastName = trim($request->input('last_name'));

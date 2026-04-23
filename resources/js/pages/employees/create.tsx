@@ -105,12 +105,16 @@ export default function CreateEmployee({ employmentStatuses, offices, similarEmp
     const onSubmit: FormEventHandler<HTMLFormElement> = (e) => {
         e.preventDefault();
 
+        // Save a copy of the current form data so we can reuse it if the server returns a duplicate-warning redirect
+        setPendingData({ ...data });
+
         post(route('employees.store'), {
             onSuccess: (response: { props: FlashProps }) => {
                 toast.success(response.props.flash?.success ?? 'Employee created successfully');
                 reset();
             },
             forceFormData: true,
+            preserveState: true,
         });
     };
 
@@ -118,7 +122,11 @@ export default function CreateEmployee({ employmentStatuses, offices, similarEmp
         setShowDuplicateDialog(false);
         // Submit the form with force_create flag using router.post
         const formData = new FormData();
-        Object.entries(data).forEach(([key, value]) => {
+
+        // Prefer current client `data`, but fall back to `pendingData` (set before initial submit) if fields are empty
+        const source = data.first_name || data.last_name || data.office_id || data.employment_status_id ? data : (pendingData ?? data);
+
+        Object.entries(source).forEach(([key, value]) => {
             if (value === null || value === undefined) return;
 
             // Handle File objects directly
@@ -150,8 +158,12 @@ export default function CreateEmployee({ employmentStatuses, offices, similarEmp
                 reset();
                 setPhotoPreviewUrl(null);
             },
-            onError: () => {
-                toast.error('Failed to create employee');
+            onError: (errors: any) => {
+                console.log('Create employee errors:', errors);
+                // If validation errors exist, show the first message to the user
+                const firstField = Object.keys(errors || {})[0];
+                const firstMsg = firstField ? errors[firstField] && errors[firstField][0] : null;
+                toast.error(firstMsg ?? 'Failed to create employee');
             },
             forceFormData: true,
         });
