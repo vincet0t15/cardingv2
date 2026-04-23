@@ -169,6 +169,13 @@ class EmployeeController extends Controller
             'is_rata_eligible' => $validated['is_rata_eligible'] ?? false,
         ]);
 
+        // Clear any duplicate-warning session data so it doesn't persist alongside the success flash
+        try {
+            $request->session()->forget(['warning', 'similar_employees', 'editing_employee_id']);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to clear duplicate-warning session keys after creating employee: ' . $e->getMessage());
+        }
+
         return redirect()->back()->with('success', 'Employee created successfully');
     }
 

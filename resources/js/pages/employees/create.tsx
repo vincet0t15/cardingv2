@@ -40,6 +40,7 @@ export default function CreateEmployee({ employmentStatuses, offices, similarEmp
     const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
     const [pendingData, setPendingData] = useState<any>(null);
     const photoPreviewUrlRef = useRef<string | null>(null);
+    const duplicateToastIdRef = useRef<number | null>(null);
 
     const { data, setData, post, errors, reset } = useForm<EmployeeCreateRequest>({
         first_name: '',
@@ -66,7 +67,8 @@ export default function CreateEmployee({ employmentStatuses, offices, similarEmp
     useEffect(() => {
         if (warning && similarEmployees.length > 0) {
             setShowDuplicateDialog(true);
-            toast.warning('Possible duplicate employees detected. Please review before continuing.');
+            // Do not show a top-right toast here to avoid duplicating the dialog message.
+            // The dialog itself communicates the warning to the user.
         }
     }, [warning, similarEmployees]);
 
@@ -110,6 +112,22 @@ export default function CreateEmployee({ employmentStatuses, offices, similarEmp
 
         post(route('employees.store'), {
             onSuccess: (response: { props: FlashProps }) => {
+                // If server returned a duplicate warning (shows dialog), do NOT show a success toast.
+                if (response.props?.warning) {
+                    setShowDuplicateDialog(true);
+                    return;
+                }
+
+                // dismiss duplicate-warning toast if present before showing success
+                if (duplicateToastIdRef.current) {
+                    try {
+                        toast.dismiss(duplicateToastIdRef.current);
+                    } catch (e) {
+                        // ignore
+                    }
+                    duplicateToastIdRef.current = null;
+                }
+
                 toast.success(response.props.flash?.success ?? 'Employee created successfully');
                 reset();
             },
@@ -120,6 +138,15 @@ export default function CreateEmployee({ employmentStatuses, offices, similarEmp
 
     const handleConfirmCreate = () => {
         setShowDuplicateDialog(false);
+        // remove the duplicate-warning toast so it doesn't appear alongside the success toast
+        if (duplicateToastIdRef.current) {
+            try {
+                toast.dismiss(duplicateToastIdRef.current);
+            } catch (e) {
+                // ignore if dismiss isn't supported
+            }
+            duplicateToastIdRef.current = null;
+        }
         // Submit the form with force_create flag using router.post
         const formData = new FormData();
 
@@ -171,6 +198,14 @@ export default function CreateEmployee({ employmentStatuses, offices, similarEmp
 
     const handleCancelCreate = () => {
         setShowDuplicateDialog(false);
+        if (duplicateToastIdRef.current) {
+            try {
+                toast.dismiss(duplicateToastIdRef.current);
+            } catch (e) {
+                // ignore
+            }
+            duplicateToastIdRef.current = null;
+        }
         toast.info('Employee creation cancelled. Please review and try again.');
     };
 
