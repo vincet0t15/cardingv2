@@ -211,7 +211,12 @@ export function EmployeeClaims({ employee, claims, claimTypes, availableYears, f
             )}
 
             {openDeleteDialog && selectedClaim && (
-                <DeleteClaimDialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)} claim={selectedClaim} />
+                <DeleteClaimDialog
+                    open={openDeleteDialog}
+                    onClose={() => setOpenDeleteDialog(false)}
+                    claim={selectedClaim}
+                    employeeId={employee.id}
+                />
             )}
         </div>
     );

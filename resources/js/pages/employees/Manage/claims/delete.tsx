@@ -16,10 +16,11 @@ interface DeleteClaimDialogProps {
     open: boolean;
     onClose: () => void;
     claim: Claim;
+    employeeId: number;
 }
-export function DeleteClaimDialog({ open, onClose, claim }: DeleteClaimDialogProps) {
+export function DeleteClaimDialog({ open, onClose, claim, employeeId }: DeleteClaimDialogProps) {
     const onSubmit = () => {
-        router.delete(route('claims.destroy', claim.id), {
+        router.delete(route('manage.employees.claims.destroy', [employeeId, claim.id]), {
             onSuccess: (response: { props: FlashProps }) => {
                 toast.success(response.props.flash?.success);
                 onClose();
@@ -32,7 +33,7 @@ export function DeleteClaimDialog({ open, onClose, claim }: DeleteClaimDialogPro
                 <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the office <span className="font-bold">{claim.purpose}</span> from
+                        This action cannot be undone. This will permanently delete the claim <span className="font-bold">{claim.purpose}</span> from
                         our servers.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
