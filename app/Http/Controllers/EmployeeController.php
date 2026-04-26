@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DeleteRequest;
 use App\Models\Employee;
 use App\Models\EmploymentStatus;
+use App\Models\Notification;
 use App\Models\Office;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -14,6 +18,8 @@ use Inertia\Response;
 
 class EmployeeController extends Controller
 {
+    use HandlesDeletionRequests;
+
     public function index(Request $request): Response
     {
         $this->authorize('viewAny', Employee::class);
@@ -22,6 +28,7 @@ class EmployeeController extends Controller
         $employmentStatusId = $request->input('employment_status_id');
 
         $query = Employee::query()
+            ->with('office', 'employmentStatus')
             ->when($search, function ($query) use ($search) {
                 $query->where('first_name', 'like', '%' . $search . '%')
                     ->orWhere('last_name', 'like', '%' . $search . '%');
@@ -33,55 +40,46 @@ class EmployeeController extends Controller
                 $query->where('employment_status_id', $employmentStatusId);
             });
 
-        // Get total counts before pagination
-        $totalEmployees = $query->count();
-        $plantillaCount = (clone $query)->whereHas('employmentStatus', function ($q) {
-            $q->whereIn('name', ['Plantilla', 'Co-Term']);
-        })->count();
-        $cosjoCount = (clone $query)->whereHas('employmentStatus', function ($q) {
-            $q->whereIn('name', ['COS', 'JO', 'COS/JO']);
-        })->count();
-        $uniqueOfficesCount = $query->distinct('office_id')->count('office_id');
+        $filters = [
+            'search' => $search,
+            'office_id' => $officeId,
+            'employment_status_id' => $employmentStatusId,
+        ];
 
-        $employees = $query->with(['office', 'employmentStatus'])
-            ->orderBy('last_name', 'asc')
-            ->orderBy('first_name', 'asc')
-            ->orderBy('middle_name', 'asc')
-            ->paginate(50)
-            ->withQueryString();
+        $employees = $query->orderBy('last_name')->orderBy('first_name')->orderBy('middle_name')->paginate(50);
 
         $offices = Office::orderBy('name')->get();
         $employmentStatuses = EmploymentStatus::orderBy('name')->get();
+
+        $stats = [
+            'total_employees' => Employee::count(),
+            'plantilla_count' => Employee::whereHas('employmentStatus', function ($q) {
+                $q->whereIn('name', ['Plantilla', 'Co-Term']);
+            })->count(),
+            'cosjo_count' => Employee::whereHas('employmentStatus', function ($q) {
+                $q->whereIn('name', ['COS', 'JO', 'COS/JO']);
+            })->count(),
+            'unique_offices' => Employee::distinct()->count('office_id'),
+        ];
 
         return Inertia::render('employees/Index', [
             'employees' => $employees,
             'offices' => $offices,
             'employmentStatuses' => $employmentStatuses,
-            'filters' => [
-                'search' => $search,
-                'office_id' => $officeId,
-                'employment_status_id' => $employmentStatusId,
-            ],
-            'statistics' => [
-                'total_employees' => $totalEmployees,
-                'plantilla_count' => $plantillaCount,
-                'cosjo_count' => $cosjoCount,
-                'unique_offices' => $uniqueOfficesCount,
-            ],
+            'filters' => $filters,
+            'statistics' => $stats,
         ]);
     }
 
     public function create(): Response
     {
         $this->authorize('create', Employee::class);
-        $employmentStatuses = EmploymentStatus::all();
-        $offices = Office::all();
+        $offices = Office::orderBy('name')->get();
+        $employmentStatuses = EmploymentStatus::orderBy('name')->get();
 
         return Inertia::render('employees/create', [
-            'employmentStatuses' => $employmentStatuses,
             'offices' => $offices,
-            'similarEmployees' => session('similar_employees', []),
-            'warning' => session('warning'),
+            'employmentStatuses' => $employmentStatuses,
         ]);
     }
 
@@ -89,106 +87,33 @@ class EmployeeController extends Controller
     {
         $this->authorize('create', Employee::class);
 
-        // Debug: log incoming create request to help diagnose why force_create isn't applied
-        try {
-            Log::debug('EmployeeController@store incoming', [
-                'force_create' => $request->input('force_create'),
-                'first_name' => $request->input('first_name'),
-                'middle_name' => $request->input('middle_name'),
-                'last_name' => $request->input('last_name'),
-                'office_id' => $request->input('office_id'),
-                'employment_status_id' => $request->input('employment_status_id'),
-                'has_photo' => $request->hasFile('photo'),
-            ]);
-        } catch (\Throwable $e) {
-            // avoid breaking the request flow if logging fails
-            Log::error('Failed to log EmployeeController@store incoming: ' . $e->getMessage());
-        }
-
-        // Check for duplicate names
-        $firstName = trim($request->input('first_name'));
-        $lastName = trim($request->input('last_name'));
-        $middleName = trim($request->input('middle_name') ?? '');
-
-        // Check if user wants to proceed despite duplicates
-        $forceCreate = $request->input('force_create', false);
-
-        // Find similar employees
-        $similarEmployees = Employee::where(function ($query) use ($firstName, $lastName, $middleName) {
-            // Exact match on first and last name
-            $query->where('first_name', 'LIKE', $firstName)
-                ->where('last_name', 'LIKE', $lastName);
-        })
-            ->orWhere(function ($query) use ($firstName, $lastName) {
-                // Soundex match (similar sounding names)
-                $query->whereRaw('SOUNDEX(first_name) = SOUNDEX(?)', [$firstName])
-                    ->whereRaw('SOUNDEX(last_name) = SOUNDEX(?)', [$lastName]);
-            })
-            ->orWhere(function ($query) use ($firstName, $lastName) {
-                // Partial match (80% similarity)
-                $query->where('first_name', 'LIKE', $firstName . '%')
-                    ->where('last_name', 'LIKE', $lastName . '%');
-            })
-            ->with(['office', 'employmentStatus'])
-            ->limit(10)
-            ->get();
-
-        // If duplicates found and user hasn't confirmed, redirect back with warning
-        if ($similarEmployees->count() > 0 && !$forceCreate) {
-            return redirect()->back()
-                ->withInput()
-                ->with('warning', 'Possible duplicate employees found')
-                ->with('similar_employees', $similarEmployees->toArray());
-        }
-
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
             'suffix' => 'nullable|string|max:255',
-            'position' => 'nullable|string|max:255',
-            'is_rata_eligible' => 'boolean',
-            'employment_status_id' => 'required|exists:employment_statuses,id',
+            'position' => 'required|string|max:255',
             'office_id' => 'required|exists:offices,id',
-            'photo' => ['nullable', 'image', 'max:2048', 'mimes:jpg,jpeg,png,webp'],
+            'employment_status_id' => 'required|exists:employment_statuses,id',
+            'is_rata_eligible' => 'boolean',
         ]);
 
-        $path = $request->hasFile('photo')
-            ? $request->file('photo')->store('employees', 'public')
-            : null;
-
-        Employee::create([
-            'first_name' => $validated['first_name'],
-            'middle_name' => $validated['middle_name'],
-            'last_name' => $validated['last_name'],
-            'suffix' => $validated['suffix'],
-            'employment_status_id' => $validated['employment_status_id'],
-            'office_id' => $validated['office_id'],
-            'image_path' => $path,
-            'position' => $validated['position'],
-            'is_rata_eligible' => $validated['is_rata_eligible'] ?? false,
+        $employee = Employee::create([
+            ...$validated,
+            'created_by' => Auth::id(),
         ]);
 
-        // Clear any duplicate-warning session data so it doesn't persist alongside the success flash
-        try {
-            $request->session()->forget(['warning', 'similar_employees', 'editing_employee_id']);
-        } catch (\Throwable $e) {
-            Log::warning('Failed to clear duplicate-warning session keys after creating employee: ' . $e->getMessage());
-        }
-
-        return redirect()->back()->with('success', 'Employee created successfully');
+        return redirect()->route('employees.show', $employee)->with('success', 'Employee created successfully');
     }
 
-    public function show(Request $request, Employee $employee): Response
+    public function show(Employee $employee): Response
     {
         $this->authorize('view', $employee);
-        $employmentStatuses = EmploymentStatus::all();
-        $offices = Office::all();
+
+        $employee->load(['office', 'employmentStatus', 'salaries', 'createdBy']);
 
         return Inertia::render('employees/show', [
             'employee' => $employee,
-            'employmentStatuses' => $employmentStatuses,
-            'offices' => $offices,
         ]);
     }
 
@@ -196,73 +121,60 @@ class EmployeeController extends Controller
     {
         $this->authorize('update', $employee);
 
-        // Check for duplicate names (excluding current employee)
-        $firstName = trim($request->input('first_name'));
-        $lastName = trim($request->input('last_name'));
-        $middleName = trim($request->input('middle_name') ?? '');
-
-        // Check if user wants to proceed despite duplicates
-        $forceUpdate = $request->input('force_update', false);
-
-        // Only check for EXACT duplicates (same first name, last name, and middle name)
-        $exactDuplicates = Employee::where('id', '!=', $employee->id)
-            ->where('first_name', $firstName)
-            ->where('last_name', $lastName)
-            ->where('middle_name', $middleName)
-            ->count();
-
-        // If exact duplicates found and user hasn't confirmed, redirect back with warning
-        if ($exactDuplicates > 0 && !$forceUpdate) {
-            $similarEmployees = Employee::where('id', '!=', $employee->id)
-                ->where('first_name', $firstName)
-                ->where('last_name', $lastName)
-                ->where('middle_name', $middleName)
-                ->with(['office', 'employmentStatus'])
-                ->limit(10)
-                ->get();
-
-            return redirect()->back()
-                ->withInput()
-                ->with('warning', 'Possible duplicate employees found')
-                ->with('similar_employees', $similarEmployees->toArray())
-                ->with('editing_employee_id', $employee->id);
-        }
-
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
             'suffix' => 'nullable|string|max:255',
-            'position' => 'nullable|string|max:255',
-            'is_rata_eligible' => 'nullable|boolean',
-            'employment_status_id' => 'required|exists:employment_statuses,id',
+            'position' => 'required|string|max:255',
             'office_id' => 'required|exists:offices,id',
-            'photo' => ['nullable', 'image', 'max:6144', 'mimes:jpg,jpeg,png,webp'],
+            'employment_status_id' => 'required|exists:employment_statuses,id',
+            'is_rata_eligible' => 'boolean',
         ]);
 
-        if ($request->hasFile('photo')) {
-            if ($employee->image_path) {
-                Storage::disk('public')->delete($employee->image_path);
-            }
-            $employee->image_path = $request->file('photo')->store('employees', 'public');
-        }
-
-        $validated = $request->suffix == 'None' ? array_merge($validated, ['suffix' => null]) : $validated;
         $employee->update($validated);
 
         return redirect()->back()->with('success', 'Employee updated successfully');
     }
 
-    public function destroy(Employee $employee): RedirectResponse
+    public function destroy(Request $request, Employee $employee): RedirectResponse
     {
-        $this->authorize('delete', $employee);
-        if ($employee->image_path) {
-            Storage::disk('public')->delete($employee->image_path);
+        $user = Auth::user();
+
+
+        if ($user->hasPermissionTo('employees.delete')) {
+            if ($employee->image_path) {
+                Storage::disk('public')->delete($employee->image_path);
+            }
+            $employee->delete();
+            return redirect()->route('employees.index')->with('success', 'Employee deleted successfully');
         }
 
-        $employee->delete();
+        $reason = $request->input('reason', 'No reason provided');
 
-        return redirect()->route('employees.index')->with('success', 'Employee deleted successfully');
+        $deleteRequest = DeleteRequest::create([
+            'requestable_type' => Employee::class,
+            'requestable_id' => $employee->id,
+            'requested_by' => $user->id,
+            'status' => DeleteRequest::STATUS_PENDING,
+            'reason' => $reason,
+        ]);
+
+        // Notify super admins
+        $superAdmins = \Spatie\Permission\Models\Role::where('name', 'super admin')->first()?->users ?? collect();
+        foreach ($superAdmins as $admin) {
+            Notification::create([
+                'user_id' => $admin->id,
+                'type' => 'delete_request',
+                'title' => 'Delete Request',
+                'message' => "{$user->name} requested to delete employee: {$employee->full_name} (ID: {$employee->id})",
+                'link' => '/delete-requests',
+                'notifiable_id' => $deleteRequest->id,
+                'notifiable_type' => DeleteRequest::class,
+            ]);
+        }
+
+        return redirect()->back()->with('info', 'You do not have permission to delete. A delete request has been sent to admin.');
     }
 
     public function restore(int $id): RedirectResponse

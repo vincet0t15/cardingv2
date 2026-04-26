@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\GeneralFund;
 use App\Models\SourceOfFundCode;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class SourceOfFundCodeController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         $search = $request->input('search');
@@ -70,7 +73,7 @@ class SourceOfFundCodeController extends Controller
     public function update(Request $request, SourceOfFundCode $sourceOfFundCode)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:255|unique:source_of_fund_codes,code,'.$sourceOfFundCode->id,
+            'code' => 'required|string|max:255|unique:source_of_fund_codes,code,' . $sourceOfFundCode->id,
             'description' => 'nullable|string|max:255',
             'status' => 'boolean',
             'parent_id' => 'nullable|exists:source_of_fund_codes,id',
@@ -103,9 +106,7 @@ class SourceOfFundCodeController extends Controller
             return redirect()->back()->with('error', 'Cannot delete source of fund code that has child codes. Delete child codes first.');
         }
 
-        $sourceOfFundCode->delete();
-
-        return redirect()->back()->with('success', 'Source of fund code deleted successfully.');
+        return $this->handleDeletion($sourceOfFundCode, 'source-of-fund-codes.delete');
     }
 
     public function edit(SourceOfFundCode $sourceOfFundCode)

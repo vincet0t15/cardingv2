@@ -1,5 +1,6 @@
 import { Icon } from '@/components/icon';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { NavigationMenu, NavigationMenuList } from '@/components/ui/navigation-menu';
@@ -11,6 +12,7 @@ import { NavGroup, type BreadcrumbItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
     Banknote,
+    Bell,
     Building2,
     Calculator,
     DollarSign,
@@ -25,6 +27,7 @@ import {
     Settings,
     Shield,
     Shirt,
+    Trash2,
     Truck,
     UserCheck,
     UserRoundPen,
@@ -144,6 +147,11 @@ const mainNavItems: NavGroup[] = [
                 title: 'Audit Logs',
                 href: '/audit-logs',
                 icon: FileText,
+            },
+            {
+                title: 'Delete Requests',
+                href: '/delete-requests',
+                icon: Trash2,
             },
         ],
     },
@@ -293,6 +301,11 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
 
                         {/* Right: Actions */}
                         <div className="flex items-center space-x-2 justify-self-end">
+                            {auth.user.permissions?.includes('delete_requests.view') && (
+                                <Link href="/delete-requests" prefetch className="relative flex h-10 w-10 items-center justify-center rounded-full hover:bg-accent">
+                                    <Trash2 className="h-5 w-5" />
+                                </Link>
+                            )}
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="ghost" className="size-10 rounded-full p-1">

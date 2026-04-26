@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\ReferenceType;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class ReferenceTypeController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         $this->authorize('viewAny', ReferenceType::class);
@@ -68,14 +71,10 @@ class ReferenceTypeController extends Controller
 
     public function destroy(ReferenceType $referenceType)
     {
-        $this->authorize('delete', $referenceType);
-
         if ($referenceType->adjustments()->exists()) {
             return redirect()->back()->with('error', 'Cannot delete reference type that has adjustments assigned.');
         }
 
-        $referenceType->delete();
-
-        return redirect()->back()->with('success', 'Reference Type deleted successfully.');
+        return $this->handleDeletion($referenceType, 'reference-types.delete');
     }
 }

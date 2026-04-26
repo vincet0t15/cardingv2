@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Supplier;
 use App\Models\SupplierTransaction;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class SupplierTransactionController extends Controller
 {
+    use HandlesDeletionRequests;
     /**
      * Display the supplier's transactions.
      */
@@ -104,14 +106,9 @@ class SupplierTransactionController extends Controller
      */
     public function destroy(Supplier $supplier, SupplierTransaction $transaction)
     {
-        $transaction->delete();
 
-        if (request()->wantsJson()) {
-            return response()->json(['message' => 'Transaction deleted successfully.']);
-        }
 
-        return redirect()->route('suppliers.transactions.show', $supplier)
-            ->with('success', 'Transaction deleted successfully.');
+        return $result;
     }
 
     /**

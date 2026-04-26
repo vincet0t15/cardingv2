@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\ClaimType;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
+use App\Traits\HandlesDeletionRequests;
 
 class ClaimTypeController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         $this->authorize('viewAny', ClaimType::class);
@@ -61,13 +64,10 @@ class ClaimTypeController extends Controller
 
     public function destroy(ClaimType $claimType)
     {
-        $this->authorize('delete', $claimType);
         if ($claimType->claims()->exists()) {
             return redirect()->back()->with('error', 'Cannot delete claim type with existing claims');
         }
 
-        $claimType->delete();
-
-        return redirect()->back()->with('success', 'Claim type deleted successfully');
+        return $this->handleDeletion($claimType, 'claim-types.delete');
     }
 }

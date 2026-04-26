@@ -50,6 +50,11 @@ class User extends Authenticatable
         ];
     }
 
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class);
+    }
+
     public function isAdmin(): bool
     {
         return $this->hasRole('super admin');

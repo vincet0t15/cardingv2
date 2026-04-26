@@ -23,6 +23,7 @@ use App\Policies\ClaimTypePolicy;
 use App\Policies\ClothingAllowancePolicy;
 use App\Policies\DeductionTypePolicy;
 use App\Policies\DeductionCategoryPolicy;
+use App\Policies\DeleteRequestPolicy;
 use App\Policies\DocumentTypePolicy;
 use App\Policies\EmployeePolicy;
 use App\Policies\EmploymentStatusPolicy;
@@ -62,6 +63,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(ClothingAllowance::class, ClothingAllowancePolicy::class);
         Gate::policy(AdjustmentType::class, AdjustmentTypePolicy::class);
         Gate::policy(ReferenceType::class, ReferenceTypePolicy::class);
+        Gate::policy(\App\Models\DeleteRequest::class, DeleteRequestPolicy::class);
 
         if (config('app.env') !== 'local') {
             URL::forceScheme('https');

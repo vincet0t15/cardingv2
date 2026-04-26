@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Supplier;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class SupplierController extends Controller
 {
+    use HandlesDeletionRequests;
     /**
      * Display a listing of suppliers.
      */
@@ -81,9 +83,6 @@ class SupplierController extends Controller
      */
     public function destroy(Supplier $supplier)
     {
-        $this->authorize('delete', $supplier);
-        $supplier->delete();
-
-        return redirect()->route('suppliers.index')->with('success', 'Supplier deleted successfully.');
+        return $this->handleDeletion($supplier, 'suppliers.delete');
     }
 }

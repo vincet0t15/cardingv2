@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\DocumentType;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class DocumentTypeController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         $this->authorize('viewAny', DocumentType::class);
@@ -63,9 +66,6 @@ class DocumentTypeController extends Controller
 
     public function destroy(DocumentType $documentType)
     {
-        $this->authorize('delete', $documentType);
-        $documentType->delete();
-
-        return redirect()->back()->with('success', 'Document type deleted successfully');
+        return $this->handleDeletion($documentType, 'document-types.delete');
     }
 }

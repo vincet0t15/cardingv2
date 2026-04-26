@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\DeductionType;
 use App\Models\DeductionCategory;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class DeductionTypeController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         $this->authorize('viewAny', DeductionType::class);
@@ -68,13 +71,10 @@ class DeductionTypeController extends Controller
 
     public function destroy(DeductionType $deductionType)
     {
-        $this->authorize('delete', $deductionType);
         if ($deductionType->employeeDeductions()->exists()) {
             return redirect()->back()->with('error', 'Cannot delete deduction type that has existing employee deductions.');
         }
 
-        $deductionType->delete();
-
-        return redirect()->back()->with('success', 'Deduction type deleted successfully');
+        return $this->handleDeletion($deductionType, 'deduction-types.delete');
     }
 }

@@ -12,19 +12,23 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Create categories table
-        Schema::create('deduction_categories', function (Blueprint $table) {
-            $table->id();
-            $table->string('name')->unique();
-            $table->timestamps();
-        });
+        // Create categories table if it doesn't exist
+        if (!Schema::hasTable('deduction_categories')) {
+            Schema::create('deduction_categories', function (Blueprint $table) {
+                $table->id();
+                $table->string('name')->unique();
+                $table->timestamps();
+            });
+        }
 
-        // Add nullable category_id to deduction_types
-        Schema::table('deduction_types', function (Blueprint $table) {
-            $table->foreignId('category_id')->nullable()->constrained('deduction_categories')->nullOnDelete()->after('code');
-        });
+        // Add nullable category_id to deduction_types if it doesn't exist
+        if (!Schema::hasColumn('deduction_types', 'category_id')) {
+            Schema::table('deduction_types', function (Blueprint $table) {
+                $table->foreignId('category_id')->nullable()->constrained('deduction_categories')->nullOnDelete()->after('code');
+            });
+        }
 
-
+        // Migrate existing category data if category column exists
         if (Schema::hasColumn('deduction_types', 'category')) {
             $distinct = DB::table('deduction_types')->select('category')->whereNotNull('category')->distinct()->pluck('category')->filter()->values();
             foreach ($distinct as $name) {

@@ -6,9 +6,12 @@ use App\Models\AdjustmentType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Inertia\Response;
+use App\Traits\HandlesDeletionRequests;
 
 class AdjustmentTypeController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         $this->authorize('viewAny', AdjustmentType::class);
@@ -72,14 +75,10 @@ class AdjustmentTypeController extends Controller
 
     public function destroy(AdjustmentType $adjustmentType)
     {
-        $this->authorize('delete', $adjustmentType);
-
         if ($adjustmentType->adjustments()->exists()) {
             return redirect()->back()->with('error', 'Cannot delete adjustment type that has adjustments assigned.');
         }
 
-        $adjustmentType->delete();
-
-        return redirect()->back()->with('success', 'Adjustment Type deleted successfully.');
+        return $this->handleDeletion($adjustmentType, 'adjustment-types.delete');
     }
 }

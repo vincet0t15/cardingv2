@@ -44,6 +44,8 @@ export interface User {
     is_active: boolean;
     created_at: string;
     updated_at: string;
+    permissions?: string[];
+    roles?: string[];
     [key: string]: unknown; // This allows for additional properties...
 }
 

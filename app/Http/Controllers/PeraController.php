@@ -6,12 +6,15 @@ use App\Models\Employee;
 use App\Models\EmploymentStatus;
 use App\Models\Office;
 use App\Models\Pera;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class PeraController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         $this->authorize('viewAny', Pera::class);
@@ -146,10 +149,6 @@ class PeraController extends Controller
 
     public function destroy(Pera $pera)
     {
-        $this->authorize('delete', $pera);
-
-        $pera->delete();
-
-        return redirect()->back()->with('success', 'PERA record deleted successfully');
+        return $this->handleDeletion($pera, 'peras.delete');
     }
 }

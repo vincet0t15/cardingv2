@@ -6,6 +6,7 @@ use App\Models\DeductionType;
 use App\Models\DeductionCategory;
 use App\Models\Employee;
 use App\Models\EmployeeDeduction;
+use App\Traits\HandlesDeletionRequests;
 use App\Models\EmploymentStatus;
 use App\Models\Office;
 use App\Services\PayrollService;
@@ -18,6 +19,8 @@ use Inertia\Response;
 
 class EmployeeDeductionController extends Controller
 {
+    use HandlesDeletionRequests;
+
     public function __construct(
         protected PayrollService $payrollService
     ) {}
@@ -392,9 +395,6 @@ class EmployeeDeductionController extends Controller
 
     public function destroy(EmployeeDeduction $employeeDeduction): RedirectResponse
     {
-
-        $employeeDeduction->delete();
-
-        return redirect()->back()->with('success', 'Deduction deleted successfully');
+        return $this->handleDeletion($employeeDeduction, 'employee-deductions.delete');
     }
 }

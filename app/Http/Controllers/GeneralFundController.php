@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\GeneralFund;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class GeneralFundController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         $search = $request->input('search');
@@ -48,7 +51,7 @@ class GeneralFundController extends Controller
     public function update(Request $request, GeneralFund $generalFund)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:255|unique:general_funds,code,'.$generalFund->id,
+            'code' => 'required|string|max:255|unique:general_funds,code,' . $generalFund->id,
             'description' => 'nullable|string|max:255',
             'status' => 'boolean',
         ]);
@@ -64,8 +67,6 @@ class GeneralFundController extends Controller
             return redirect()->back()->with('error', 'Cannot delete General Fund that has source of fund codes assigned.');
         }
 
-        $generalFund->delete();
-
-        return redirect()->back()->with('success', 'General Fund deleted successfully.');
+        return $this->handleDeletion($generalFund, 'general-funds.delete');
     }
 }

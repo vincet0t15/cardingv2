@@ -11,6 +11,7 @@ use App\Http\Controllers\ClothingAllowanceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeductionTypeController;
 use App\Http\Controllers\DeductionCategoryController;
+use App\Http\Controllers\DeleteRequestController;
 use App\Http\Controllers\DocumentTypeController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EmployeeDeductionController;
@@ -21,6 +22,7 @@ use App\Http\Controllers\EmploymentTypeReportController;
 use App\Http\Controllers\GeneralFundController;
 use App\Http\Controllers\HazardPayController;
 use App\Http\Controllers\ManageEmployeeController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OfficeController;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\PeraController;
@@ -99,7 +101,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     // EMPLOYEES - View/Edit/Delete (parameterized routes must be last)
     Route::get('employees/{employee}', [EmployeeController::class, 'show'])->name('employees.show');
     Route::middleware(['permission:employees.edit'])->put('employees/{employee}', [EmployeeController::class, 'update'])->name('employees.update');
-    Route::middleware(['permission:employees.delete'])->delete('employees/{employee}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
+    Route::delete('employees/{employee}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
     Route::middleware(['permission:employees.edit'])->post('employees/{id}/restore', [EmployeeController::class, 'restore'])->name('employees.restore');
 
     // SUPPLIERS - Full CRUD (requires suppliers.manage permission)
@@ -214,7 +216,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware(['permission:offices.view'])->get('settings/offices', [OfficeController::class, 'index'])->name('offices.index');
     Route::middleware(['permission:offices.create'])->post('settings/offices', [OfficeController::class, 'store'])->name('offices.store');
     Route::middleware(['permission:offices.edit'])->put('settings/offices/{office}', [OfficeController::class, 'update'])->name('offices.update');
-    Route::middleware(['permission:offices.delete'])->delete('settings/offices/{office}', [OfficeController::class, 'destroy'])->name('offices.destroy');
+    Route::post('settings/offices/{id}/delete-request', [OfficeController::class, 'destroy'])->name('offices.destroy');
 
     // DEDUCTION TYPES (requires deduction_types.* permissions)
     Route::middleware(['permission:deduction_types.view'])->get('settings/deduction-types', [DeductionTypeController::class, 'index'])->name('deduction-types.index');
@@ -314,6 +316,20 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::middleware(['permission:reference_types.store'])->post('settings/reference-types', [ReferenceTypeController::class, 'store'])->name('reference-types.store');
     Route::middleware(['permission:reference_types.edit'])->put('settings/reference-types/{referenceType}', [ReferenceTypeController::class, 'update'])->name('reference-types.update');
     Route::middleware(['permission:reference_types.delete'])->delete('settings/reference-types/{referenceType}', [ReferenceTypeController::class, 'destroy'])->name('reference-types.destroy');
+
+    // DELETE REQUESTS
+    Route::middleware(['permission:delete_requests.view'])->get('delete-requests', [DeleteRequestController::class, 'index'])->name('delete-requests.index');
+    Route::middleware(['permission:delete_requests.view'])->get('delete-requests/my-requests', [DeleteRequestController::class, 'myRequests'])->name('delete-requests.my');
+    Route::middleware(['permission:delete_requests.view'])->get('delete-requests/{deleteRequest}', [DeleteRequestController::class, 'show'])->name('delete-requests.show');
+    Route::middleware(['permission:delete_requests.approve'])->post('delete-requests/{deleteRequest}/approve', [DeleteRequestController::class, 'approve'])->name('delete-requests.approve');
+    Route::middleware(['permission:delete_requests.approve'])->post('delete-requests/{deleteRequest}/reject', [DeleteRequestController::class, 'reject'])->name('delete-requests.reject');
+
+    // NOTIFICATIONS
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('notifications/recent', [NotificationController::class, 'recent'])->name('notifications.recent');
+    Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
+    Route::post('notifications/{notification}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-as-read');
+    Route::post('notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
 });
 
 require __DIR__ . '/settings.php';

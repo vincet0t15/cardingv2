@@ -13,9 +13,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Traits\HandlesDeletionRequests;
 
 class AdjustmentController extends Controller
 {
+    use HandlesDeletionRequests;
     /**
      * Display a listing of adjustments.
      */
@@ -294,8 +296,6 @@ class AdjustmentController extends Controller
      */
     public function destroy(Adjustment $adjustment): RedirectResponse
     {
-        $this->authorize('delete', $adjustment);
-
         // Only allow deletion if status is pending or rejected
         if (!in_array($adjustment->status, [Adjustment::STATUS_PENDING, Adjustment::STATUS_REJECTED])) {
             return redirect()
@@ -303,11 +303,7 @@ class AdjustmentController extends Controller
                 ->with('error', 'Cannot delete approved or processed adjustments.');
         }
 
-        $adjustment->delete();
-
-        return redirect()
-            ->route('adjustments.index')
-            ->with('success', 'Adjustment deleted successfully.');
+        return $this->handleDeletion($adjustment, 'adjustments.delete');
     }
 
     /**

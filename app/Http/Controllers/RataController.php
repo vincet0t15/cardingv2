@@ -6,12 +6,15 @@ use App\Models\Employee;
 use App\Models\EmploymentStatus;
 use App\Models\Office;
 use App\Models\Rata;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class RataController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         $this->authorize('viewAny', Rata::class);
@@ -147,10 +150,6 @@ class RataController extends Controller
 
     public function destroy(Rata $rata)
     {
-        $this->authorize('delete', $rata);
-
-        $rata->delete();
-
-        return redirect()->back()->with('success', 'RATA record deleted successfully');
+        return $this->handleDeletion($rata, 'ratas.delete');
     }
 }

@@ -8,6 +8,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useState } from 'react';
 
 import type { Employee } from '@/types/employee';
 import { router } from '@inertiajs/react';
@@ -20,12 +21,13 @@ interface DeleteEmployeeDialogProps {
 }
 
 export function DeleteEmployeeDialog({ open, onClose, employee }: DeleteEmployeeDialogProps) {
+    const [reason, setReason] = useState('');
+    
     const onSubmit = () => {
         router.delete(route('employees.destroy', employee.id), {
+            data: { reason },
             onSuccess: () => {
-                toast.success('Employee deleted successfully.');
                 onClose(false);
-                router.get(route('employees.index'));
             },
             onError: (errors) => {
                 const firstError = Object.values(errors)[0];
@@ -36,6 +38,7 @@ export function DeleteEmployeeDialog({ open, onClose, employee }: DeleteEmployee
 
     const handleOpenChange = (isOpen: boolean) => {
         onClose(isOpen);
+        if (!isOpen) setReason('');
     };
 
     return (
@@ -51,6 +54,16 @@ export function DeleteEmployeeDialog({ open, onClose, employee }: DeleteEmployee
                         and all associated records (salaries, deductions, claims, etc.) from our servers.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
+                <div className="py-2">
+                    <label className="text-sm font-medium">Reason for deletion (optional)</label>
+                    <textarea
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        placeholder="Enter reason for deletion..."
+                        className="mt-1 w-full rounded-md border p-2 text-sm"
+                        rows={2}
+                    />
+                </div>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={onSubmit} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">

@@ -6,12 +6,15 @@ use App\Models\Employee;
 use App\Models\EmploymentStatus;
 use App\Models\HazardPay;
 use App\Models\Office;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class HazardPayController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         $this->authorize('viewAny', HazardPay::class);
@@ -165,9 +168,6 @@ class HazardPayController extends Controller
 
     public function destroy(HazardPay $hazardPay)
     {
-        $this->authorize('delete', $hazardPay);
-        $hazardPay->delete();
-
-        return redirect()->back()->with('success', 'Hazard Pay record deleted successfully');
+        return $this->handleDeletion($hazardPay, 'hazard-pays.delete');
     }
 }

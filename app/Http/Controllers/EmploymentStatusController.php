@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\EmploymentStatus;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class EmploymentStatusController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         $this->authorize('viewAny', EmploymentStatus::class);
@@ -53,13 +56,10 @@ class EmploymentStatusController extends Controller
 
     public function destroy(EmploymentStatus $employmentStatus)
     {
-        $this->authorize('delete', $employmentStatus);
         if ($employmentStatus->employees()->exists()) {
             return redirect()->back()->with('error', 'Cannot delete employment status that has employees assigned.');
         }
 
-        $employmentStatus->delete();
-
-        return redirect()->back()->with('success', 'Employment Status deleted successfully.');
+        return $this->handleDeletion($employmentStatus, 'employment-statuses.delete');
     }
 }

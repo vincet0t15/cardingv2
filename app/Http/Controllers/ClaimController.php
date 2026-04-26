@@ -7,9 +7,12 @@ use App\Models\ClaimType;
 use App\Models\Employee;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
+use App\Traits\HandlesDeletionRequests;
 
 class ClaimController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request, Employee $employee)
     {
         $this->authorize('viewAny', Claim::class);
@@ -95,11 +98,7 @@ class ClaimController extends Controller
 
     public function destroy(Employee $employee, Claim $claim)
     {
-        $this->authorize('delete', $claim);
-
-        $claim->delete();
-
-        return redirect()->back()->with('success', 'Claim deleted successfully');
+        return $this->handleDeletion($claim, 'claims.delete');
     }
 
     /**

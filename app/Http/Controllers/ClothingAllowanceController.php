@@ -6,12 +6,15 @@ use App\Models\ClothingAllowance;
 use App\Models\Employee;
 use App\Models\EmploymentStatus;
 use App\Models\Office;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class ClothingAllowanceController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         $this->authorize('viewAny', ClothingAllowance::class);
@@ -166,8 +169,7 @@ class ClothingAllowanceController extends Controller
     public function destroy(ClothingAllowance $clothingAllowance)
     {
         $this->authorize('delete', $clothingAllowance);
-        $clothingAllowance->delete();
 
-        return redirect()->back()->with('success', 'Clothing Allowance record deleted successfully');
+        return $this->handleDeletion($clothingAllowance, 'clothing-allowances.delete');
     }
 }

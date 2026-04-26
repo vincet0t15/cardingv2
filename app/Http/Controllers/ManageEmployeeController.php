@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Adjustment;
 use App\Models\Claim;
 use App\Models\ClaimType;
+use App\Models\DeleteRequest;
 use App\Models\DeductionType;
 use App\Models\Employee;
 use App\Models\EmployeeDeduction;
 use App\Models\EmploymentStatus;
+use App\Models\Notification;
 use App\Models\Office;
 use App\Models\SourceOfFundCode;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +21,7 @@ use Inertia\Inertia;
 
 class ManageEmployeeController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request, Employee $employee)
     {
         $this->authorize('view', $employee);
@@ -66,41 +70,55 @@ class ManageEmployeeController extends Controller
             ->get();
 
         // Get ALL periods from all sources (deductions, claims, adjustments, clothing allowances)
-        $allPeriods = collect();
+        $periodsArray = [];
 
         // Deductions periods
         $deductionPeriods = EmployeeDeduction::where('employee_id', $employee->id)
             ->select('pay_period_year', 'pay_period_month')
             ->distinct()
-            ->get()
-            ->map(fn($d) => "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT));
+            ->get();
+        foreach ($deductionPeriods as $d) {
+            $periodsArray[] = $d->pay_period_year . '-' . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+        }
 
         // Claims periods
-        $claimPeriods = $allClaims->map(function ($c) {
-            return \Carbon\Carbon::parse($c->claim_date)->format('Y-m');
-        })->filter()->unique();
+        foreach ($allClaims as $c) {
+            if ($c->claim_date) {
+                $periodsArray[] = \Carbon\Carbon::parse($c->claim_date)->format('Y-m');
+            }
+        }
 
         // Adjustments periods (with pay_period_month/year)
-        $adjustmentPeriods = $adjustments->filter(fn($a) => $a->pay_period_month && $a->pay_period_year)
-            ->map(fn($a) => "{$a->pay_period_year}-" . str_pad($a->pay_period_month, 2, '0', STR_PAD_LEFT))
-            ->unique();
+        foreach ($adjustments as $a) {
+            if ($a->pay_period_month && $a->pay_period_year) {
+                $periodsArray[] = $a->pay_period_year . '-' . str_pad($a->pay_period_month, 2, '0', STR_PAD_LEFT);
+            }
+        }
 
         // Clothing allowance periods
-        $clothingPeriods = $employee->clothingAllowances->map(function ($ca) {
-            return \Carbon\Carbon::parse($ca->start_date)->format('Y-m');
-        })->unique();
+        foreach ($employee->clothingAllowances as $ca) {
+            if ($ca->start_date) {
+                $periodsArray[] = \Carbon\Carbon::parse($ca->start_date)->format('Y-m');
+            }
+        }
 
-        // Merge all periods and sort by date (newest first)
-        $allPeriods = $deductionPeriods->merge($claimPeriods)->merge($adjustmentPeriods)->merge($clothingPeriods)->unique()->sortByDesc(fn($p) => $p)->values();
+        // Remove duplicates and sort by date (newest first)
+        $periodsArray = array_unique($periodsArray);
+        rsort($periodsArray);
+        $allPeriods = collect($periodsArray);
 
         // Apply filter if month/year selected
         if ($filterMonth && $filterYear) {
-            $filteredPeriod = "{$filterYear}-" . str_pad($filterMonth, 2, '0', STR_PAD_LEFT);
-            $allPeriods = $allPeriods->filter(fn($p) => $p === $filteredPeriod)->values();
+            $filteredPeriod = $filterYear . '-' . str_pad($filterMonth, 2, '0', STR_PAD_LEFT);
+            $filteredArr = array_filter($periodsArray, fn($p) => $p === $filteredPeriod);
+            $allPeriods = collect($filteredArr);
         } elseif ($filterYear) {
-            $allPeriods = $allPeriods->filter(fn($p) => str_starts_with($p, (string) $filterYear))->values();
+            $filteredArr = array_filter($periodsArray, fn($p) => str_starts_with($p, (string) $filterYear));
+            $allPeriods = collect($filteredArr);
         } elseif ($filterMonth) {
-            $allPeriods = $allPeriods->filter(fn($p) => str_ends_with($p, "-" . str_pad($filterMonth, 2, '0', STR_PAD_LEFT)))->values();
+            $suffix = '-' . str_pad($filterMonth, 2, '0', STR_PAD_LEFT);
+            $filteredArr = array_filter($periodsArray, fn($p) => str_ends_with($p, $suffix));
+            $allPeriods = collect($filteredArr);
         }
 
         // Paginate the allPeriods
@@ -326,11 +344,7 @@ class ManageEmployeeController extends Controller
 
     public function destroyDeduction(Employee $employee, EmployeeDeduction $deduction)
     {
-        $this->authorize('update', $employee);
-
-        $deduction->delete();
-
-        return redirect()->back()->with('success', 'Deduction deleted successfully');
+        return $this->handleDeletion($deduction, 'employee-deductions.delete');
     }
 
     /**
@@ -346,12 +360,34 @@ class ManageEmployeeController extends Controller
             'pay_period_year' => 'required|integer|min:2020|max:2100',
         ]);
 
-        $deleted = EmployeeDeduction::where('employee_id', $employee->id)
+        // Find deductions to delete
+        $deductions = EmployeeDeduction::where('employee_id', $employee->id)
             ->where('pay_period_month', $validated['pay_period_month'])
             ->where('pay_period_year', $validated['pay_period_year'])
-            ->delete();
+            ->get();
 
-        return redirect()->back()->with('success', "Successfully deleted {$deleted} deduction(s) for the period");
+        if ($deductions->isEmpty()) {
+            return redirect()->back()->with('error', 'No deductions found for this period');
+        }
+
+        // Create delete request for each deduction or bulk delete request
+        $count = $deductions->count();
+
+        // For bulk operations, we'll create a single delete request
+        // The requestable_type will indicate bulk deletion
+        $firstDeduction = $deductions->first();
+
+        $deleteRequest = DeleteRequest::create([
+            'requestable_type' => EmployeeDeduction::class,
+            'requestable_id' => $firstDeduction->id,
+            'requested_by' => Auth::id(),
+            'status' => DeleteRequest::STATUS_PENDING,
+            'reason' => "Bulk delete {$count} deductions for period {$validated['pay_period_month']}/{$validated['pay_period_year']}",
+        ]);
+
+        $this->notifySuperAdminsOfDeletionRequest($deleteRequest, $firstDeduction, Auth::user());
+
+        return redirect()->back()->with('success', "Deletion request for {$count} deduction(s) sent to super admin for approval.");
     }
 
     public function print(Request $request, Employee $employee)

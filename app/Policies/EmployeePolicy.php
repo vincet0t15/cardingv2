@@ -9,12 +9,12 @@ class EmployeePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->can('employees.view') || $user->can('employees.manage');
+        return $user->can('employees.manage');
     }
 
     public function view(User $user, Employee $employee): bool
     {
-        return $user->can('employees.view') || $user->can('employees.manage');
+        return $user->can('employees.manage');
     }
 
     public function create(User $user): bool
@@ -29,7 +29,7 @@ class EmployeePolicy
 
     public function delete(User $user, Employee $employee): bool
     {
-        return $user->can('employees.delete');
+        return true; // Allow all - handle in controller
     }
 
     public function restore(User $user, Employee $employee): bool

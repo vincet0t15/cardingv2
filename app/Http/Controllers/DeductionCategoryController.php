@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\DeductionCategory;
 use App\Models\DeductionType;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class DeductionCategoryController extends Controller
 {
+    use HandlesDeletionRequests;
     public function index(Request $request)
     {
         $this->authorize('viewAny', DeductionCategory::class);
@@ -77,14 +80,10 @@ class DeductionCategoryController extends Controller
 
     public function destroy(DeductionCategory $deductionCategory)
     {
-        $this->authorize('delete', $deductionCategory);
-
         if ($deductionCategory->deductionTypes()->exists()) {
             return redirect()->back()->with('error', 'Cannot delete category that has associated deduction types.');
         }
 
-        $deductionCategory->delete();
-
-        return redirect()->back()->with('success', 'Category deleted successfully');
+        return $this->handleDeletion($deductionCategory, 'deduction-categories.delete');
     }
 }
