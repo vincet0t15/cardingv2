@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Adjustment;
 use App\Models\Claim;
 use App\Models\ClaimType;
+use App\Models\ClothingAllowance;
 use App\Models\DeleteRequest;
 use App\Models\DeductionType;
 use App\Models\Employee;
@@ -14,6 +15,7 @@ use App\Models\Notification;
 use App\Models\Office;
 use App\Models\SourceOfFundCode;
 use App\Traits\HandlesDeletionRequests;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -352,7 +354,31 @@ class ManageEmployeeController extends Controller
 
     public function destroyDeduction(Employee $employee, EmployeeDeduction $deduction)
     {
-        return $this->handleDeletion($deduction, 'employee-deductions.delete');
+        $this->authorize('delete', $deduction);
+
+        $user = Auth::user();
+
+        // Check if user has direct permission to delete
+        if ($user->hasPermissionTo('deductions.delete')) {
+            $deduction->delete();
+            return back()->with('success', 'Deduction deleted successfully');
+        }
+
+        // User doesn't have permission - create delete request
+        $reason = request()->input('reason', 'No reason provided');
+
+        $deleteRequest = DeleteRequest::create([
+            'requestable_type' => EmployeeDeduction::class,
+            'requestable_id' => $deduction->id,
+            'requested_by' => $user->id,
+            'status' => DeleteRequest::STATUS_PENDING,
+            'reason' => $reason,
+        ]);
+
+        // Notify super admins
+        $this->notifySuperAdminsOfDeletionRequest($deleteRequest, $deduction, $user);
+
+        return back()->with('success', 'Deduction deletion request sent to super admin for approval');
     }
 
     /**
@@ -368,34 +394,82 @@ class ManageEmployeeController extends Controller
             'pay_period_year' => 'required|integer|min:2020|max:2100',
         ]);
 
-        // Find deductions to delete
+        // Create date range for the period
+        $startOfMonth = Carbon::createFromDate($validated['pay_period_year'], $validated['pay_period_month'], 1)->startOfMonth();
+        $endOfMonth = Carbon::createFromDate($validated['pay_period_year'], $validated['pay_period_month'], 1)->endOfMonth();
+
+        // Find deductions and adjustments to delete
         $deductions = EmployeeDeduction::where('employee_id', $employee->id)
             ->where('pay_period_month', $validated['pay_period_month'])
             ->where('pay_period_year', $validated['pay_period_year'])
             ->get();
 
-        if ($deductions->isEmpty()) {
-            return redirect()->back()->with('error', 'No deductions found for this period');
+        $adjustments = Adjustment::where('employee_id', $employee->id)
+            ->where('pay_period_month', $validated['pay_period_month'])
+            ->where('pay_period_year', $validated['pay_period_year'])
+            ->get();
+
+        // Find clothing allowances within this period
+        $clothingAllowances = ClothingAllowance::where('employee_id', $employee->id)
+            ->whereBetween('start_date', [$startOfMonth, $endOfMonth])
+            ->get();
+
+        $totalItems = $deductions->count() + $adjustments->count() + $clothingAllowances->count();
+
+        if ($totalItems === 0) {
+            return back()->with('error', 'No items found for this period');
         }
 
-        // Create delete request for each deduction or bulk delete request
-        $count = $deductions->count();
+        $user = Auth::user();
 
-        // For bulk operations, we'll create a single delete request
-        // The requestable_type will indicate bulk deletion
-        $firstDeduction = $deductions->first();
+        // Check if user has direct permission to delete
+        if ($user->hasPermissionTo('deductions.delete')) {
+            // Delete all deductions for this period
+            EmployeeDeduction::where('employee_id', $employee->id)
+                ->where('pay_period_month', $validated['pay_period_month'])
+                ->where('pay_period_year', $validated['pay_period_year'])
+                ->delete();
 
-        $deleteRequest = DeleteRequest::create([
-            'requestable_type' => EmployeeDeduction::class,
-            'requestable_id' => $firstDeduction->id,
-            'requested_by' => Auth::id(),
-            'status' => DeleteRequest::STATUS_PENDING,
-            'reason' => "Bulk delete {$count} deductions for period {$validated['pay_period_month']}/{$validated['pay_period_year']}",
-        ]);
+            // Delete all adjustments for this period
+            Adjustment::where('employee_id', $employee->id)
+                ->where('pay_period_month', $validated['pay_period_month'])
+                ->where('pay_period_year', $validated['pay_period_year'])
+                ->delete();
 
-        $this->notifySuperAdminsOfDeletionRequest($deleteRequest, $firstDeduction, Auth::user());
+            // Delete clothing allowances within this period
+            ClothingAllowance::where('employee_id', $employee->id)
+                ->whereBetween('start_date', [$startOfMonth, $endOfMonth])
+                ->delete();
 
-        return redirect()->back()->with('success', "Deletion request for {$count} deduction(s) sent to super admin for approval.");
+            $deductionCount = $deductions->count();
+            $adjustmentCount = $adjustments->count();
+            $clothingCount = $clothingAllowances->count();
+
+            $message = "Successfully deleted entire period";
+            if ($deductionCount > 0 && $adjustmentCount > 0 && $clothingCount > 0) {
+                $message = "Successfully deleted {$deductionCount} deduction(s), {$adjustmentCount} adjustment(s), and {$clothingCount} clothing allowance(s)";
+            } elseif ($deductionCount > 0 && $adjustmentCount > 0) {
+                $message = "Successfully deleted {$deductionCount} deduction(s) and {$adjustmentCount} adjustment(s)";
+            } elseif ($deductionCount > 0 && $clothingCount > 0) {
+                $message = "Successfully deleted {$deductionCount} deduction(s) and {$clothingCount} clothing allowance(s)";
+            } elseif ($adjustmentCount > 0 && $clothingCount > 0) {
+                $message = "Successfully deleted {$adjustmentCount} adjustment(s) and {$clothingCount} clothing allowance(s)";
+            } elseif ($deductionCount > 0) {
+                $message = "Successfully deleted {$deductionCount} deduction(s)";
+            } elseif ($adjustmentCount > 0) {
+                $message = "Successfully deleted {$adjustmentCount} adjustment(s)";
+            } elseif ($clothingCount > 0) {
+                $message = "Successfully deleted {$clothingCount} clothing allowance(s)";
+            }
+
+            return back()->with('success', $message);
+        }
+
+        // User doesn't have permission - create delete request for bulk deletion
+        $firstItem = $deductions->first() ?? $adjustments->first() ?? $clothingAllowances->first();
+        $this->notifySuperAdminsOfDeletionRequest($deleteRequest, $firstItem, $user);
+
+        return back()->with('success', "Deletion request for period {$validated['pay_period_month']}/{$validated['pay_period_year']} sent to super admin for approval");
     }
 
     public function print(Request $request, Employee $employee)
