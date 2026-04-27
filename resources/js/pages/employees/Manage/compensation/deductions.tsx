@@ -67,11 +67,10 @@ export function CompensationDeductions({
     };
 
     const applyFilter = (month: string | undefined, year: string | undefined) => {
-        router.get(
-            route('manage.employees.index', employee.id),
-            { deduction_month: month, deduction_year: year },
-            { preserveState: true, preserveScroll: true },
-        );
+        const params: Record<string, string> = {};
+        if (month) params.deduction_month = month;
+        if (year) params.deduction_year = year;
+        router.get(route('manage.employees.index', employee.id), params, { preserveState: true, preserveScroll: true });
     };
 
     const clearFilters = () => {
@@ -175,14 +174,14 @@ export function CompensationDeductions({
                 <CustomComboBox
                     items={MONTHS.map((month, index) => ({ value: String(index + 1), label: month }))}
                     placeholder="All Months"
-                    value={filters.deduction_month ?? null}
+                    value={filters.deduction_month ? String(filters.deduction_month) : null}
                     onSelect={(value) => applyFilter(value ?? undefined, filters.deduction_year)}
                 />
 
                 <CustomComboBox
                     items={availableYears.map((year) => ({ value: String(year), label: String(year) }))}
                     placeholder="All Years"
-                    value={filters.deduction_year ?? null}
+                    value={filters.deduction_year ? String(filters.deduction_year) : null}
                     onSelect={(value) => applyFilter(filters.deduction_month, value ?? undefined)}
                 />
 

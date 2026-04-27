@@ -73,9 +73,14 @@ interface ReportProps {
         type: string | null;
         office: string | null;
     };
+    pagination: {
+        current_page: number;
+        total_pages: number;
+        total_records: number;
+    };
 }
 
-export default function ClaimsReport({ employees, summary, offices, filters }: ReportProps) {
+export default function ClaimsReport({ employees, summary, offices, filters, pagination }: ReportProps) {
     const handleFilterChange = (key: string, value: any) => {
         router.get(
             route('claims.report'),
@@ -255,10 +260,23 @@ export default function ClaimsReport({ employees, summary, offices, filters }: R
                                                     </span>
                                                 </td>
                                                 <td className="border px-3 py-2">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-medium">{employee.name}</span>
+                                                    <button
+                                                        type="button"
+                                                        className="hover:text-primary flex flex-col items-start text-left hover:underline"
+                                                        onClick={() => {
+                                                            const params = new URLSearchParams();
+                                                            if (filters.month) params.set('month', filters.month);
+                                                            if (filters.year) params.set('year', filters.year.toString());
+                                                            if (filters.type) params.set('type', filters.type);
+                                                            if (filters.office) params.set('office', filters.office);
+                                                            window.location.href =
+                                                                route('claims.employee.detail', employee.id) +
+                                                                (params.toString() ? `?${params.toString()}` : '');
+                                                        }}
+                                                    >
+                                                        <span className="text-primary font-medium hover:underline">{employee.name}</span>
                                                         <span className="text-muted-foreground text-xs">{employee.claim_count} claims</span>
-                                                    </div>
+                                                    </button>
                                                 </td>
                                                 <td className="border px-3 py-2">
                                                     <p className="text-muted-foreground truncate text-sm" title={employee.office}>
@@ -313,6 +331,51 @@ export default function ClaimsReport({ employees, summary, offices, filters }: R
                                     <FileText className="h-6 w-6 text-slate-400" />
                                 </div>
                                 <p className="text-muted-foreground text-sm">No claims data found for the selected filters</p>
+                            </div>
+                        )}
+
+                        {/* Pagination */}
+                        {pagination.total_pages > 1 && (
+                            <div className="mt-4 flex items-center justify-between">
+                                <div className="text-muted-foreground text-sm">
+                                    Showing page {pagination.current_page} of {pagination.total_pages} ({pagination.total_records} employees)
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={pagination.current_page === 1}
+                                        onClick={() => {
+                                            router.get(
+                                                route('claims.report'),
+                                                {
+                                                    ...filters,
+                                                    page: pagination.current_page - 1,
+                                                },
+                                                { preserveState: true, preserveScroll: true },
+                                            );
+                                        }}
+                                    >
+                                        Previous
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={pagination.current_page === pagination.total_pages}
+                                        onClick={() => {
+                                            router.get(
+                                                route('claims.report'),
+                                                {
+                                                    ...filters,
+                                                    page: pagination.current_page + 1,
+                                                },
+                                                { preserveState: true, preserveScroll: true },
+                                            );
+                                        }}
+                                    >
+                                        Next
+                                    </Button>
+                                </div>
                             </div>
                         )}
                     </CardContent>

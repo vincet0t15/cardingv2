@@ -5,14 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Claim;
 use App\Models\ClaimType;
 use App\Models\Employee;
+use App\Models\Office;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Inertia\Response;
-use App\Traits\HandlesDeletionRequests;
 
 class ClaimController extends Controller
 {
     use HandlesDeletionRequests;
+
     public function index(Request $request, Employee $employee)
     {
         $this->authorize('viewAny', Claim::class);
@@ -108,50 +109,47 @@ class ClaimController extends Controller
     {
         $filterMonth = $request->input('month');
         $filterYear = $request->input('year', now()->year);
-        $filterType = $request->input('type'); // 'travel', 'overtime', or null for all
-        $filterOffice = $request->input('office'); // office_id filter
+        $filterType = $request->input('type');
+        $filterOffice = $request->input('office');
 
-        // Get all offices for filter dropdown
-        $offices = \App\Models\Office::orderBy('name')->get();
+        $offices = Office::orderBy('name')->get();
 
-        // Build query for employees with claims
-        $employeesQuery = Employee::with(['office'])
+        // Summary - calculate without pagination
+        $summaryQuery = Employee::query()
             ->whereHas('claims');
 
-        // Apply office filter
         if ($filterOffice) {
-            $employeesQuery->where('office_id', $filterOffice);
+            $summaryQuery->where('office_id', $filterOffice);
         }
 
-        // Apply filters
         if ($filterMonth) {
-            $employeesQuery->whereHas('claims', function ($query) use ($filterMonth, $filterYear) {
+            $summaryQuery->whereHas('claims', function ($query) use ($filterMonth, $filterYear) {
                 $query->whereMonth('claim_date', $filterMonth)
                     ->whereYear('claim_date', $filterYear);
             });
         } else {
-            $employeesQuery->whereHas('claims', function ($query) use ($filterYear) {
+            $summaryQuery->whereHas('claims', function ($query) use ($filterYear) {
                 $query->whereYear('claim_date', $filterYear);
             });
         }
 
-        // Filter by claim type if specified
         if ($filterType === 'travel') {
-            $employeesQuery->whereHas('claims', function ($query) {
+            $summaryQuery->whereHas('claims', function ($query) {
                 $query->whereHas('claimType', function ($q) {
                     $q->where('code', 'TRAVEL');
                 });
             });
         } elseif ($filterType === 'overtime') {
-            $employeesQuery->whereHas('claims', function ($query) {
+            $summaryQuery->whereHas('claims', function ($query) {
                 $query->whereHas('claimType', function ($q) {
                     $q->where('code', 'OVERTIME');
                 });
             });
         }
 
-        $employees = $employeesQuery->get()->map(function ($employee) use ($filterMonth, $filterYear, $filterType) {
-            // Build claims query for this employee
+        $totalEmployees = (clone $summaryQuery)->count();
+
+        $employeesWithClaims = (clone $summaryQuery)->with(['office'])->get()->map(function ($employee) use ($filterMonth, $filterYear, $filterType) {
             $claimsQuery = $employee->claims()
                 ->with(['claimType', 'salary'])
                 ->orderBy('claim_date', 'desc');
@@ -163,7 +161,6 @@ class ClaimController extends Controller
                 $claimsQuery->whereYear('claim_date', $filterYear);
             }
 
-            // Filter by type if specified
             if ($filterType === 'travel') {
                 $claimsQuery->whereHas('claimType', function ($q) {
                     $q->where('code', 'TRAVEL');
@@ -178,7 +175,7 @@ class ClaimController extends Controller
 
             return [
                 'id' => $employee->id,
-                'name' => $employee->last_name . ', ' . $employee->first_name,
+                'name' => $employee->last_name.', '.$employee->first_name,
                 'office' => $employee->office?->name ?? 'N/A',
                 'total_amount' => $claims->sum('amount'),
                 'claim_count' => $claims->count(),
@@ -189,9 +186,10 @@ class ClaimController extends Controller
                 'other_count' => $claims->whereNotIn('claimType.code', ['TRAVEL', 'OVERTIME'])->count(),
                 'other_amount' => $claims->whereNotIn('claimType.code', ['TRAVEL', 'OVERTIME'])->sum('amount'),
             ];
-        })->sortByDesc('total_amount')->values();
+        });
 
-        // Get summary statistics
+        $employees = $employeesWithClaims->sortByDesc('total_amount')->values();
+
         $summary = [
             'total_employees' => $employees->count(),
             'total_claims' => $employees->sum('claim_count'),
@@ -202,8 +200,14 @@ class ClaimController extends Controller
             'total_overtime_amount' => $employees->sum('overtime_amount'),
         ];
 
+        // Paginate manually
+        $perPage = 20;
+        $currentPage = $request->input('page', 1);
+        $totalPages = ceil($employees->count() / $perPage);
+        $paginatedEmployees = $employees->forPage($currentPage, $perPage)->values();
+
         return Inertia::render('Claims/Report', [
-            'employees' => $employees,
+            'employees' => $paginatedEmployees,
             'summary' => $summary,
             'offices' => $offices,
             'filters' => [
@@ -211,6 +215,11 @@ class ClaimController extends Controller
                 'year' => $filterYear,
                 'type' => $filterType,
                 'office' => $filterOffice,
+            ],
+            'pagination' => [
+                'current_page' => (int) $currentPage,
+                'total_pages' => $totalPages,
+                'total_records' => $employees->count(),
             ],
         ]);
     }
@@ -289,7 +298,7 @@ class ClaimController extends Controller
 
             return [
                 'id' => $employee->id,
-                'name' => $employee->last_name . ', ' . $employee->first_name,
+                'name' => $employee->last_name.', '.$employee->first_name,
                 'office' => $employee->office?->name ?? 'N/A',
                 'total_amount' => $claims->sum('amount'),
                 'claim_count' => $claims->count(),
@@ -389,7 +398,7 @@ class ClaimController extends Controller
         return Inertia::render('Claims/EmployeeDetail', [
             'employee' => [
                 'id' => $employee->id,
-                'name' => $employee->last_name . ', ' . $employee->first_name . ' ' . ($employee->middle_name ?? '') . ' ' . ($employee->suffix ?? ''),
+                'name' => $employee->last_name.', '.$employee->first_name.' '.($employee->middle_name ?? '').' '.($employee->suffix ?? ''),
                 'position' => $employee->position,
                 'office' => $employee->office?->name ?? 'N/A',
             ],
@@ -467,7 +476,7 @@ class ClaimController extends Controller
         return Inertia::render('Claims/EmployeeDetailPrint', [
             'employee' => [
                 'id' => $employee->id,
-                'name' => $employee->last_name . ', ' . $employee->first_name . ' ' . ($employee->middle_name ?? '') . ' ' . ($employee->suffix ?? ''),
+                'name' => $employee->last_name.', '.$employee->first_name.' '.($employee->middle_name ?? '').' '.($employee->suffix ?? ''),
                 'position' => $employee->position,
                 'office' => $employee->office?->name ?? 'N/A',
             ],

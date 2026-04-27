@@ -31,6 +31,10 @@ class ManageEmployeeController extends Controller
         $filterMonth = $request->input('deduction_month');
         $filterYear = $request->input('deduction_year');
 
+        // Clean and convert to integers
+        $filterMonth = is_numeric($filterMonth) ? (int) $filterMonth : null;
+        $filterYear = is_numeric($filterYear) ? (int) $filterYear : null;
+
         $employee->load([
             'office',
             'employmentStatus',
@@ -80,7 +84,8 @@ class ManageEmployeeController extends Controller
             ->distinct()
             ->get();
         foreach ($deductionPeriods as $d) {
-            $periodsArray[] = $d->pay_period_year.'-'.str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+            $monthStr = str_pad((int) $d->pay_period_month, 2, '0', STR_PAD_LEFT);
+            $periodsArray[] = $d->pay_period_year . '-' . $monthStr;
         }
 
         // Claims periods
@@ -93,7 +98,7 @@ class ManageEmployeeController extends Controller
         // Adjustments periods (with pay_period_month/year)
         foreach ($adjustments as $a) {
             if ($a->pay_period_month && $a->pay_period_year) {
-                $periodsArray[] = $a->pay_period_year.'-'.str_pad($a->pay_period_month, 2, '0', STR_PAD_LEFT);
+                $periodsArray[] = $a->pay_period_year . '-' . str_pad($a->pay_period_month, 2, '0', STR_PAD_LEFT);
             }
         }
 
@@ -111,21 +116,26 @@ class ManageEmployeeController extends Controller
 
         // Apply filter if month/year selected
         if ($filterMonth && $filterYear) {
-            $filteredPeriod = $filterYear.'-'.str_pad($filterMonth, 2, '0', STR_PAD_LEFT);
-            $filteredArr = array_filter($periodsArray, fn ($p) => $p === $filteredPeriod);
+            $filteredPeriod = $filterYear . '-' . str_pad($filterMonth, 2, '0', STR_PAD_LEFT);
+            $filteredArr = array_filter($periodsArray, fn($p) => $p === $filteredPeriod);
             $allPeriods = collect($filteredArr);
         } elseif ($filterYear) {
-            $filteredArr = array_filter($periodsArray, fn ($p) => str_starts_with($p, (string) $filterYear));
+            $filteredArr = array_filter($periodsArray, fn($p) => str_starts_with($p, (string) $filterYear));
             $allPeriods = collect($filteredArr);
         } elseif ($filterMonth) {
-            $suffix = '-'.str_pad($filterMonth, 2, '0', STR_PAD_LEFT);
-            $filteredArr = array_filter($periodsArray, fn ($p) => str_ends_with($p, $suffix));
+            $suffix = '-' . str_pad($filterMonth, 2, '0', STR_PAD_LEFT);
+            $filteredArr = array_filter($periodsArray, fn($p) => str_ends_with($p, $suffix));
             $allPeriods = collect($filteredArr);
         }
 
-        // Paginate the allPeriods
-        $allPeriodsPaginated = $allPeriods->forPage(1, 50);
-        $periodsList = $allPeriodsPaginated->toArray();
+        // When filtering by month only (no year), we need ALL matching periods, not paginated
+        if ($filterMonth && ! $filterYear) {
+            $periodsList = array_values($allPeriods->toArray());
+        } else {
+            // Paginate the allPeriods normally
+            $allPeriodsPaginated = $allPeriods->forPage(1, 50);
+            $periodsList = array_values($allPeriodsPaginated->toArray());
+        }
 
         // Get period pairs for filtering deductions
         $periodPairs = array_map(function ($periodKey) {
@@ -154,7 +164,7 @@ class ManageEmployeeController extends Controller
             ->get();
 
         $groupedDeductions = $deductionsData->groupBy(function ($d) {
-            return "{$d->pay_period_year}-".str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+            return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
         })->map(function ($group) {
             return $group->toArray();
         })->toArray();
@@ -163,16 +173,16 @@ class ManageEmployeeController extends Controller
             ->selectRaw('DISTINCT pay_period_year, pay_period_month')
             ->get()
             ->map(function ($d) {
-                return "{$d->pay_period_year}-".str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+                return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
             })
             ->values()
             ->toArray();
 
         $availableYears = collect()
             ->merge(EmployeeDeduction::where('employee_id', $employee->id)->select('pay_period_year as year')->distinct())
-            ->merge($allClaims->map(fn ($c) => (object) ['year' => (int) Carbon::parse($c->claim_date)->format('Y')])->unique('year'))
-            ->merge($adjustments->filter(fn ($a) => $a->pay_period_year)->map(fn ($a) => (object) ['year' => $a->pay_period_year]))
-            ->merge($employee->clothingAllowances->map(fn ($ca) => (object) ['year' => (int) Carbon::parse($ca->start_date)->format('Y')]))
+            ->merge($allClaims->map(fn($c) => (object) ['year' => (int) Carbon::parse($c->claim_date)->format('Y')])->unique('year'))
+            ->merge($adjustments->filter(fn($a) => $a->pay_period_year)->map(fn($a) => (object) ['year' => $a->pay_period_year]))
+            ->merge($employee->clothingAllowances->map(fn($ca) => (object) ['year' => (int) Carbon::parse($ca->start_date)->format('Y')]))
             ->pluck('year')
             ->unique()
             ->sort()
@@ -223,7 +233,7 @@ class ManageEmployeeController extends Controller
             ->get();
 
         $allDeductions = $allDeductionsData->groupBy(function ($d) {
-            return "{$d->pay_period_year}-".str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+            return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
         })->map(function ($group) {
             return $group->toArray();
         })->toArray();
@@ -245,7 +255,7 @@ class ManageEmployeeController extends Controller
         $allAdjustmentsGrouped = $adjustments->filter(function ($adj) {
             return $adj->status !== 'rejected' && $adj->pay_period_month && $adj->pay_period_year;
         })->groupBy(function ($adj) {
-            return "{$adj->pay_period_year}-".str_pad($adj->pay_period_month, 2, '0', STR_PAD_LEFT);
+            return "{$adj->pay_period_year}-" . str_pad($adj->pay_period_month, 2, '0', STR_PAD_LEFT);
         })->map(function ($group) {
             return $group->toArray();
         })->toArray();
