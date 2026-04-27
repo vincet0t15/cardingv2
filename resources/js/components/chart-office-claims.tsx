@@ -5,6 +5,8 @@ import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from 'recharts'
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import React from 'react';
 
 export interface OfficeClaimsData {
     office_name: string;
@@ -14,19 +16,70 @@ export interface OfficeClaimsData {
 }
 
 export interface ChartOfficeClaimsProps {
-    data: OfficeClaimsData[];
+    claimsData: OfficeClaimsData[];
+    overtimeData: OfficeClaimsData[];
     title?: string;
     description?: string;
 }
 
 const chartConfig = {
     amount: {
-        label: 'Travel Claims',
+        label: 'Amount',
         color: 'hsl(217.2 91.2% 60%)',
     },
 } satisfies ChartConfig;
 
-export function ChartOfficeClaims({ data, title = 'Total Claims by Office', description }: ChartOfficeClaimsProps) {
+export function ChartOfficeClaims({ claimsData, overtimeData, title = 'Claims & Overtime by Office', description }: ChartOfficeClaimsProps) {
+    const [filterType, setFilterType] = React.useState<'all' | 'claims' | 'overtime'>('all');
+
+    // Get data based on filter type
+    const getData = () => {
+        if (filterType === 'claims') {
+            return claimsData;
+        } else if (filterType === 'overtime') {
+            return overtimeData;
+        } else {
+            // Combine both datasets by office
+            const officeMap = new Map<string, OfficeClaimsData>();
+
+            // Add claims data
+            claimsData.forEach((item) => {
+                const key = item.office_code || item.office_name;
+                if (!officeMap.has(key)) {
+                    officeMap.set(key, {
+                        office_name: item.office_name,
+                        office_code: item.office_code,
+                        total_claims: 0,
+                        total_amount: 0,
+                    });
+                }
+                const existing = officeMap.get(key)!;
+                existing.total_claims += item.total_claims;
+                existing.total_amount += item.total_amount;
+            });
+
+            // Add overtime data
+            overtimeData.forEach((item) => {
+                const key = item.office_code || item.office_name;
+                if (!officeMap.has(key)) {
+                    officeMap.set(key, {
+                        office_name: item.office_name,
+                        office_code: item.office_code,
+                        total_claims: 0,
+                        total_amount: 0,
+                    });
+                }
+                const existing = officeMap.get(key)!;
+                existing.total_claims += item.total_claims;
+                existing.total_amount += item.total_amount;
+            });
+
+            return Array.from(officeMap.values()).sort((a, b) => b.total_amount - a.total_amount);
+        }
+    };
+
+    const data = getData();
+
     const chartData = data.map((item) => ({
         office: item.office_code || item.office_name,
         amount: item.total_amount,
@@ -34,14 +87,35 @@ export function ChartOfficeClaims({ data, title = 'Total Claims by Office', desc
         count: item.total_claims,
     }));
 
+    const labelText = filterType === 'claims' ? 'Travel Claims' : filterType === 'overtime' ? 'Overtime' : 'Claims & Overtime';
+
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    {title}
-                </CardTitle>
-                {description && <CardDescription>{description}</CardDescription>}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle className="flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5" />
+                            {title}
+                        </CardTitle>
+                        {description && <CardDescription>{description}</CardDescription>}
+                    </div>
+                    <ToggleGroup
+                        type="single"
+                        value={filterType}
+                        onValueChange={(value) => value && setFilterType(value as 'all' | 'claims' | 'overtime')}
+                    >
+                        <ToggleGroupItem value="all" aria-label="Show All">
+                            All
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="claims" aria-label="Show Claims">
+                            Claims
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="overtime" aria-label="Show Overtime">
+                            Overtime
+                        </ToggleGroupItem>
+                    </ToggleGroup>
+                </div>
             </CardHeader>
             <CardContent>
                 {chartData.length > 0 ? (
@@ -116,14 +190,14 @@ export function ChartOfficeClaims({ data, title = 'Total Claims by Office', desc
                             <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
                                 <TrendingUp className="h-6 w-6 text-slate-400" />
                             </div>
-                            <p className="text-muted-foreground">No claims data available</p>
+                            <p className="text-muted-foreground">No {labelText.toLowerCase()} data available</p>
                         </div>
                     </div>
                 )}
             </CardContent>
             {chartData.length > 0 && (
                 <CardFooter className="flex-col items-start gap-2 text-sm">
-                    <div className="text-muted-foreground text-xs">Showing total travel claim amounts per office (Travel claims only)</div>
+                    <div className="text-muted-foreground text-xs">Showing total {labelText.toLowerCase()} amounts per office</div>
                 </CardFooter>
             )}
         </Card>

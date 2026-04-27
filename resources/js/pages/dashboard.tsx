@@ -118,6 +118,12 @@ interface DashboardProps {
         total_claims: number;
         total_amount: number;
     }[];
+    overtimeByOffice: {
+        office_name: string;
+        office_code: string;
+        total_claims: number;
+        total_amount: number;
+    }[];
     employeesByEmploymentStatus: {
         id: number;
         name: string;
@@ -165,10 +171,12 @@ export default function Dashboard({
     mostTravelClaims,
     mostOvertimeClaims,
     claimsByOffice,
+    overtimeByOffice,
     employeesByEmploymentStatus,
 }: DashboardProps) {
     const [chartType, setChartType] = React.useState<'bar' | 'pie'>('bar');
     const [salaryViewMode, setSalaryViewMode] = React.useState<'byFund' | 'byCode'>('byFund');
+    const [claimsTypeFilter, setClaimsTypeFilter] = React.useState<'claims' | 'overtime'>('claims');
 
     const {
         data: filterData,
@@ -668,7 +676,8 @@ export default function Dashboard({
                 {/* Claims & Overtime by Office Chart */}
 
                 <ChartOfficeClaims
-                    data={claimsByOffice}
+                    claimsData={claimsByOffice}
+                    overtimeData={overtimeByOffice}
                     title="Claims & Overtime by Office"
                     description={`Distribution of claims and overtime for ${months.find((m) => m.value === filterData.month)?.label || currentPeriod.monthName} ${filterData.year}`}
                 />

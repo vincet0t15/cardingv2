@@ -6,12 +6,11 @@ use App\Models\Adjustment;
 use App\Models\Claim;
 use App\Models\ClaimType;
 use App\Models\ClothingAllowance;
-use App\Models\DeleteRequest;
 use App\Models\DeductionType;
+use App\Models\DeleteRequest;
 use App\Models\Employee;
 use App\Models\EmployeeDeduction;
 use App\Models\EmploymentStatus;
-use App\Models\Notification;
 use App\Models\Office;
 use App\Models\SourceOfFundCode;
 use App\Traits\HandlesDeletionRequests;
@@ -24,6 +23,7 @@ use Inertia\Inertia;
 class ManageEmployeeController extends Controller
 {
     use HandlesDeletionRequests;
+
     public function index(Request $request, Employee $employee)
     {
         $this->authorize('view', $employee);
@@ -80,27 +80,27 @@ class ManageEmployeeController extends Controller
             ->distinct()
             ->get();
         foreach ($deductionPeriods as $d) {
-            $periodsArray[] = $d->pay_period_year . '-' . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+            $periodsArray[] = $d->pay_period_year.'-'.str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
         }
 
         // Claims periods
         foreach ($allClaims as $c) {
             if ($c->claim_date) {
-                $periodsArray[] = \Carbon\Carbon::parse($c->claim_date)->format('Y-m');
+                $periodsArray[] = Carbon::parse($c->claim_date)->format('Y-m');
             }
         }
 
         // Adjustments periods (with pay_period_month/year)
         foreach ($adjustments as $a) {
             if ($a->pay_period_month && $a->pay_period_year) {
-                $periodsArray[] = $a->pay_period_year . '-' . str_pad($a->pay_period_month, 2, '0', STR_PAD_LEFT);
+                $periodsArray[] = $a->pay_period_year.'-'.str_pad($a->pay_period_month, 2, '0', STR_PAD_LEFT);
             }
         }
 
         // Clothing allowance periods
         foreach ($employee->clothingAllowances as $ca) {
             if ($ca->start_date) {
-                $periodsArray[] = \Carbon\Carbon::parse($ca->start_date)->format('Y-m');
+                $periodsArray[] = Carbon::parse($ca->start_date)->format('Y-m');
             }
         }
 
@@ -111,15 +111,15 @@ class ManageEmployeeController extends Controller
 
         // Apply filter if month/year selected
         if ($filterMonth && $filterYear) {
-            $filteredPeriod = $filterYear . '-' . str_pad($filterMonth, 2, '0', STR_PAD_LEFT);
-            $filteredArr = array_filter($periodsArray, fn($p) => $p === $filteredPeriod);
+            $filteredPeriod = $filterYear.'-'.str_pad($filterMonth, 2, '0', STR_PAD_LEFT);
+            $filteredArr = array_filter($periodsArray, fn ($p) => $p === $filteredPeriod);
             $allPeriods = collect($filteredArr);
         } elseif ($filterYear) {
-            $filteredArr = array_filter($periodsArray, fn($p) => str_starts_with($p, (string) $filterYear));
+            $filteredArr = array_filter($periodsArray, fn ($p) => str_starts_with($p, (string) $filterYear));
             $allPeriods = collect($filteredArr);
         } elseif ($filterMonth) {
-            $suffix = '-' . str_pad($filterMonth, 2, '0', STR_PAD_LEFT);
-            $filteredArr = array_filter($periodsArray, fn($p) => str_ends_with($p, $suffix));
+            $suffix = '-'.str_pad($filterMonth, 2, '0', STR_PAD_LEFT);
+            $filteredArr = array_filter($periodsArray, fn ($p) => str_ends_with($p, $suffix));
             $allPeriods = collect($filteredArr);
         }
 
@@ -130,6 +130,7 @@ class ManageEmployeeController extends Controller
         // Get period pairs for filtering deductions
         $periodPairs = array_map(function ($periodKey) {
             [$year, $month] = explode('-', $periodKey);
+
             return ['year' => (int) $year, 'month' => (int) ltrim($month, '0') ?: (int) $month];
         }, $periodsList);
 
@@ -153,7 +154,7 @@ class ManageEmployeeController extends Controller
             ->get();
 
         $groupedDeductions = $deductionsData->groupBy(function ($d) {
-            return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+            return "{$d->pay_period_year}-".str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
         })->map(function ($group) {
             return $group->toArray();
         })->toArray();
@@ -162,16 +163,16 @@ class ManageEmployeeController extends Controller
             ->selectRaw('DISTINCT pay_period_year, pay_period_month')
             ->get()
             ->map(function ($d) {
-                return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+                return "{$d->pay_period_year}-".str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
             })
             ->values()
             ->toArray();
 
         $availableYears = collect()
             ->merge(EmployeeDeduction::where('employee_id', $employee->id)->select('pay_period_year as year')->distinct())
-            ->merge($allClaims->map(fn($c) => (object) ['year' => (int) \Carbon\Carbon::parse($c->claim_date)->format('Y')])->unique('year'))
-            ->merge($adjustments->filter(fn($a) => $a->pay_period_year)->map(fn($a) => (object) ['year' => $a->pay_period_year]))
-            ->merge($employee->clothingAllowances->map(fn($ca) => (object) ['year' => (int) \Carbon\Carbon::parse($ca->start_date)->format('Y')]))
+            ->merge($allClaims->map(fn ($c) => (object) ['year' => (int) Carbon::parse($c->claim_date)->format('Y')])->unique('year'))
+            ->merge($adjustments->filter(fn ($a) => $a->pay_period_year)->map(fn ($a) => (object) ['year' => $a->pay_period_year]))
+            ->merge($employee->clothingAllowances->map(fn ($ca) => (object) ['year' => (int) Carbon::parse($ca->start_date)->format('Y')]))
             ->pluck('year')
             ->unique()
             ->sort()
@@ -222,7 +223,7 @@ class ManageEmployeeController extends Controller
             ->get();
 
         $allDeductions = $allDeductionsData->groupBy(function ($d) {
-            return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+            return "{$d->pay_period_year}-".str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
         })->map(function ($group) {
             return $group->toArray();
         })->toArray();
@@ -233,7 +234,7 @@ class ManageEmployeeController extends Controller
             ->get();
 
         $allClaimsGrouped = $allClaims->groupBy(function ($c) {
-            return \Carbon\Carbon::parse($c->claim_date)->format('Y-m');
+            return Carbon::parse($c->claim_date)->format('Y-m');
         })->map(function ($group) {
             return $group->toArray();
         })->toArray();
@@ -244,7 +245,7 @@ class ManageEmployeeController extends Controller
         $allAdjustmentsGrouped = $adjustments->filter(function ($adj) {
             return $adj->status !== 'rejected' && $adj->pay_period_month && $adj->pay_period_year;
         })->groupBy(function ($adj) {
-            return "{$adj->pay_period_year}-" . str_pad($adj->pay_period_month, 2, '0', STR_PAD_LEFT);
+            return "{$adj->pay_period_year}-".str_pad($adj->pay_period_month, 2, '0', STR_PAD_LEFT);
         })->map(function ($group) {
             return $group->toArray();
         })->toArray();
@@ -361,6 +362,7 @@ class ManageEmployeeController extends Controller
         // Check if user has direct permission to delete
         if ($user->hasPermissionTo('deductions.delete')) {
             $deduction->delete();
+
             return back()->with('success', 'Deduction deleted successfully');
         }
 
@@ -445,7 +447,7 @@ class ManageEmployeeController extends Controller
             $adjustmentCount = $adjustments->count();
             $clothingCount = $clothingAllowances->count();
 
-            $message = "Successfully deleted entire period";
+            $message = 'Successfully deleted entire period';
             if ($deductionCount > 0 && $adjustmentCount > 0 && $clothingCount > 0) {
                 $message = "Successfully deleted {$deductionCount} deduction(s), {$adjustmentCount} adjustment(s), and {$clothingCount} clothing allowance(s)";
             } elseif ($deductionCount > 0 && $adjustmentCount > 0) {
@@ -465,8 +467,16 @@ class ManageEmployeeController extends Controller
             return back()->with('success', $message);
         }
 
-        // User doesn't have permission - create delete request for bulk deletion
         $firstItem = $deductions->first() ?? $adjustments->first() ?? $clothingAllowances->first();
+
+        $deleteRequest = DeleteRequest::create([
+            'requestable_type' => get_class($firstItem),
+            'requestable_id' => $firstItem->id,
+            'requested_by' => $user->id,
+            'status' => DeleteRequest::STATUS_PENDING,
+            'reason' => request()->input('reason', 'Delete entire pay period'),
+        ]);
+
         $this->notifySuperAdminsOfDeletionRequest($deleteRequest, $firstItem, $user);
 
         return back()->with('success', "Deletion request for period {$validated['pay_period_month']}/{$validated['pay_period_year']} sent to super admin for approval");

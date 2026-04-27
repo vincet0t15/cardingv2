@@ -378,6 +378,35 @@ class DashboardController extends Controller
             ->sortByDesc('total_amount')
             ->values();
 
+        // Overtime Claims by Office
+        $overtimeByOfficeQuery = Claim::whereHas('claimType', function ($q) {
+            $q->where('code', 'OVERTIME');
+        })->with('employee.office');
+
+        if ($useFilters) {
+            $overtimeByOfficeQuery->whereMonth('claim_date', $currentMonth)
+                ->whereYear('claim_date', $currentYear);
+        }
+
+        $overtimeByOffice = $overtimeByOfficeQuery
+            ->get()
+            ->groupBy(function ($claim) {
+                return $claim->employee->office?->id ?? 0;
+            })
+            ->map(function ($claims, $officeId) {
+                $office = $claims->first()->employee->office;
+
+                return [
+                    'office_name' => $office?->name ?? 'Unknown',
+                    'office_code' => $office?->code ?? 'N/A',
+                    'total_claims' => (int) $claims->count(),
+                    'total_amount' => (float) $claims->sum('amount'),
+                ];
+            })
+            ->values()
+            ->sortByDesc('total_amount')
+            ->values();
+
         // Employees by employment status
         $employeesByEmploymentStatus = EmploymentStatus::withCount('employees')
             ->orderBy('employees_count', 'desc')
@@ -429,6 +458,7 @@ class DashboardController extends Controller
             'mostTravelClaims' => $mostTravelClaims,
             'mostOvertimeClaims' => $mostOvertimeClaims,
             'claimsByOffice' => $claimsByOffice,
+            'overtimeByOffice' => $overtimeByOffice,
         ]);
     }
 }
