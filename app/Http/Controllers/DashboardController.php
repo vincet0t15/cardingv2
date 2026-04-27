@@ -212,6 +212,7 @@ class DashboardController extends Controller
         $salariesByFundDistribution = $allSourceOfFundCodes->groupBy('general_fund_id')->map(function ($codes) use ($salariesByCode) {
             $fundCodes = $codes->map(function ($code) use ($salariesByCode) {
                 $existing = $salariesByCode->firstWhere('code_id', $code->id);
+
                 return [
                     'code_id' => $code->id,
                     'code' => $code->code,
@@ -265,7 +266,7 @@ class DashboardController extends Controller
             ->map(function ($claim) {
                 return [
                     'id' => $claim->id,
-                    'employee_name' => $claim->employee->last_name . ', ' . $claim->employee->first_name,
+                    'employee_name' => $claim->employee->last_name.', '.$claim->employee->first_name,
                     'office' => $claim->employee->office?->name ?? 'N/A',
                     'amount' => (float) $claim->amount,
                     'claim_date' => $claim->claim_date,
@@ -290,7 +291,7 @@ class DashboardController extends Controller
             ->map(function ($item) {
                 return [
                     'employee_id' => $item->employee_id,
-                    'employee_name' => $item->employee->last_name . ', ' . $item->employee->first_name,
+                    'employee_name' => $item->employee->last_name.', '.$item->employee->first_name,
                     'office' => $item->employee->office?->name ?? 'N/A',
                     'total_amount' => (float) $item->total_amount,
                     'claim_count' => (int) $item->claim_count,
@@ -316,7 +317,7 @@ class DashboardController extends Controller
             ->map(function ($item) {
                 return [
                     'employee_id' => $item->employee_id,
-                    'employee_name' => $item->employee->last_name . ', ' . $item->employee->first_name,
+                    'employee_name' => $item->employee->last_name.', '.$item->employee->first_name,
                     'office' => $item->employee->office?->name ?? 'N/A',
                     'travel_count' => (int) $item->travel_count,
                     'total_travel_amount' => (float) $item->total_travel_amount,
@@ -342,16 +343,16 @@ class DashboardController extends Controller
             ->map(function ($item) {
                 return [
                     'employee_id' => $item->employee_id,
-                    'employee_name' => $item->employee->last_name . ', ' . $item->employee->first_name,
+                    'employee_name' => $item->employee->last_name.', '.$item->employee->first_name,
                     'office' => $item->employee->office?->name ?? 'N/A',
                     'overtime_count' => (int) $item->overtime_count,
                     'total_overtime_amount' => (float) $item->total_overtime_amount,
                 ];
             });
 
-        // Claims by Office - Travel claims only (sum of TRAVEL claim type amounts)
+        // Claims by Office - Travel and Meal claims
         $claimsByOfficeQuery = Claim::whereHas('claimType', function ($q) {
-            $q->where('code', 'TRAVEL');
+            $q->whereIn('code', ['TRAVEL', 'MEAL']);
         })->with('employee.office');
 
         if ($useFilters) {

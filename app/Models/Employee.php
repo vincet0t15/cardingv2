@@ -26,6 +26,7 @@ class Employee extends Model
         'office_id',
         'created_by',
         'image_path',
+        'user_id',
     ];
 
     protected $casts = [
@@ -45,6 +46,11 @@ class Employee extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function salaries(): HasMany

@@ -1,3 +1,4 @@
+import { CustomComboBox } from '@/components/CustomComboBox';
 import Heading from '@/components/heading';
 import Pagination from '@/components/paginationData';
 import { Badge } from '@/components/ui/badge';
@@ -11,12 +12,18 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { PaginatedDataResponse } from '@/types/pagination';
 import { Head, router, useForm } from '@inertiajs/react';
-import { Edit, Shield, User, Users } from 'lucide-react';
+import { Edit, Link2, Search, Shield, Unlink, User, Users } from 'lucide-react';
 import { useState } from 'react';
 
 interface Role {
     id: number;
     name: string;
+}
+
+interface LinkedEmployee {
+    id: number;
+    name: string;
+    office: string | null;
 }
 
 interface User {
@@ -27,12 +34,31 @@ interface User {
     is_online: boolean;
     last_seen_formatted: string | null;
     roles: (string | { id: number; name: string })[];
+    linked_employee: LinkedEmployee | null;
     created_at: string;
+}
+
+interface UnlinkedEmployee {
+    id: number;
+    name: string;
+    office: string | null;
+}
+
+interface Office {
+    id: number;
+    name: string;
 }
 
 interface AccountsIndexProps {
     users: PaginatedDataResponse<User>;
     roles: Role[];
+    unlinkedEmployees: PaginatedDataResponse<UnlinkedEmployee>;
+    filters: {
+        search: string | null;
+        employee_search: string | null;
+        employee_office: string | null;
+    };
+    offices: Office[];
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -42,12 +68,20 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function AccountsIndex({ users, roles }: AccountsIndexProps) {
+export default function AccountsIndex({ users, roles, unlinkedEmployees, filters, offices }: AccountsIndexProps) {
     const [updating, setUpdating] = useState<number | null>(null);
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [linkingUser, setLinkingUser] = useState<User | null>(null);
+
+    const [linkSearch, setLinkSearch] = useState(filters.employee_search || '');
+    const [linkOffice, setLinkOffice] = useState(filters.employee_office || '');
 
     const roleForm = useForm({
         roles: [] as string[],
+    });
+
+    const linkForm = useForm({
+        employee_id: null as number | null,
     });
 
     const handleToggle = (userId: number, field: 'is_active', value: boolean) => {
@@ -88,6 +122,29 @@ export default function AccountsIndex({ users, roles }: AccountsIndexProps) {
         roleForm.setData('roles', updated);
     };
 
+    const openLinkDialog = (user: User) => {
+        setLinkingUser(user);
+        linkForm.setData('employee_id', user.linked_employee?.id || null);
+    };
+
+    const handleLinkSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!linkingUser || !linkForm.data.employee_id) return;
+
+        linkForm.post(route('accounts.link', linkingUser.id), {
+            onSuccess: () => {
+                setLinkingUser(null);
+                linkForm.reset();
+            },
+        });
+    };
+
+    const handleUnlink = (user: User) => {
+        if (confirm(`Are you sure you want to unlink ${user.name} from their employee record?`)) {
+            router.delete(route('accounts.unlink', user.id));
+        }
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Accounts" />
@@ -108,6 +165,7 @@ export default function AccountsIndex({ users, roles }: AccountsIndexProps) {
                                 <TableHead className="w-[50px]"></TableHead>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Username</TableHead>
+                                <TableHead>Employee</TableHead>
                                 <TableHead>Roles</TableHead>
                                 <TableHead className="text-center">Active</TableHead>
                                 <TableHead className="text-right">Created</TableHead>
@@ -116,7 +174,7 @@ export default function AccountsIndex({ users, roles }: AccountsIndexProps) {
                         <TableBody>
                             {users.data.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-muted-foreground h-24 text-center">
+                                    <TableCell colSpan={7} className="text-muted-foreground h-24 text-center">
                                         No accounts found.
                                     </TableCell>
                                 </TableRow>
@@ -141,6 +199,29 @@ export default function AccountsIndex({ users, roles }: AccountsIndexProps) {
                                             <div className="font-medium">{user.name}</div>
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">{user.username}</TableCell>
+                                        <TableCell>
+                                            {user.linked_employee ? (
+                                                <div className="flex items-center gap-2">
+                                                    <div>
+                                                        <div className="font-medium text-green-600">{user.linked_employee.name}</div>
+                                                        <div className="text-muted-foreground text-xs">{user.linked_employee.office}</div>
+                                                    </div>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-muted-foreground h-6 w-6 hover:text-red-500"
+                                                        onClick={() => handleUnlink(user)}
+                                                    >
+                                                        <Unlink className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <Button variant="outline" size="sm" className="h-8" onClick={() => openLinkDialog(user)}>
+                                                    <Link2 className="mr-1 h-3 w-3" />
+                                                    Link
+                                                </Button>
+                                            )}
+                                        </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 <div className="flex flex-wrap gap-1">
@@ -202,6 +283,141 @@ export default function AccountsIndex({ users, roles }: AccountsIndexProps) {
                         <span>Online now</span>
                     </div>
                 </div>
+
+                {/* Link Employee Dialog */}
+                <Dialog open={!!linkingUser} onOpenChange={() => setLinkingUser(null)}>
+                    <DialogContent className="sm:max-w-[600px]">
+                        <DialogHeader>
+                            <DialogTitle>Link Employee</DialogTitle>
+                            <DialogDescription>Link {linkingUser?.name} to an employee record</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                    <Search className="text-muted-foreground absolute top-2.5 left-2 h-4 w-4" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search employee..."
+                                        className="border-input bg-background focus:ring-primary w-full rounded-md border py-2 pr-4 pl-8 text-sm outline-none focus:ring-1"
+                                        value={linkSearch}
+                                        onChange={(e) => setLinkSearch(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                router.get(
+                                                    route('accounts.index'),
+                                                    { employee_search: linkSearch, employee_office: linkOffice },
+                                                    { replace: true, preserveState: true },
+                                                );
+                                            }
+                                        }}
+                                    />
+                                </div>
+                                <CustomComboBox
+                                    items={offices.map((o: Office) => ({ value: o.id.toString(), label: o.name }))}
+                                    placeholder="All Offices"
+                                    value={linkOffice || null}
+                                    onSelect={(value: string | null) => setLinkOffice(value ?? '')}
+                                    showClear={true}
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        router.get(
+                                            route('accounts.index'),
+                                            { employee_search: linkSearch, employee_office: linkOffice },
+                                            { replace: true, preserveState: true },
+                                        );
+                                    }}
+                                >
+                                    Apply
+                                </Button>
+                            </div>
+                            <form onSubmit={handleLinkSubmit} className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Select Employee</Label>
+                                    <div className="max-h-60 space-y-1 overflow-y-auto rounded-md border p-2">
+                                        {!unlinkedEmployees?.data || unlinkedEmployees.data.length === 0 ? (
+                                            <div className="text-muted-foreground p-4 text-center">No employees found</div>
+                                        ) : (
+                                            unlinkedEmployees.data.map((emp: UnlinkedEmployee) => (
+                                                <div
+                                                    key={emp.id}
+                                                    className={`hover:bg-muted flex cursor-pointer items-center justify-between rounded-md p-2 ${
+                                                        linkForm.data.employee_id === emp.id ? 'bg-muted' : ''
+                                                    }`}
+                                                    onClick={() => linkForm.setData('employee_id', emp.id)}
+                                                >
+                                                    <div>
+                                                        <div className="font-medium">{emp.name}</div>
+                                                        <div className="text-muted-foreground text-xs">{emp.office}</div>
+                                                    </div>
+                                                    {linkForm.data.employee_id === emp.id && <Badge variant="default">Selected</Badge>}
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                                {unlinkedEmployees.last_page > 1 && (
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-muted-foreground">
+                                            Page {unlinkedEmployees.current_page} of {unlinkedEmployees.last_page}
+                                        </span>
+                                        <div className="flex gap-1">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={unlinkedEmployees.current_page === 1}
+                                                onClick={() => {
+                                                    router.get(
+                                                        route('accounts.index'),
+                                                        {
+                                                            employee_search: linkSearch,
+                                                            employee_office: linkOffice,
+                                                            page: unlinkedEmployees.current_page - 1,
+                                                        },
+                                                        { replace: true, preserveState: true },
+                                                    );
+                                                }}
+                                            >
+                                                Prev
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={unlinkedEmployees.current_page === unlinkedEmployees.last_page}
+                                                onClick={() => {
+                                                    router.get(
+                                                        route('accounts.index'),
+                                                        {
+                                                            employee_search: linkSearch,
+                                                            employee_office: linkOffice,
+                                                            page: unlinkedEmployees.current_page + 1,
+                                                        },
+                                                        { replace: true, preserveState: true },
+                                                    );
+                                                }}
+                                            >
+                                                Next
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                                <DialogFooter>
+                                    <Button type="button" variant="outline" onClick={() => setLinkingUser(null)}>
+                                        Cancel
+                                    </Button>
+                                    <Button type="submit" disabled={linkForm.processing || !linkForm.data.employee_id}>
+                                        Link Employee
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </div>
+                    </DialogContent>
+                </Dialog>
 
                 {/* Role Assignment Dialog */}
                 <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>

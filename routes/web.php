@@ -9,11 +9,12 @@ use App\Http\Controllers\ClaimController;
 use App\Http\Controllers\ClaimTypeController;
 use App\Http\Controllers\ClothingAllowanceController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\DeductionTypeController;
 use App\Http\Controllers\DeductionCategoryController;
+use App\Http\Controllers\DeductionTypeController;
 use App\Http\Controllers\DeleteRequestController;
 use App\Http\Controllers\DocumentTypeController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\EmployeeDashboardController;
 use App\Http\Controllers\EmployeeDeductionController;
 use App\Http\Controllers\EmployeeImportController;
 use App\Http\Controllers\EmployeeSourceOfFundController;
@@ -44,6 +45,9 @@ Route::get('/', function () {
 
 Route::middleware(['auth', 'active'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // EMPLOYEE DASHBOARD - For linked employees
+    Route::get('employee/dashboard', [EmployeeDashboardController::class, 'index'])->name('employee.dashboard');
 
     // CLAIMS REPORT - View and print all claims by employee
     Route::prefix('claims-report')->group(function () {
@@ -245,6 +249,8 @@ Route::middleware(['auth', 'active'])->group(function () {
     // ACCOUNTS - User Management (requires accounts.manage permission)
     Route::middleware(['permission:accounts.manage'])->get('accounts', [AccountController::class, 'index'])->name('accounts.index');
     Route::middleware(['permission:accounts.manage'])->put('accounts/{user}', [AccountController::class, 'update'])->name('accounts.update');
+    Route::middleware(['permission:accounts.manage'])->post('accounts/{user}/link', [AccountController::class, 'linkEmployee'])->name('accounts.link');
+    Route::middleware(['permission:accounts.manage'])->delete('accounts/{user}/unlink', [AccountController::class, 'unlinkEmployee'])->name('accounts.unlink');
 
     // ROLES & PERMISSIONS (requires roles.manage and permissions.manage)
     Route::middleware(['permission:roles.manage'])->prefix('roles')->group(function () {
@@ -332,5 +338,5 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::post('notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
 });
 
-require __DIR__ . '/settings.php';
-require __DIR__ . '/auth.php';
+require __DIR__.'/settings.php';
+require __DIR__.'/auth.php';
