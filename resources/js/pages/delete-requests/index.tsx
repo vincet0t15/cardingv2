@@ -3,6 +3,7 @@ import Pagination from '@/components/paginationData';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import type { PaginatedDataResponse } from '@/types/pagination';
@@ -52,6 +53,15 @@ export default function DeleteRequestsIndex({ deleteRequests, filters }: DeleteR
     const [selectedRequest, setSelectedRequest] = useState<DeleteRequest | null>(null);
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectReason, setRejectReason] = useState('');
+    const currentTab = filters.status || 'all';
+
+    const handleTabChange = (tab: string) => {
+        if (tab === 'all') {
+            router.get('/delete-requests');
+        } else {
+            router.get(`/delete-requests?status=${tab}`);
+        }
+    };
 
     const handleApprove = (id: number) => {
         if (!confirm('Are you sure you want to approve this delete request? The item will be permanently deleted.')) return;
@@ -103,107 +113,90 @@ export default function DeleteRequestsIndex({ deleteRequests, filters }: DeleteR
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Delete Requests" />
 
-            <div className="space-y-4">
+            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <Heading title="Delete Requests" description="Review and manage delete requests from users" />
 
-                <div className="flex gap-2">
-                    <Button variant={!filters.status ? 'default' : 'outline'} size="sm" onClick={() => router.get('/delete-requests')}>
-                        All
-                    </Button>
-                    <Button
-                        variant={filters.status === 'pending' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => router.get('/delete-requests?status=pending')}
-                    >
-                        Pending
-                    </Button>
-                    <Button
-                        variant={filters.status === 'approved' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => router.get('/delete-requests?status=approved')}
-                    >
-                        Approved
-                    </Button>
-                    <Button
-                        variant={filters.status === 'rejected' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => router.get('/delete-requests?status=rejected')}
-                    >
-                        Rejected
-                    </Button>
-                </div>
+                <Tabs value={currentTab} onValueChange={handleTabChange}>
+                    <TabsList>
+                        <TabsTrigger value="all">All</TabsTrigger>
+                        <TabsTrigger value="pending">Pending</TabsTrigger>
+                        <TabsTrigger value="approved">Approved</TabsTrigger>
+                        <TabsTrigger value="rejected">Rejected</TabsTrigger>
+                    </TabsList>
 
-                <div className="rounded-md border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>ID</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Item ID</TableHead>
-                                <TableHead>Requested By</TableHead>
-                                <TableHead>Reason</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Date</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {deleteRequests.data.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={8} className="text-muted-foreground py-8 text-center">
-                                        No delete requests found
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                deleteRequests.data.map((request) => (
-                                    <TableRow key={request.id}>
-                                        <TableCell className="font-medium">#{request.id}</TableCell>
-                                        <TableCell>{getModelName(request.requestable_type)}</TableCell>
-                                        <TableCell>{request.requestable_id}</TableCell>
-                                        <TableCell>{request.requestedBy?.name ?? 'Unknown'}</TableCell>
-                                        <TableCell className="max-w-xs truncate">{request.reason ?? '-'}</TableCell>
-                                        <TableCell>{getStatusBadge(request.status)}</TableCell>
-                                        <TableCell>
-                                            <div className="text-muted-foreground flex items-center gap-1">
-                                                <Calendar className="h-3 w-3" />
-                                                {new Date(request.created_at).toLocaleDateString()}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            {request.status === 'pending' && (
-                                                <div className="flex justify-end gap-2">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        onClick={() => handleApprove(request.id)}
-                                                        className="h-8 text-green-600 hover:text-green-700"
-                                                    >
-                                                        <CheckCircle className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        onClick={() => {
-                                                            setSelectedRequest(request);
-                                                            setShowRejectModal(true);
-                                                        }}
-                                                        className="h-8 text-red-600 hover:text-red-700"
-                                                    >
-                                                        <XCircle className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            )}
-                                        </TableCell>
+                    <TabsContent value={currentTab} className="mt-4">
+                        <div className="rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>ID</TableHead>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead>Item ID</TableHead>
+                                        <TableHead>Requested By</TableHead>
+                                        <TableHead>Reason</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
+                                </TableHeader>
+                                <TableBody>
+                                    {deleteRequests.data.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={8} className="text-muted-foreground py-8 text-center">
+                                                No delete requests found
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        deleteRequests.data.map((request) => (
+                                            <TableRow key={request.id}>
+                                                <TableCell className="font-medium">#{request.id}</TableCell>
+                                                <TableCell>{getModelName(request.requestable_type)}</TableCell>
+                                                <TableCell>{request.requestable_id}</TableCell>
+                                                <TableCell>{request.requestedBy?.name ?? 'Unknown'}</TableCell>
+                                                <TableCell className="max-w-xs truncate">{request.reason ?? '-'}</TableCell>
+                                                <TableCell>{getStatusBadge(request.status)}</TableCell>
+                                                <TableCell>
+                                                    <div className="text-muted-foreground flex items-center gap-1">
+                                                        <Calendar className="h-3 w-3" />
+                                                        {new Date(request.created_at).toLocaleDateString()}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {request.status === 'pending' && (
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() => handleApprove(request.id)}
+                                                                className="h-8 text-green-600 hover:text-green-700"
+                                                            >
+                                                                <CheckCircle className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() => {
+                                                                    setSelectedRequest(request);
+                                                                    setShowRejectModal(true);
+                                                                }}
+                                                                className="h-8 text-red-600 hover:text-red-700"
+                                                            >
+                                                                <XCircle className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
 
-                <Pagination data={deleteRequests} />
+                        <Pagination data={deleteRequests} />
+                    </TabsContent>
+                </Tabs>
             </div>
-
             {/* Reject Modal */}
             {showRejectModal && selectedRequest && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

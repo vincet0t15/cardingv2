@@ -22,6 +22,13 @@ class DeleteRequestController extends Controller
 
         $deleteRequests = $query->paginate(15);
 
+        // Ensure relationships are included in the response
+        $deleteRequests = $deleteRequests->through(fn($request) => [
+            ...$request->toArray(),
+            'requestedBy' => $request->requestedBy?->only(['id', 'name', 'username']),
+            'approvedBy' => $request->approvedBy?->only(['id', 'name', 'username']),
+        ]);
+
         return Inertia::render('delete-requests/index', [
             'deleteRequests' => $deleteRequests,
             'filters' => [

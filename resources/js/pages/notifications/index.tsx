@@ -3,11 +3,11 @@ import { Pagination } from '@/components/pagination';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem } from '@/types';
 import { Head, usePage } from '@inertiajs/react';
 import { CheckCircle2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-
 interface Notification {
     id: number;
     type: string;
@@ -42,10 +42,20 @@ interface PaginatedData {
     to: number;
     total: number;
 }
-
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Settings',
+        href: '/settings/profile',
+    },
+    {
+        title: 'Offices',
+        href: '/settings/offices',
+    },
+];
 export default function NotificationsIndex() {
     const { notifications } = usePage<{ notifications: PaginatedData }>().props;
     const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
+    const [isProcessing, setIsProcessing] = useState<number | null>(null);
 
     const unreadCount = useMemo(() => {
         return notifications.data.filter((n) => !n.is_read).length;
@@ -96,11 +106,73 @@ export default function NotificationsIndex() {
         }
     };
 
+    const handleApproveDeleteRequest = async (notificationId: number) => {
+        const notification = notifications.data.find((n) => n.id === notificationId);
+        if (!notification?.notifiable_id) {
+            toast.error('Invalid delete request');
+            return;
+        }
+
+        setIsProcessing(notificationId);
+        try {
+            const response = await fetch(route('delete-requests.approve', notification.notifiable_id), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
+
+            if (response.ok) {
+                toast.success('Delete request approved');
+                window.location.reload();
+            } else {
+                toast.error('Failed to approve delete request');
+            }
+        } catch (error) {
+            console.error('Failed to approve delete request:', error);
+            toast.error('Failed to approve delete request');
+        } finally {
+            setIsProcessing(null);
+        }
+    };
+
+    const handleRejectDeleteRequest = async (notificationId: number) => {
+        const notification = notifications.data.find((n) => n.id === notificationId);
+        if (!notification?.notifiable_id) {
+            toast.error('Invalid delete request');
+            return;
+        }
+
+        setIsProcessing(notificationId);
+        try {
+            const response = await fetch(route('delete-requests.reject', notification.notifiable_id), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
+
+            if (response.ok) {
+                toast.success('Delete request rejected');
+                window.location.reload();
+            } else {
+                toast.error('Failed to reject delete request');
+            }
+        } catch (error) {
+            console.error('Failed to reject delete request:', error);
+            toast.error('Failed to reject delete request');
+        } finally {
+            setIsProcessing(null);
+        }
+    };
+
     return (
-        <AppLayout breadcrumbs={[{ label: 'Notifications', href: '#', disabled: true }]}>
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Notifications" />
 
-            <div className="space-y-4">
+            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0">
                         <div>
@@ -134,7 +206,11 @@ export default function NotificationsIndex() {
                                         link={notification.link}
                                         isRead={notification.is_read}
                                         createdAt={notification.created_at}
+                                        notifiable_id={notification.notifiable_id}
+                                        notifiable_type={notification.notifiable_type}
                                         onMarkAsRead={handleMarkAsRead}
+                                        onApprove={notification.type === 'delete_request' ? handleApproveDeleteRequest : undefined}
+                                        onReject={notification.type === 'delete_request' ? handleRejectDeleteRequest : undefined}
                                     />
                                 ))}
                             </div>
@@ -142,16 +218,7 @@ export default function NotificationsIndex() {
                     </CardContent>
                 </Card>
 
-                {notifications.last_page > 1 && (
-                    <Pagination
-                        currentPage={notifications.current_page}
-                        lastPage={notifications.last_page}
-                        from={notifications.from}
-                        to={notifications.to}
-                        total={notifications.total}
-                        links={notifications.links}
-                    />
-                )}
+                {notifications.last_page > 1 && <Pagination data={notifications} />}
             </div>
         </AppLayout>
     );

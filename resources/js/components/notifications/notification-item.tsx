@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 import { Link } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { AlertCircle, Check, Info, Trash2 } from 'lucide-react';
+import { AlertCircle, Check, CheckCircle, Info, Trash2, X } from 'lucide-react';
 
 interface NotificationItemProps {
     id: number;
@@ -11,8 +11,12 @@ interface NotificationItemProps {
     link?: string;
     isRead: boolean;
     createdAt: string;
+    notifiable_id?: number;
+    notifiable_type?: string;
     onMarkAsRead?: (id: number) => void;
     onDelete?: (id: number) => void;
+    onApprove?: (id: number) => void;
+    onReject?: (id: number) => void;
     compact?: boolean;
 }
 
@@ -24,8 +28,12 @@ export function NotificationItem({
     link,
     isRead,
     createdAt,
+    notifiable_id,
+    notifiable_type,
     onMarkAsRead,
     onDelete,
+    onApprove,
+    onReject,
     compact = false,
 }: NotificationItemProps) {
     const getIcon = () => {
@@ -69,6 +77,36 @@ export function NotificationItem({
                 <p className="text-muted-foreground mt-1 text-xs">{format(new Date(createdAt), 'MMM d, h:mm a')}</p>
             </div>
             <div className="flex flex-shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                {type === 'delete_request' && (onApprove || onReject) && (
+                    <>
+                        {onApprove && (
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onApprove(id);
+                                }}
+                                className="rounded p-1 transition-colors hover:bg-green-100 dark:hover:bg-green-900/30"
+                                title="Confirm delete"
+                            >
+                                <CheckCircle className="text-muted-foreground h-4 w-4 hover:text-green-600" />
+                            </button>
+                        )}
+                        {onReject && (
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onReject(id);
+                                }}
+                                className="rounded p-1 transition-colors hover:bg-red-100 dark:hover:bg-red-900/30"
+                                title="Reject delete"
+                            >
+                                <X className="text-muted-foreground h-4 w-4 hover:text-red-600" />
+                            </button>
+                        )}
+                    </>
+                )}
                 {onDelete && (
                     <button
                         onClick={(e) => {

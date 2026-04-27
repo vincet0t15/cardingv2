@@ -40,13 +40,10 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
             const response = await fetch(route('notifications.recent'));
             const data = await response.json();
 
-            // Get recent notifications
             const recent = data.notifications;
             setNotifications(recent);
 
-            // Calculate unread count
             const unread = recent.filter((n: Notification) => !n.is_read).length;
-            console.log('Unread notifications:', unread, 'Total:', recent.length, 'Recent:', recent);
             setUnreadCount(unread);
         } catch (error) {
             console.error('Failed to fetch notifications:', error);

@@ -152,6 +152,8 @@ class ManageEmployeeController extends Controller
 
         $groupedDeductions = $deductionsData->groupBy(function ($d) {
             return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+        })->map(function ($group) {
+            return $group->toArray();
         })->toArray();
 
         $takenPeriods = EmployeeDeduction::where('employee_id', $employee->id)
@@ -219,6 +221,8 @@ class ManageEmployeeController extends Controller
 
         $allDeductions = $allDeductionsData->groupBy(function ($d) {
             return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+        })->map(function ($group) {
+            return $group->toArray();
         })->toArray();
 
         $allClothingAllowances = $employee->clothingAllowances()
@@ -228,6 +232,8 @@ class ManageEmployeeController extends Controller
 
         $allClaimsGrouped = $allClaims->groupBy(function ($c) {
             return \Carbon\Carbon::parse($c->claim_date)->format('Y-m');
+        })->map(function ($group) {
+            return $group->toArray();
         })->toArray();
 
         $totalDeductionsAllTime = (float) $allDeductionsData->sum('amount');
@@ -237,6 +243,8 @@ class ManageEmployeeController extends Controller
             return $adj->status !== 'rejected' && $adj->pay_period_month && $adj->pay_period_year;
         })->groupBy(function ($adj) {
             return "{$adj->pay_period_year}-" . str_pad($adj->pay_period_month, 2, '0', STR_PAD_LEFT);
+        })->map(function ($group) {
+            return $group->toArray();
         })->toArray();
 
         $adjustmentStatistics = [

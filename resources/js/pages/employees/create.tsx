@@ -186,8 +186,6 @@ export default function CreateEmployee({ employmentStatuses, offices, similarEmp
                 setPhotoPreviewUrl(null);
             },
             onError: (errors: any) => {
-                console.log('Create employee errors:', errors);
-                // If validation errors exist, show the first message to the user
                 const firstField = Object.keys(errors || {})[0];
                 const firstMsg = firstField ? errors[firstField] && errors[firstField][0] : null;
                 toast.error(firstMsg ?? 'Failed to create employee');

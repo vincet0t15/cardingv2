@@ -33,7 +33,13 @@ interface CompensationDeductionsProps {
         total: number;
     };
     allEmployees?: EmployeeType[];
-    allClothingAllowances?: { id: number; amount: string | number; start_date: string; end_date: string | null; source_of_fund_code?: { code: string; description: string | null } | null }[];
+    allClothingAllowances?: {
+        id: number;
+        amount: string | number;
+        start_date: string;
+        end_date: string | null;
+        source_of_fund_code?: { code: string; description: string | null } | null;
+    }[];
     allClaimsGrouped?: Record<string, Claim[]>;
     allAdjustmentsGrouped?: Record<string, any[]>;
 }
@@ -130,7 +136,7 @@ export function CompensationDeductions({
 
     const [editingDeduction, setEditingDeduction] = useState<EmployeeDeduction | null>(null);
 
-    const periods = periodsList;
+    const periods = Array.isArray(periodsList) ? periodsList : [];
     const currentPage = pagination?.current_page ?? 1;
     const lastPage = pagination?.last_page ?? 1;
 
@@ -151,13 +157,15 @@ export function CompensationDeductions({
     const getClaimsForPeriod = (periodYear: number, periodMonth: number): Claim[] => {
         if (!allClaimsGrouped) return [];
         const key = `${periodYear}-${String(periodMonth).padStart(2, '0')}`;
-        return allClaimsGrouped[key] ?? [];
+        const claims = allClaimsGrouped[key];
+        return Array.isArray(claims) ? claims : [];
     };
 
     const getAdjustmentsForPeriod = (periodYear: number, periodMonth: number) => {
         if (!allAdjustmentsGrouped) return [];
         const key = `${periodYear}-${String(periodMonth).padStart(2, '0')}`;
-        return allAdjustmentsGrouped[key] ?? [];
+        const adjustments = allAdjustmentsGrouped[key];
+        return Array.isArray(adjustments) ? adjustments : [];
     };
 
     return (
@@ -196,7 +204,7 @@ export function CompensationDeductions({
                 <div className="text-muted-foreground rounded-sm border py-12 text-center text-sm">No deductions recorded yet.</div>
             ) : (
                 <div className="space-y-4">
-{periods.map((periodKey) => {
+                    {periods.map((periodKey) => {
                         const [year, month] = periodKey.split('-');
                         const periodYear = parseInt(year);
                         const periodMonth = parseInt(month);
@@ -281,11 +289,12 @@ export function CompensationDeductions({
                                                         day: 'numeric',
                                                         year: 'numeric',
                                                     })}
-                                                    {ca.end_date && ` - ${new Date(ca.end_date).toLocaleDateString('en-US', {
-                                                        month: 'short',
-                                                        day: 'numeric',
-                                                        year: 'numeric',
-                                                    })}`}
+                                                    {ca.end_date &&
+                                                        ` - ${new Date(ca.end_date).toLocaleDateString('en-US', {
+                                                            month: 'short',
+                                                            day: 'numeric',
+                                                            year: 'numeric',
+                                                        })}`}
                                                 </TableCell>
                                                 <TableCell className="text-right text-blue-600">+ {formatCurrency(Number(ca.amount))}</TableCell>
                                                 <TableCell></TableCell>
@@ -294,18 +303,14 @@ export function CompensationDeductions({
                                         {/* Claims for this period */}
                                         {periodClaims.map((c) => (
                                             <TableRow key={`claim-${c.id}`} className="bg-emerald-50">
-                                                <TableCell className="font-medium text-emerald-700">
-                                                    Claim: {c.claim_type?.name ?? '—'}
-                                                </TableCell>
+                                                <TableCell className="font-medium text-emerald-700">Claim: {c.claim_type?.name ?? '—'}</TableCell>
                                                 <TableCell className="text-muted-foreground text-xs">
                                                     {new Date(c.claim_date).toLocaleDateString('en-US', {
                                                         month: 'short',
                                                         day: 'numeric',
                                                         year: 'numeric',
                                                     })}
-                                                    {c.reference_number && (
-                                                        <span className="ml-1 text-[10px]">({c.reference_number})</span>
-                                                    )}
+                                                    {c.reference_number && <span className="ml-1 text-[10px]">({c.reference_number})</span>}
                                                 </TableCell>
                                                 <TableCell className="text-right text-emerald-600">+ {formatCurrency(Number(c.amount))}</TableCell>
                                                 <TableCell></TableCell>
@@ -314,7 +319,9 @@ export function CompensationDeductions({
                                         {/* Adjustments for this period */}
                                         {periodAdjustments.map((adj) => (
                                             <TableRow key={`adj-${adj.id}`} className={Number(adj.amount) >= 0 ? 'bg-purple-50' : 'bg-orange-50'}>
-                                                <TableCell className={`font-medium ${Number(adj.amount) >= 0 ? 'text-purple-700' : 'text-orange-700'}`}>
+                                                <TableCell
+                                                    className={`font-medium ${Number(adj.amount) >= 0 ? 'text-purple-700' : 'text-orange-700'}`}
+                                                >
                                                     Adj: {adj.adjustment_type?.name ?? adj.adjustment_type ?? '—'}
                                                     <span className="ml-1 text-xs">({adj.status})</span>
                                                 </TableCell>
@@ -322,8 +329,11 @@ export function CompensationDeductions({
                                                     {adj.adjustment_type?.name ?? adj.adjustment_type}
                                                     {adj.reason && <span className="ml-1">- {adj.reason}</span>}
                                                 </TableCell>
-                                                <TableCell className={`text-right ${Number(adj.amount) >= 0 ? 'text-purple-600' : 'text-orange-600'}`}>
-                                                    {Number(adj.amount) >= 0 ? '+' : ''}{formatCurrency(Number(adj.amount))}
+                                                <TableCell
+                                                    className={`text-right ${Number(adj.amount) >= 0 ? 'text-purple-600' : 'text-orange-600'}`}
+                                                >
+                                                    {Number(adj.amount) >= 0 ? '+' : ''}
+                                                    {formatCurrency(Number(adj.amount))}
                                                 </TableCell>
                                                 <TableCell></TableCell>
                                             </TableRow>
@@ -407,12 +417,18 @@ export function CompensationDeductions({
                                             </TableRow>
                                         )}
                                         {totalAdjustments !== 0 && (
-                                            <TableRow className={totalAdjustments >= 0 ? 'bg-purple-100 font-semibold' : 'bg-orange-100 font-semibold'}>
-                                                <TableCell colSpan={2} className={`text-right text-xs ${totalAdjustments >= 0 ? 'text-purple-700' : 'text-orange-700'}`}>
+                                            <TableRow
+                                                className={totalAdjustments >= 0 ? 'bg-purple-100 font-semibold' : 'bg-orange-100 font-semibold'}
+                                            >
+                                                <TableCell
+                                                    colSpan={2}
+                                                    className={`text-right text-xs ${totalAdjustments >= 0 ? 'text-purple-700' : 'text-orange-700'}`}
+                                                >
                                                     Adjustments
                                                 </TableCell>
                                                 <TableCell className={`text-right ${totalAdjustments >= 0 ? 'text-purple-700' : 'text-orange-700'}`}>
-                                                    {totalAdjustments >= 0 ? '+' : ''}{formatCurrency(totalAdjustments)}
+                                                    {totalAdjustments >= 0 ? '+' : ''}
+                                                    {formatCurrency(totalAdjustments)}
                                                 </TableCell>
                                             </TableRow>
                                         )}
