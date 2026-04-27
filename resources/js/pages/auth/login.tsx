@@ -21,14 +21,24 @@ interface LoginForm {
 interface LoginProps {
     status?: string;
     canResetPassword: boolean;
+    error?: string;
 }
 
-export default function Login({ status, canResetPassword }: LoginProps) {
+export default function Login({ status, canResetPassword, error }: LoginProps) {
     const { data, setData, post, processing, errors, reset } = useForm<LoginForm>({
         username: '',
         password: '',
         remember: false,
     });
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlError = urlParams.get('error');
+    const displayError =
+        urlError === 'not_linked'
+            ? 'Your account is not linked to any employee record. Please contact your administrator.'
+            : urlError === 'no_role'
+              ? 'Your account has no assigned role. Please contact your administrator.'
+              : null;
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -41,7 +51,13 @@ export default function Login({ status, canResetPassword }: LoginProps) {
         <AuthLayout title="Log in to your account" description="Enter your username and password below to log in">
             <Head title="Log in" />
 
-            {status && (
+            {displayError && (
+                <Alert variant="destructive" className="mb-4">
+                    <AlertDescription>{displayError}</AlertDescription>
+                </Alert>
+            )}
+
+            {status && !displayError && (
                 <Alert className="mb-4 border-blue-200 bg-blue-50">
                     <Info className="h-4 w-4 text-blue-600" />
                     <AlertDescription className="text-blue-800">{status}</AlertDescription>

@@ -286,7 +286,7 @@ export default function AccountsIndex({ users, roles, unlinkedEmployees, filters
 
                 {/* Link Employee Dialog */}
                 <Dialog open={!!linkingUser} onOpenChange={() => setLinkingUser(null)}>
-                    <DialogContent className="sm:max-w-[600px]">
+                    <DialogContent className="min-w-4xl">
                         <DialogHeader>
                             <DialogTitle>Link Employee</DialogTitle>
                             <DialogDescription>Link {linkingUser?.name} to an employee record</DialogDescription>

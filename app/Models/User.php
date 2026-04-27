@@ -63,6 +63,16 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->hasRole('super admin');
+        return $this->hasRole('super admin') || $this->hasRole('admin');
+    }
+
+    public function isEmployee(): bool
+    {
+        return $this->employee !== null;
+    }
+
+    public function isLinkedEmployee(): bool
+    {
+        return $this->employee !== null && $this->employee->user_id !== null;
     }
 }

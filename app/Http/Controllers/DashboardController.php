@@ -13,13 +13,40 @@ use App\Models\Pera;
 use App\Models\Rata;
 use App\Models\Salary;
 use App\Models\SourceOfFundCode;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
     public function index(Request $request)
     {
+        $user = Auth::user();
+
+        if ($user) {
+            // Check if user has linked employee
+            $userEmployee = Employee::where('user_id', $user->id)->first();
+
+            // Check if user has admin role
+            $isAdmin = DB::table('model_has_roles')
+                ->where('model_id', $user->id)
+                ->whereIn('role_id', function ($q) {
+                    $q->select('id')->from('roles')->whereIn('name', ['super admin', 'admin']);
+                })->exists();
+
+            // If linked employee (not admin) → employee dashboard
+            if ($userEmployee && ! $isAdmin) {
+                return redirect()->route('employee.dashboard');
+            }
+
+            // If not linked and not admin → redirect to employees page
+            if (! $userEmployee && ! $isAdmin) {
+                return redirect()->route('employees.index');
+            }
+        }
+
         // Get month and year from request, default to current
         // If empty, fetch all data
         $month = $request->input('month');

@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\Employee;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -18,7 +20,6 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(Request $request): Response
     {
-
         return Inertia::render('auth/login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => $request->session()->get('status'),
@@ -28,11 +29,52 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request)
     {
         $request->authenticate();
 
         $request->session()->regenerate();
+
+        // Get the authenticated user
+        $user = $request->user();
+
+        // Check if user has any roles
+        $hasRoles = DB::table('model_has_roles')
+            ->where('model_id', $user->id)
+            ->exists();
+
+        // Check if user has linked employee
+        $hasEmployee = Employee::where('user_id', $user->id)->exists();
+
+        // Check if user has admin role
+        $isAdmin = DB::table('model_has_roles')
+            ->where('model_id', $user->id)
+            ->whereIn('role_id', function ($q) {
+                $q->select('id')->from('roles')->whereIn('name', ['super admin', 'admin']);
+            })->exists();
+
+        // If no roles at all, reject login
+        if (! $hasRoles) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login', ['error' => 'no_role']);
+        }
+
+        // If has roles but no employee and not admin, reject login
+        if (! $hasEmployee && ! $isAdmin) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login', ['error' => 'not_linked']);
+        }
+
+        // Redirect based on user type
+        if ($hasEmployee && ! $isAdmin) {
+            return redirect()->intended(route('employee.dashboard', absolute: false));
+        }
 
         return redirect()->intended(route('dashboard', absolute: false));
     }

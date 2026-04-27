@@ -1,6 +1,5 @@
 import { Icon } from '@/components/icon';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { NavigationMenu, NavigationMenuList } from '@/components/ui/navigation-menu';
@@ -12,7 +11,6 @@ import { NavGroup, type BreadcrumbItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
     Banknote,
-    Bell,
     Building2,
     Calculator,
     DollarSign,
@@ -159,12 +157,17 @@ const mainNavItems: NavGroup[] = [
 
 interface AppHeaderProps {
     breadcrumbs?: BreadcrumbItem[];
+    userRoles?: string[];
 }
 
-export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
+export function AppHeader({ breadcrumbs = [], userRoles = [] }: AppHeaderProps) {
     const page = usePage<SharedData>();
     const { auth } = page.props;
     const getInitials = useInitials();
+
+    // Filter navigation items for employee-only users
+    const isEmployeeOnly = userRoles.length === 1 && userRoles[0] === 'employee';
+    const filteredNavItems = isEmployeeOnly ? [] : mainNavItems;
     return (
         <>
             <div className="border-sidebar-border/80 border-b">
@@ -293,7 +296,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                             <NavigationMenu>
                                 <NavigationMenuList className="flex items-center space-x-2">
                                     {/* <NavMain2 items={mainNavItems} /> */}
-                                    <NavMenu items={mainNavItems} />
+                                    <NavMenu items={filteredNavItems} />
                                     {/* <MenubarDemo /> */}
                                 </NavigationMenuList>
                             </NavigationMenu>
@@ -302,7 +305,11 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                         {/* Right: Actions */}
                         <div className="flex items-center space-x-2 justify-self-end">
                             {auth.user.permissions?.includes('delete_requests.view') && (
-                                <Link href="/delete-requests" prefetch className="relative flex h-10 w-10 items-center justify-center rounded-full hover:bg-accent">
+                                <Link
+                                    href="/delete-requests"
+                                    prefetch
+                                    className="hover:bg-accent relative flex h-10 w-10 items-center justify-center rounded-full"
+                                >
                                     <Trash2 className="h-5 w-5" />
                                 </Link>
                             )}

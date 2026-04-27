@@ -2,7 +2,7 @@ import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavGroup } from '@/types';
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 
 import {
     Banknote,
@@ -195,14 +195,36 @@ const mainNavItems: NavGroup[] = [
     },
 ];
 
+const employeeNavItems: NavGroup[] = [
+    {
+        title: 'My Profile',
+        icon: UserRoundPen,
+        children: [
+            {
+                title: 'My Dashboard',
+                href: '/employee/dashboard',
+                icon: LayoutGrid,
+            },
+        ],
+    },
+];
+
 export function AppSidebar() {
+    const pageProps = usePage().props as { auth?: { user?: { is_employee?: boolean; is_admin?: boolean } | null } };
+    const authUser = pageProps.auth?.user;
+
+    // If linked employee (not admin) → show employee nav only
+    const isEmployeeOnly = authUser?.is_employee === true && authUser?.is_admin !== true;
+    const navItems = isEmployeeOnly ? employeeNavItems : mainNavItems;
+    const dashboardHref = isEmployeeOnly ? '/employee/dashboard' : '/dashboard';
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href="/dashboard" prefetch>
+                            <Link href={dashboardHref} prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
@@ -211,7 +233,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                <NavMain items={navItems} />
             </SidebarContent>
 
             <SidebarFooter>
