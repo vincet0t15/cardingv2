@@ -157,7 +157,7 @@ export default function EmployeeDashboard({
 
                                 {/* Deductions Detail Table */}
                                 <div className="w-full overflow-hidden">
-                                    <Table>
+                                    <Table className="rounded-t-none">
                                         <TableHeader className="bg-muted/20">
                                             <TableRow>
                                                 <TableHead className="flex-1">Type</TableHead>
@@ -298,7 +298,7 @@ export default function EmployeeDashboard({
 
     return (
         <TooltipProvider>
-            <div className="bg-background min-h-screen">
+            <div className="bg-background min-h-screen w-full">
                 <Head title="Employee Dashboard" />
                 {/* Mobile Header */}
                 <div className="bg-card sticky top-0 z-10 flex items-center justify-between border-b px-4 py-3 md:hidden">
@@ -308,7 +308,7 @@ export default function EmployeeDashboard({
                     </Button>
                 </div>
 
-                <div className="flex flex-col gap-6 p-4 md:p-6">
+                <div className="flex w-full flex-col gap-6 p-4 md:p-8 lg:p-10">
                     <EmployeeCard
                         employee={employee}
                         totalDeductions={totalDeductions}
@@ -337,17 +337,29 @@ export default function EmployeeDashboard({
                     </div>
 
                     {/* Tabs */}
-                    <div className="flex items-center justify-between">
-                        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'deductions' | 'claims' | 'adjustments')}>
-                            <TabsList className="bg-muted/50 grid w-full grid-cols-3">
-                                <TabsTrigger value="deductions">Deductions ({Object.keys(deductions).length})</TabsTrigger>
-                                <TabsTrigger value="claims">Claims ({Object.keys(claims).length})</TabsTrigger>
-                                <TabsTrigger value="adjustments">Adjustments ({Object.keys(adjustments).length})</TabsTrigger>
-                            </TabsList>
-                            <TabsContent value="deductions">{renderDeductions()}</TabsContent>
-                            <TabsContent value="claims">{renderClaims()}</TabsContent>
-                            <TabsContent value="adjustments">{renderAdjustments()}</TabsContent>
-                        </Tabs>
+                    <div className="flex w-full flex-col gap-4">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                            <Tabs
+                                value={activeTab}
+                                onValueChange={(value) => setActiveTab(value as 'deductions' | 'claims' | 'adjustments')}
+                                className="w-full"
+                            >
+                                <TabsList className="bg-muted/50 grid w-full grid-cols-3">
+                                    <TabsTrigger value="deductions">Deductions ({Object.keys(deductions).length})</TabsTrigger>
+                                    <TabsTrigger value="claims">Claims ({Object.keys(claims).length})</TabsTrigger>
+                                    <TabsTrigger value="adjustments">Adjustments ({Object.keys(adjustments).length})</TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="deductions" className="mt-4">
+                                    {renderDeductions()}
+                                </TabsContent>
+                                <TabsContent value="claims" className="mt-4">
+                                    {renderClaims()}
+                                </TabsContent>
+                                <TabsContent value="adjustments" className="mt-4">
+                                    {renderAdjustments()}
+                                </TabsContent>
+                            </Tabs>
+                        </div>
                         <Button
                             variant="outline"
                             size="sm"
@@ -356,6 +368,7 @@ export default function EmployeeDashboard({
                                 const period = Object.keys(data)[0];
                                 if (period) handlePrint(period, activeTab);
                             }}
+                            className="w-fit"
                         >
                             <Printer className="mr-1 h-4 w-4" /> Print
                         </Button>
