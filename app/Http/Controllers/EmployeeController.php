@@ -130,9 +130,30 @@ class EmployeeController extends Controller
             'office_id' => 'required|exists:offices,id',
             'employment_status_id' => 'required|exists:employment_statuses,id',
             'is_rata_eligible' => 'boolean',
+            'photo' => ['nullable', 'image', 'max:2048', 'mimes:jpg,jpeg,png,webp'],
         ]);
 
+        // Capture current stored image path before making changes
+        $oldImage = $employee->getRawOriginal('image_path');
+
+        // Update basic attributes first
         $employee->update($validated);
+
+        // Handle uploaded photo if present. The front-end sends FormData with
+        // a `photo` file input. Store it on the public disk and save the
+        // relative path to the DB. Delete the previous file only after a
+        // successful store.
+        if ($request->hasFile('photo')) {
+            $file = $request->file('photo');
+            $path = $file->store('employees', 'public');
+
+            if ($oldImage) {
+                Storage::disk('public')->delete($oldImage);
+            }
+
+            $employee->image_path = $path;
+            $employee->save();
+        }
 
         return redirect()->back()->with('success', 'Employee updated successfully');
     }
@@ -143,8 +164,11 @@ class EmployeeController extends Controller
 
 
         if ($user->hasPermissionTo('employees.delete')) {
-            if ($employee->image_path) {
-                Storage::disk('public')->delete($employee->image_path);
+            // Use the raw stored path when deleting the file. The model's
+            // accessor returns a full URL which Storage::delete won't match.
+            $old = $employee->getRawOriginal('image_path');
+            if ($old) {
+                Storage::disk('public')->delete($old);
             }
             $employee->delete();
             return redirect()->route('employees.index')->with('success', 'Employee deleted successfully');

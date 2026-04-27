@@ -15,7 +15,7 @@ import type { EmploymentStatus } from '@/types/employmentStatuses';
 import { FilterProps } from '@/types/filter';
 import type { Office } from '@/types/office';
 import { PaginatedDataResponse } from '@/types/pagination';
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { Building2, Eye, PlusIcon, Search, User, Users } from 'lucide-react';
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -277,17 +277,20 @@ export default function Employees({ employees, offices, employmentStatuses, filt
                                                             <User className="h-6 w-6 text-slate-400" />
                                                         </AvatarFallback>
                                                     </Avatar>
-                                                    <div className="absolute -right-1 -bottom-1 rounded-full bg-emerald-600 p-1 text-white shadow-md opacity-0 transition-opacity group-hover:opacity-100">
+                                                    <div className="absolute -right-1 -bottom-1 rounded-full bg-emerald-600 p-1 text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100">
                                                         <Eye className="h-3 w-3" />
                                                     </div>
                                                 </div>
 
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex flex-wrap items-center gap-2">
-                                                        <span className="truncate text-base font-semibold uppercase text-slate-900 dark:text-slate-50">
+                                                        <span className="truncate text-base font-semibold text-slate-900 uppercase dark:text-slate-50">
                                                             {employee.last_name}, {employee.first_name} {employee.middle_name} {employee.suffix}
                                                         </span>
-                                                        <Badge variant="secondary" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                                        >
                                                             #{employee.id}
                                                         </Badge>
                                                     </div>
@@ -299,7 +302,10 @@ export default function Employees({ employees, offices, employmentStatuses, filt
                                                     </div>
 
                                                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                                                        <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300"
+                                                        >
                                                             {employee.employment_status?.name}
                                                         </Badge>
                                                     </div>

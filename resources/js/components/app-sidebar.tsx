@@ -29,6 +29,7 @@ import {
     Wallet,
 } from 'lucide-react';
 import AppLogo from './app-logo';
+
 const mainNavItems: NavGroup[] = [
     {
         title: 'General',

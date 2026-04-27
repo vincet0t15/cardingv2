@@ -42,6 +42,7 @@ export function CreateSupplierDialog({ open, onClose }: CreateSupplierDialogProp
         post(route('suppliers.store'), {
             onSuccess: () => {
                 onClose();
+                reset();
             },
         });
     };
