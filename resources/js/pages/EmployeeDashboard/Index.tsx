@@ -337,18 +337,32 @@ export default function EmployeeDashboard({
                     </div>
 
                     {/* Tabs */}
-                    <div className="flex w-full flex-col gap-4">
+                    <div className="w-full space-y-4">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <Tabs
                                 value={activeTab}
                                 onValueChange={(value) => setActiveTab(value as 'deductions' | 'claims' | 'adjustments')}
-                                className="w-full"
+                                className="flex-1"
                             >
-                                <TabsList className="bg-muted/50 grid w-full grid-cols-3">
-                                    <TabsTrigger value="deductions">Deductions ({Object.keys(deductions).length})</TabsTrigger>
-                                    <TabsTrigger value="claims">Claims ({Object.keys(claims).length})</TabsTrigger>
-                                    <TabsTrigger value="adjustments">Adjustments ({Object.keys(adjustments).length})</TabsTrigger>
-                                </TabsList>
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                    <TabsList className="bg-muted/50 grid grid-cols-3">
+                                        <TabsTrigger value="deductions">Deductions ({Object.keys(deductions).length})</TabsTrigger>
+                                        <TabsTrigger value="claims">Claims ({Object.keys(claims).length})</TabsTrigger>
+                                        <TabsTrigger value="adjustments">Adjustments ({Object.keys(adjustments).length})</TabsTrigger>
+                                    </TabsList>
+                                    <Button
+                                        variant="default"
+                                        size="default"
+                                        onClick={() => {
+                                            const data = activeTab === 'deductions' ? deductions : activeTab === 'claims' ? claims : adjustments;
+                                            const period = Object.keys(data)[0];
+                                            if (period) handlePrint(period, activeTab);
+                                        }}
+                                        className="gap-2"
+                                    >
+                                        <Printer className="h-4 w-4" /> Print
+                                    </Button>
+                                </div>
                                 <TabsContent value="deductions" className="mt-4">
                                     {renderDeductions()}
                                 </TabsContent>
@@ -360,18 +374,6 @@ export default function EmployeeDashboard({
                                 </TabsContent>
                             </Tabs>
                         </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                                const data = activeTab === 'deductions' ? deductions : activeTab === 'claims' ? claims : adjustments;
-                                const period = Object.keys(data)[0];
-                                if (period) handlePrint(period, activeTab);
-                            }}
-                            className="w-fit"
-                        >
-                            <Printer className="mr-1 h-4 w-4" /> Print
-                        </Button>
                     </div>
                 </div>
                 <Toaster position="top-right" />
