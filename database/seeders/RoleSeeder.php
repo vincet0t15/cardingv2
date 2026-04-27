@@ -190,15 +190,5 @@ class RoleSeeder extends Seeder
 
         // Employee role - can view and create adjustments
         $employeeRole = Role::firstOrCreate(['name' => 'employee', 'guard_name' => 'web']);
-        $employeePermissions = [
-            'adjustments.view',
-            'adjustments.create',
-            'adjustments.edit',
-            'adjustment_types.view',
-            'reference_types.view',
-        ];
-        $employeeRole->syncPermissions(
-            Permission::whereIn('name', $employeePermissions)->get()
-        );
     }
 }
