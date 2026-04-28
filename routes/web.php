@@ -203,7 +203,7 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
     // ADJUSTMENTS in Manage Employee
     Route::middleware(['permission:adjustments.create'])->post('manage/employees/{employee}/adjustments', [AdjustmentController::class, 'store'])->name('manage.employees.adjustments.store');
     Route::middleware(['permission:adjustments.edit'])->put('manage/employees/{employee}/adjustments/{adjustment}', [AdjustmentController::class, 'update'])->name('manage.employees.adjustments.update');
-    Route::middleware(['permission:adjustments.delete'])->delete('manage/employees/{employee}/adjustments/{adjustment}', [AdjustmentController::class, 'destroy'])->name('manage.employees.adjustments.destroy');
+    Route::delete('manage/employees/{employee}/adjustments/{adjustment}', [AdjustmentController::class, 'destroy'])->name('manage.employees.adjustments.destroy');
 
     // CLAIMS - View
     Route::middleware(['permission:claims.view'])->get('manage/employees/{employee}/claims', [ClaimController::class, 'index'])->name('manage.employees.claims.index');
@@ -212,7 +212,7 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
     // CLAIMS - Edit
     Route::middleware(['permission:claims.edit'])->put('manage/employees/{employee}/claims/{claim}', [ClaimController::class, 'update'])->name('manage.employees.claims.update');
     // CLAIMS - Delete
-    Route::middleware(['permission:claims.delete'])->delete('manage/employees/{employee}/claims/{claim}', [ClaimController::class, 'destroy'])->name('manage.employees.claims.destroy');
+    Route::delete('manage/employees/{employee}/claims/{claim}', [ClaimController::class, 'destroy'])->name('manage.employees.claims.destroy');
 
     // SETTINGS - Configuration Modules
     // EMPLOYMENT STATUS (requires employment_statuses.* permissions)
@@ -313,7 +313,7 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
         Route::middleware(['permission:adjustments.approve'])->post('/{adjustment}/approve', [AdjustmentController::class, 'approve'])->name('adjustments.approve');
         Route::middleware(['permission:adjustments.reject'])->post('/{adjustment}/reject', [AdjustmentController::class, 'reject'])->name('adjustments.reject');
         Route::middleware(['permission:adjustments.process'])->post('/{adjustment}/process', [AdjustmentController::class, 'process'])->name('adjustments.process');
-        Route::middleware(['permission:adjustments.delete'])->delete('/{adjustment}', [AdjustmentController::class, 'destroy'])->name('adjustments.destroy');
+        Route::delete('/{adjustment}', [AdjustmentController::class, 'destroy'])->name('adjustments.destroy');
     });
 
     // ADJUSTMENT TYPES (Settings CRUD)

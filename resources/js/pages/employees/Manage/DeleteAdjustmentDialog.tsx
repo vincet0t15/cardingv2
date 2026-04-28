@@ -4,6 +4,7 @@ import {
     AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,
+    AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
@@ -62,34 +63,32 @@ export function DeleteAdjustmentDialog({ open, onClose, adjustment }: DeleteAdju
         <AlertDialog open={open} onOpenChange={onClose}>
             <AlertDialogContent className="rounded-md">
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Adjustment</AlertDialogTitle>
-                    <AlertDialogDescription>Are you sure you want to delete this adjustment? This action cannot be undone.</AlertDialogDescription>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>This action cannot be undone. Deleting an adjustment will remove it permanently.</AlertDialogDescription>
                 </AlertDialogHeader>
-                <div className="py-3">
-                    {adjustment && (
-                        <div className="space-y-2 rounded-lg bg-slate-100 p-3 dark:bg-slate-800">
-                            <div className="flex justify-between">
-                                <span className="font-medium">Amount:</span>
-                                <span>{formatCurrency(adjustment.amount)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="font-medium">Period:</span>
-                                <span>
-                                    {new Date(2026, adjustment.pay_period_month - 1).toLocaleString('default', {
-                                        month: 'short',
-                                    })}{' '}
-                                    {adjustment.pay_period_year}
-                                </span>
-                            </div>
+                {adjustment && (
+                    <div className="my-4 rounded-lg bg-slate-100 p-4 dark:bg-slate-800">
+                        <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-300">
+                            <span className="font-medium text-slate-900 dark:text-slate-100">Amount</span>
+                            <span>{formatCurrency(adjustment.amount)}</span>
                         </div>
-                    )}
-                </div>
-                <div className="flex gap-3">
+                        <div className="mt-2 flex items-center justify-between text-sm text-slate-600 dark:text-slate-300">
+                            <span className="font-medium text-slate-900 dark:text-slate-100">Period</span>
+                            <span>
+                                {new Date(2026, adjustment.pay_period_month - 1).toLocaleString('default', {
+                                    month: 'short',
+                                })}{' '}
+                                {adjustment.pay_period_year}
+                            </span>
+                        </div>
+                    </div>
+                )}
+                <AlertDialogFooter>
                     <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={onSubmit} disabled={isDeleting} className="bg-red-600 hover:bg-red-700">
                         {isDeleting ? 'Deleting...' : 'Delete'}
                     </AlertDialogAction>
-                </div>
+                </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
     );
