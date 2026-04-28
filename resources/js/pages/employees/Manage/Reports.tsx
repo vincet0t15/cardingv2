@@ -294,7 +294,7 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
     }
 
     const grossPay = salary + pera + rata + hazardPay + clothingAllowance;
-    const netPay = grossPay - totalAllDeductions + totalAdjustments;
+    const netPay = grossPay - totalAllDeductions + totalAdjustments + totalAllClaims;
 
     const hasActiveFilters = filterMonth || filterYear;
 
@@ -472,7 +472,13 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                                                         Number(a.pay_period_year) === period.year && Number(a.pay_period_month) === period.month,
                                                 )
                                                 .reduce((s: number, a: any) => s + computeSignedAmount(a), 0);
-                                            const groupNetPay = groupGrossPay - groupTotal + groupAdjustments;
+                                            const groupClaims = filteredClaims
+                                                .filter((c) => {
+                                                    const claimDate = new Date(c.claim_date);
+                                                    return claimDate.getFullYear() === period.year && claimDate.getMonth() + 1 === period.month;
+                                                })
+                                                .reduce((s, c) => s + Number(c.amount), 0);
+                                            const groupNetPay = groupGrossPay - groupTotal + groupAdjustments + groupClaims;
 
                                             // Salary label
                                             const salaryLabel = group.salary
@@ -562,17 +568,23 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                                                             </div>
                                                         </div>
                                                         <div className="grid grid-cols-2 divide-x border-t">
+                                                            <div className="grid grid-cols-2">
+                                                                <div className="text-muted-foreground px-4 py-2 text-sm">Claims</div>
+                                                                <div className="px-4 py-2 text-right text-sm font-medium text-blue-800">
+                                                                    +{formatCurrency(groupClaims)}
+                                                                </div>
+                                                            </div>
                                                             <div className="grid grid-cols-2 bg-red-50">
                                                                 <div className="px-4 py-2 text-sm font-medium text-red-800">Total Deductions</div>
                                                                 <div className="px-4 py-2 text-right font-bold text-red-800">
                                                                     -{formatCurrency(groupTotal)}
                                                                 </div>
                                                             </div>
-                                                            <div className="grid grid-cols-2 bg-green-50">
-                                                                <div className="px-4 py-2 text-sm font-medium text-green-800">Net Pay</div>
-                                                                <div className="px-4 py-2 text-right font-bold text-green-800">
-                                                                    {formatCurrency(groupNetPay)}
-                                                                </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 divide-x border-t bg-green-50">
+                                                            <div className="px-4 py-2 text-sm font-medium text-green-800">Net Pay</div>
+                                                            <div className="px-4 py-2 text-right font-bold text-green-800">
+                                                                {formatCurrency(groupNetPay)}
                                                             </div>
                                                         </div>
                                                     </div>

@@ -448,6 +448,14 @@ export default function EmployeePrintReport({
                                             <td className="border border-black p-2 text-right text-blue-600">{formatCurrency(totalAllClaims)}</td>
                                         </tr>
                                         <tr>
+                                            <td className="border border-black p-2 font-bold">Adjustments</td>
+                                            <td className="border border-black p-2 text-right" colSpan={3}>
+                                                <span className={adjustments < 0 ? 'text-red-600' : 'text-green-600'}>
+                                                    {formatCurrency(adjustments)}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
                                             <td className="border border-black p-2 font-bold">Gross Pay</td>
                                             <td className="border border-black p-2 text-right font-medium" colSpan={3}>
                                                 {formatCurrency(grossPay)}
