@@ -74,44 +74,12 @@ class OfficeController extends Controller
 
     public function destroy(Request $request, $id)
     {
-        // Explicitly load office to bypass implicit policy authorization
         $office = Office::findOrFail($id);
-        $user = Auth::user();
 
-        // Check if user has direct permission to delete offices
-        if ($user->hasPermissionTo('offices.delete')) {
-            if ($office->employees()->exists()) {
-                return redirect()->back()->with('error', 'Cannot delete office that has employees assigned.');
-            }
-            $office->delete();
-            return redirect()->back()->with('success', 'Office deleted successfully.');
+        if ($office->employees()->exists()) {
+            return redirect()->back()->with('error', 'Cannot delete office that has employees assigned.');
         }
 
-        // User doesn't have permission - create delete request
-        $reason = $request->input('reason', 'No reason provided');
-
-        $deleteRequest = DeleteRequest::create([
-            'requestable_type' => Office::class,
-            'requestable_id' => $office->id,
-            'requested_by' => $user->id,
-            'status' => DeleteRequest::STATUS_PENDING,
-            'reason' => $reason,
-        ]);
-
-        // Notify super admins
-        $superAdmins = \Spatie\Permission\Models\Role::where('name', 'super admin')->first()?->users ?? collect();
-        foreach ($superAdmins as $admin) {
-            Notification::create([
-                'user_id' => $admin->id,
-                'type' => 'delete_request',
-                'title' => 'Delete Request',
-                'message' => "{$user->name} requested to delete office: {$office->name} (ID: {$office->id})",
-                'link' => '/delete-requests',
-                'notifiable_id' => $deleteRequest->id,
-                'notifiable_type' => DeleteRequest::class,
-            ]);
-        }
-
-        return redirect()->back()->with('info', 'You do not have permission to delete. A delete request has been sent to admin.');
+        return $this->handleDeletion($office, 'offices.delete');
     }
 }

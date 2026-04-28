@@ -29,7 +29,9 @@ class EmployeeDeductionPolicy
 
     public function delete(User $user, EmployeeDeduction $employeeDeduction): bool
     {
-        return $user->can('deductions.delete');
+        // Authorization is handled by the controller's handleDeletion method
+        // This allows users without permission to submit deletion requests
+        return true;
     }
 
     public function restore(User $user, EmployeeDeduction $employeeDeduction): bool

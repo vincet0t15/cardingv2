@@ -6,9 +6,12 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use App\Traits\HandlesDeletionRequests;
 
 class RoleController extends Controller
 {
+    use HandlesDeletionRequests;
+
     public function index()
     {
         $roles = Role::with('permissions')
@@ -72,11 +75,9 @@ class RoleController extends Controller
     public function destroy(Role $role)
     {
         if ($role->name === 'super admin') {
-            return redirect()->back()->with('error', 'Cannot delete admin role');
+            return redirect()->back()->with('error', 'Cannot delete super admin role');
         }
 
-        $role->delete();
-
-        return redirect()->back()->with('success', 'Role deleted successfully');
+        return $this->handleDeletion($role, 'roles.manage');
     }
 }

@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Permission;
+use App\Traits\HandlesDeletionRequests;
 
 class PermissionController extends Controller
 {
+    use HandlesDeletionRequests;
+
     public function index()
     {
         $permissions = Permission::all()->map(function ($permission) {
@@ -52,8 +55,6 @@ class PermissionController extends Controller
 
     public function destroy(Permission $permission)
     {
-        $permission->delete();
-
-        return redirect()->back()->with('success', 'Permission deleted successfully');
+        return $this->handleDeletion($permission, 'permissions.manage');
     }
 }

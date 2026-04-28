@@ -106,9 +106,7 @@ class SupplierTransactionController extends Controller
      */
     public function destroy(Supplier $supplier, SupplierTransaction $transaction)
     {
-
-
-        return $result;
+        return $this->handleDeletion($transaction, 'suppliers.manage');
     }
 
     /**

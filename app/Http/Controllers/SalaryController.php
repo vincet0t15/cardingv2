@@ -7,12 +7,15 @@ use App\Models\EmploymentStatus;
 use App\Models\Office;
 use App\Models\Salary;
 use App\Models\SourceOfFundCode;
+use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class SalaryController extends Controller
 {
+    use HandlesDeletionRequests;
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', Salary::class);
@@ -154,9 +157,6 @@ class SalaryController extends Controller
 
     public function destroy(Salary $salary)
     {
-        $this->authorize('delete', $salary);
-        $salary->delete();
-
-        return redirect()->back()->with('success', 'Salary record deleted successfully');
+        return $this->handleDeletion($salary, 'salaries.delete');
     }
 }

@@ -24,14 +24,16 @@ trait HandlesDeletionRequests
      * @param Model $model The model to delete
      * @param string $permissionName The permission name (e.g., 'employees.delete')
      * @param string $reason Optional reason for deletion
+     * @param bool $forceApproval If true, always creates a deletion request (even with permission)
      * @return RedirectResponse
      */
-    protected function handleDeletion(Model $model, string $permissionName, ?string $reason = null): RedirectResponse
+    protected function handleDeletion(Model $model, string $permissionName, ?string $reason = null, bool $forceApproval = false): RedirectResponse
     {
+        /** @var \App\Models\User|null $user */
         $user = Auth::user();
 
-        // Check if user has direct permission to delete
-        if ($user->hasPermissionTo($permissionName)) {
+        // Check if user has direct permission to delete and approval is not forced
+        if (!$forceApproval && $user?->hasPermissionTo($permissionName)) {
             $model->delete();
             $modelName = class_basename($model);
             return redirect()
@@ -39,8 +41,14 @@ trait HandlesDeletionRequests
                 ->with('success', "{$modelName} deleted successfully by super admin.");
         }
 
-        // User doesn't have permission - create delete request
+        // User doesn't have permission or approval is forced - create delete request
         $reason = $reason ?? request()->input('reason', 'No reason provided');
+
+        if (!$user) {
+            return redirect()
+                ->back()
+                ->with('error', 'User not authenticated');
+        }
 
         $deleteRequest = DeleteRequest::create([
             'requestable_type' => $model::class,
@@ -56,13 +64,13 @@ trait HandlesDeletionRequests
         $modelName = class_basename($model);
         return redirect()
             ->back()
-            ->with('success', "{$modelName} deletion request sent to super admin for approval.");
+            ->with('success', "Your {$modelName} deletion request has been sent to administrators for approval.");
     }
 
     /**
      * Send notifications to all super admins about a deletion request
      */
-    protected function notifySuperAdminsOfDeletionRequest(DeleteRequest $deleteRequest, Model $model, $user): void
+    protected function notifySuperAdminsOfDeletionRequest(DeleteRequest $deleteRequest, Model $model, \App\Models\User $user): void
     {
         $superAdmins = \Spatie\Permission\Models\Role::where('name', 'super admin')
             ->first()

@@ -8,9 +8,9 @@ import type { Claim } from '@/types/claim';
 import type { DeductionType } from '@/types/deductionType';
 import type { Employee, Employee as EmployeeType } from '@/types/employee';
 import type { EmployeeDeduction } from '@/types/employeeDeduction';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { PencilIcon, Plus, Printer, Trash2, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -58,6 +58,17 @@ export function CompensationDeductions({
     allClaimsGrouped = {},
     allAdjustmentsGrouped = {},
 }: CompensationDeductionsProps) {
+    const { props } = usePage();
+    const [lastFlashMessage, setLastFlashMessage] = useState<string | null>(null);
+
+    // Watch for flash messages and show them as toasts
+    useEffect(() => {
+        const flashMessage = (props.flash as any)?.success;
+        if (flashMessage && flashMessage !== lastFlashMessage) {
+            toast.success(flashMessage);
+            setLastFlashMessage(flashMessage);
+        }
+    }, [props.flash, lastFlashMessage]);
     const goToPage = (page: number) => {
         router.get(
             route('manage.employees.index', employee.id),
@@ -119,7 +130,6 @@ export function CompensationDeductions({
         return router.delete(route('manage.employees.deductions.destroy', [employee.id, id]), {
             preserveScroll: true,
             onSuccess: () => {
-                toast.success('Deduction deleted successfully');
                 setDeletingDeductionId(null);
             },
             onError: () => {
@@ -509,7 +519,6 @@ export function CompensationDeductions({
                         data: { pay_period_month: String(parseInt(m)), pay_period_year: y },
                         preserveScroll: true,
                         onSuccess: () => {
-                            toast.success('Successfully deleted deductions for the period');
                             setDeletingPeriodKey(null);
                         },
                         onError: () => {

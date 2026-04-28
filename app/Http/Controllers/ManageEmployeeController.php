@@ -365,32 +365,8 @@ class ManageEmployeeController extends Controller
 
     public function destroyDeduction(Employee $employee, EmployeeDeduction $deduction)
     {
-        $this->authorize('delete', $deduction);
-
-        $user = Auth::user();
-
-        // Check if user has direct permission to delete
-        if ($user->hasPermissionTo('deductions.delete')) {
-            $deduction->delete();
-
-            return back()->with('success', 'Deduction deleted successfully');
-        }
-
-        // User doesn't have permission - create delete request
-        $reason = request()->input('reason', 'No reason provided');
-
-        $deleteRequest = DeleteRequest::create([
-            'requestable_type' => EmployeeDeduction::class,
-            'requestable_id' => $deduction->id,
-            'requested_by' => $user->id,
-            'status' => DeleteRequest::STATUS_PENDING,
-            'reason' => $reason,
-        ]);
-
-        // Notify super admins
-        $this->notifySuperAdminsOfDeletionRequest($deleteRequest, $deduction, $user);
-
-        return back()->with('success', 'Deduction deletion request sent to super admin for approval');
+        // Always require approval for deduction deletions (financial audit trail)
+        return $this->handleDeletion($deduction, 'deductions.delete', null, true);
     }
 
     /**
@@ -432,64 +408,44 @@ class ManageEmployeeController extends Controller
             return back()->with('error', 'No items found for this period');
         }
 
+        /** @var \App\Models\User|null $user */
         $user = Auth::user();
 
-        // Check if user has direct permission to delete
-        if ($user->hasPermissionTo('deductions.delete')) {
-            // Delete all deductions for this period
-            EmployeeDeduction::where('employee_id', $employee->id)
-                ->where('pay_period_month', $validated['pay_period_month'])
-                ->where('pay_period_year', $validated['pay_period_year'])
-                ->delete();
+        // For deductions (and related items), always require approval
+        // Find the first item to use for the deletion request
+        $firstItem = $deductions->first() ?? $adjustments->first() ?? $clothingAllowances->first();
 
-            // Delete all adjustments for this period
-            Adjustment::where('employee_id', $employee->id)
-                ->where('pay_period_month', $validated['pay_period_month'])
-                ->where('pay_period_year', $validated['pay_period_year'])
-                ->delete();
-
-            // Delete clothing allowances within this period
-            ClothingAllowance::where('employee_id', $employee->id)
-                ->whereBetween('start_date', [$startOfMonth, $endOfMonth])
-                ->delete();
-
-            $deductionCount = $deductions->count();
-            $adjustmentCount = $adjustments->count();
-            $clothingCount = $clothingAllowances->count();
-
-            $message = 'Successfully deleted entire period';
-            if ($deductionCount > 0 && $adjustmentCount > 0 && $clothingCount > 0) {
-                $message = "Successfully deleted {$deductionCount} deduction(s), {$adjustmentCount} adjustment(s), and {$clothingCount} clothing allowance(s)";
-            } elseif ($deductionCount > 0 && $adjustmentCount > 0) {
-                $message = "Successfully deleted {$deductionCount} deduction(s) and {$adjustmentCount} adjustment(s)";
-            } elseif ($deductionCount > 0 && $clothingCount > 0) {
-                $message = "Successfully deleted {$deductionCount} deduction(s) and {$clothingCount} clothing allowance(s)";
-            } elseif ($adjustmentCount > 0 && $clothingCount > 0) {
-                $message = "Successfully deleted {$adjustmentCount} adjustment(s) and {$clothingCount} clothing allowance(s)";
-            } elseif ($deductionCount > 0) {
-                $message = "Successfully deleted {$deductionCount} deduction(s)";
-            } elseif ($adjustmentCount > 0) {
-                $message = "Successfully deleted {$adjustmentCount} adjustment(s)";
-            } elseif ($clothingCount > 0) {
-                $message = "Successfully deleted {$clothingCount} clothing allowance(s)";
-            }
-
-            return back()->with('success', $message);
+        if (!$firstItem) {
+            return back()->with('error', 'No items found for this period');
         }
 
-        $firstItem = $deductions->first() ?? $adjustments->first() ?? $clothingAllowances->first();
+        if (!$user) {
+            return back()->with('error', 'User not authenticated');
+        }
+
+        $deductionCount = $deductions->count();
+        $adjustmentCount = $adjustments->count();
+        $clothingCount = $clothingAllowances->count();
+
+        // Create deletion request with details about all items
+        $itemDetails = [];
+        if ($deductionCount > 0) $itemDetails[] = "{$deductionCount} deduction(s)";
+        if ($adjustmentCount > 0) $itemDetails[] = "{$adjustmentCount} adjustment(s)";
+        if ($clothingCount > 0) $itemDetails[] = "{$clothingCount} clothing allowance(s)";
+
+        $reason = request()->input('reason', 'Delete entire pay period - ' . implode(', ', $itemDetails));
 
         $deleteRequest = DeleteRequest::create([
             'requestable_type' => get_class($firstItem),
             'requestable_id' => $firstItem->id,
             'requested_by' => $user->id,
             'status' => DeleteRequest::STATUS_PENDING,
-            'reason' => request()->input('reason', 'Delete entire pay period'),
+            'reason' => $reason,
         ]);
 
         $this->notifySuperAdminsOfDeletionRequest($deleteRequest, $firstItem, $user);
 
-        return back()->with('success', "Deletion request for period {$validated['pay_period_month']}/{$validated['pay_period_year']} sent to super admin for approval");
+        return back()->with('success', "Your deletion request for period {$validated['pay_period_month']}/{$validated['pay_period_year']} has been sent to administrators for approval.");
     }
 
     public function print(Request $request, Employee $employee)

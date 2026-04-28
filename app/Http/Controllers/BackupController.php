@@ -4,14 +4,18 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Symfony\Component\Process\ExecutableFinder;
+use App\Traits\HandlesDeletionRequests;
 
 class BackupController extends Controller
 {
+    use HandlesDeletionRequests;
+
     private function getMySqlPath(): string
     {
         $executableFinder = new ExecutableFinder;
@@ -311,7 +315,7 @@ class BackupController extends Controller
         }
     }
 
-    public function download($fileName)
+    public function download(string $fileName)
     {
         $path = storage_path("app/backups/{$fileName}");
 
@@ -327,15 +331,23 @@ class BackupController extends Controller
         ]);
     }
 
-    public function destroy($fileName)
+    public function destroy(string $fileName)
     {
+        // For file operations, we'll handle deletion directly since it doesn't use models
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+
+        if (!$user?->hasPermissionTo('database.backup')) {
+            return back()->with('error', 'Unauthorized to delete backups');
+        }
+
         $path = storage_path("app/backups/{$fileName}");
 
         if (File::exists($path)) {
             File::delete($path);
         }
 
-        return back()->with('success', 'Deleted successfully');
+        return back()->with('success', 'Backup deleted successfully');
     }
 
     private function clearCachesAndDisconnect(): void
@@ -465,8 +477,9 @@ class BackupController extends Controller
         }
 
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        $i = floor(log($bytes, 1024));
+        $i = (int) floor(log($bytes, 1024));
+        $size = round($bytes / pow(1024, $i), 2);
 
-        return round($bytes / pow(1024, $i), 2) . ' ' . $units[$i];
+        return (string) $size . ' ' . $units[$i];
     }
 }
