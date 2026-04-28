@@ -75,6 +75,13 @@ class RoleSeeder extends Seeder
             'deductions.delete',
             'deductions.manage',
 
+            // Employee Deductions permissions
+            'employee-deductions.view',
+            'employee-deductions.create',
+            'employee-deductions.edit',
+            'employee-deductions.delete',
+            'employee-deductions.manage',
+
             // Settings permissions (general)
             'settings.view',
             'settings.manage',

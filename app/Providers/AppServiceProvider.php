@@ -17,7 +17,9 @@ use App\Models\Rata;
 use App\Models\ReferenceType;
 use App\Models\Salary;
 use App\Models\Supplier;
+use App\Models\EmployeeDeduction;
 use App\Policies\AdjustmentTypePolicy;
+use App\Policies\EmployeeDeductionPolicy;
 use App\Policies\ClaimPolicy;
 use App\Policies\ClaimTypePolicy;
 use App\Policies\ClothingAllowancePolicy;
@@ -63,6 +65,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(ClothingAllowance::class, ClothingAllowancePolicy::class);
         Gate::policy(AdjustmentType::class, AdjustmentTypePolicy::class);
         Gate::policy(ReferenceType::class, ReferenceTypePolicy::class);
+        Gate::policy(EmployeeDeduction::class, EmployeeDeductionPolicy::class);
         Gate::policy(\App\Models\DeleteRequest::class, DeleteRequestPolicy::class);
 
         if (config('app.env') !== 'local') {
