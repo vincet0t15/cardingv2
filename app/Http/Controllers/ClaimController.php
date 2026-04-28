@@ -38,10 +38,6 @@ class ClaimController extends Controller
         }
 
         $claims = $claimsQuery->paginate(20)->withQueryString();
-
-        $claimTypes = ClaimType::active()->get();
-
-        // Get available years for filter
         $availableYears = Claim::where('employee_id', $employee->id)
             ->selectRaw('DISTINCT YEAR(claim_date) as year')
             ->orderBy('year', 'desc')
@@ -66,7 +62,6 @@ class ClaimController extends Controller
         $this->authorize('create', Claim::class);
         $validated = $request->validate([
             'salary_id' => 'nullable|exists:salaries,id',
-            'salary_amount' => 'nullable|numeric|min:0',
             'claim_type_id' => 'required|exists:claim_types,id',
             'claim_date' => 'required|date',
             'amount' => 'required|numeric|min:0',
@@ -85,6 +80,7 @@ class ClaimController extends Controller
     {
         $this->authorize('update', $claim);
         $validated = $request->validate([
+            'salary_id' => 'nullable|exists:salaries,id',
             'claim_type_id' => 'required|exists:claim_types,id',
             'claim_date' => 'required|date',
             'amount' => 'required|numeric|min:0',
@@ -175,7 +171,7 @@ class ClaimController extends Controller
 
             return [
                 'id' => $employee->id,
-                'name' => $employee->last_name.', '.$employee->first_name,
+                'name' => $employee->last_name . ', ' . $employee->first_name,
                 'office' => $employee->office?->name ?? 'N/A',
                 'total_amount' => $claims->sum('amount'),
                 'claim_count' => $claims->count(),
@@ -298,7 +294,7 @@ class ClaimController extends Controller
 
             return [
                 'id' => $employee->id,
-                'name' => $employee->last_name.', '.$employee->first_name,
+                'name' => $employee->last_name . ', ' . $employee->first_name,
                 'office' => $employee->office?->name ?? 'N/A',
                 'total_amount' => $claims->sum('amount'),
                 'claim_count' => $claims->count(),
@@ -398,7 +394,7 @@ class ClaimController extends Controller
         return Inertia::render('Claims/EmployeeDetail', [
             'employee' => [
                 'id' => $employee->id,
-                'name' => $employee->last_name.', '.$employee->first_name.' '.($employee->middle_name ?? '').' '.($employee->suffix ?? ''),
+                'name' => $employee->last_name . ', ' . $employee->first_name . ' ' . ($employee->middle_name ?? '') . ' ' . ($employee->suffix ?? ''),
                 'position' => $employee->position,
                 'office' => $employee->office?->name ?? 'N/A',
             ],
@@ -476,7 +472,7 @@ class ClaimController extends Controller
         return Inertia::render('Claims/EmployeeDetailPrint', [
             'employee' => [
                 'id' => $employee->id,
-                'name' => $employee->last_name.', '.$employee->first_name.' '.($employee->middle_name ?? '').' '.($employee->suffix ?? ''),
+                'name' => $employee->last_name . ', ' . $employee->first_name . ' ' . ($employee->middle_name ?? '') . ' ' . ($employee->suffix ?? ''),
                 'position' => $employee->position,
                 'office' => $employee->office?->name ?? 'N/A',
             ],

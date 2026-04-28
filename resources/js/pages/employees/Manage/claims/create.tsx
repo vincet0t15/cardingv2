@@ -29,7 +29,6 @@ export function CreateClaimDialog({ open, onClose, employee, claimTypes }: Creat
 
     const { data, setData, post, processing, errors, reset } = useForm({
         salary_id: null as number | null,
-        salary_amount: currentSalary,
         claim_type_id: '',
         claim_date: new Date().toISOString().split('T')[0],
         amount: '',
@@ -42,25 +41,14 @@ export function CreateClaimDialog({ open, onClose, employee, claimTypes }: Creat
             setSalaryOption('current');
             setSelectedSalaryId(null);
             setData('salary_id', null);
-            setData('salary_amount', currentSalary);
         }
-    }, [open, currentSalary]);
+    }, [open]);
 
     const claimTypeItems = claimTypes.map((t) => ({ value: String(t.id), label: t.name }));
 
     const handleSalaryChange = (salaryId: number | null) => {
         setSelectedSalaryId(salaryId);
         setData('salary_id', salaryId);
-        if (salaryId === null) {
-            // Current salary
-            setData('salary_amount', currentSalary);
-        } else {
-            // Selected previous salary
-            const selectedSalary = employee.salaries?.find((s) => s.id === salaryId);
-            if (selectedSalary) {
-                setData('salary_amount', Number(selectedSalary.amount));
-            }
-        }
     };
 
     const handleSubmit = (e: React.FormEvent) => {

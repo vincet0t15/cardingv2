@@ -73,6 +73,7 @@ class EmployeeDeductionController extends Controller
             ->with(['employeeDeductions' => function ($query) use ($year, $month) {
                 $query->where('pay_period_year', $year)
                     ->with('deductionType')
+                    ->with('salary')
                     ->orderBy('pay_period_month', 'asc');
                 // Only filter by month if it's provided
                 if ($month) {
@@ -175,7 +176,8 @@ class EmployeeDeductionController extends Controller
             ->with(['deductions' => function ($query) use ($month, $year) {
                 $query->where('pay_period_month', $month)
                     ->where('pay_period_year', $year)
-                    ->with('deductionType');
+                    ->with('deductionType')
+                    ->with('salary');
             }])
             ->orderBy('last_name')
             ->get();
@@ -253,6 +255,7 @@ class EmployeeDeductionController extends Controller
         $employeeId = $request->input('employee_id');
         $month = $request->input('month');
         $year = $request->input('year');
+        $salaryId = $request->input('salary_id');
 
         if (! $employeeId || ! $month || ! $year) {
             abort(404, 'Employee ID, month, and year are required');
@@ -273,11 +276,18 @@ class EmployeeDeductionController extends Controller
         $deductionTypes = DeductionType::where('is_active', true)->orderBy('name')->get();
 
         // Get existing deductions for this period
-        $existingDeductions = EmployeeDeduction::where('employee_id', $employeeId)
+        $existingDeductionsQuery = EmployeeDeduction::where('employee_id', $employeeId)
             ->where('pay_period_month', $month)
-            ->where('pay_period_year', $year)
-            ->with(['deductionType', 'salary'])
-            ->get();
+            ->where('pay_period_year', $year);
+
+        // Filter by salary_id if provided
+        if ($salaryId === 'null') {
+            $existingDeductionsQuery->whereNull('salary_id');
+        } elseif ($salaryId) {
+            $existingDeductionsQuery->where('salary_id', $salaryId);
+        }
+
+        $existingDeductions = $existingDeductionsQuery->with(['deductionType', 'salary'])->get();
 
         // Get taken periods for this employee
         $takenPeriods = EmployeeDeduction::where('employee_id', $employeeId)
@@ -295,6 +305,7 @@ class EmployeeDeductionController extends Controller
             'deductionCategories' => $deductionCategories,
             'existingDeductions' => $existingDeductions,
             'takenPeriods' => $takenPeriods,
+            'preSelectSalaryId' => $salaryId,
         ]);
     }
 
@@ -312,13 +323,14 @@ class EmployeeDeductionController extends Controller
         ]);
 
         $exists = EmployeeDeduction::where('employee_id', $validated['employee_id'])
+            ->where('salary_id', $validated['salary_id'] ?? null)
             ->where('deduction_type_id', $validated['deduction_type_id'])
             ->where('pay_period_month', $validated['pay_period_month'])
             ->where('pay_period_year', $validated['pay_period_year'])
             ->exists();
 
         if ($exists) {
-            return redirect()->back()->with('error', 'Deduction already exists for this employee and period');
+            return redirect()->back()->with('error', 'Deduction already exists for this employee, salary, and period');
         }
 
         EmployeeDeduction::create([

@@ -176,7 +176,8 @@ class AdjustmentController extends Controller
         return Inertia::render('adjustments/Edit', [
             'adjustment' => $adjustment,
             'employees' => $employees,
-            'adjustmentTypes' => Adjustment::getAdjustmentTypes(),
+            'adjustmentTypes' => \App\Models\AdjustmentType::orderBy('name')->get(),
+            'referenceTypes' => ReferenceType::all(),
         ]);
     }
 

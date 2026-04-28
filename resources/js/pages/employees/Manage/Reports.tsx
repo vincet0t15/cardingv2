@@ -86,6 +86,25 @@ interface MonthlyDeductionRow {
     total: number;
 }
 
+// Helper function to group deductions by salary basis
+function groupDeductionsBySalary(deductionList: EmployeeDeduction[]) {
+    const grouped = new Map<string | number, { salaryId: string | number | null; salary: any; deductions: EmployeeDeduction[] }>();
+
+    for (const d of deductionList) {
+        const key = d.salary_id ?? 'null';
+        if (!grouped.has(key)) {
+            grouped.set(key, {
+                salaryId: d.salary_id ?? null,
+                salary: d.salary ?? null,
+                deductions: [],
+            });
+        }
+        grouped.get(key)!.deductions.push(d);
+    }
+
+    return Array.from(grouped.values());
+}
+
 interface YearlyClaimRow {
     year: number;
     items: Claim[];
@@ -413,100 +432,153 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                 ) : (
                     <div className="space-y-4">
                         {deductionPeriods.map((period) => {
-                            // Get compensation for this specific period
-                            const periodSalary = getEffectiveAmount(employee.salaries, period.year, period.month);
-                            const periodPera = getEffectiveAmount(employee.peras, period.year, period.month);
-                            const periodRata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, period.year, period.month) : 0;
-                            const periodHazardPay = getEffectiveAmountForDateRange(employee.hazard_pays, period.year, period.month);
-                            const periodClothingAllowance = getEffectiveAmountForDateRange(employee.clothing_allowances, period.year, period.month);
-                            const periodGrossPay = periodSalary + periodPera + periodRata + periodHazardPay + periodClothingAllowance;
-                            const periodAdjustments = filteredAdjustments
-                                .filter((a: any) => Number(a.pay_period_year) === period.year && Number(a.pay_period_month) === period.month)
-                                .reduce((s: number, a: any) => s + computeSignedAmount(a), 0);
-
-                            const periodNetPay = periodGrossPay - period.total + periodAdjustments;
+                            // Group deductions by salary basis
+                            const salaryGroups = groupDeductionsBySalary(period.items);
 
                             return (
-                                <div key={`${period.year}-${period.month}`} className="overflow-hidden rounded-lg border bg-white shadow-sm">
-                                    {/* Header */}
-                                    <div className="bg-muted/30 flex items-center justify-between border-b px-4 py-3">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-semibold">
-                                                {FULL_MONTHS[period.month - 1]} {period.year}
-                                            </span>
-                                            <Badge variant="secondary" className="text-xs">
-                                                {period.items.length} deduction{period.items.length !== 1 ? 's' : ''}
-                                            </Badge>
-                                        </div>
-                                        <div className="text-sm">
-                                            Net Pay: <span className="font-bold text-green-600">{formatCurrency(periodNetPay)}</span>
-                                        </div>
+                                <div key={`${period.year}-${period.month}`}>
+                                    {/* Period Header */}
+                                    <div className="mb-2 flex items-center gap-2 px-1">
+                                        <span className="font-semibold">
+                                            {FULL_MONTHS[period.month - 1]} {period.year}
+                                        </span>
+                                        <Badge variant="secondary" className="text-xs">
+                                            {period.items.length} deduction{period.items.length !== 1 ? 's' : ''}
+                                        </Badge>
                                     </div>
 
-                                    {/* Deductions Table */}
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow className="bg-muted/50">
-                                                <TableHead className="font-semibold">Deduction Type</TableHead>
-                                                <TableHead className="text-right font-semibold">Amount</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {period.items.map((d) => (
-                                                <TableRow key={d.id}>
-                                                    <TableCell className="uppercase">{d.deduction_type?.name ?? '—'}</TableCell>
-                                                    <TableCell className="text-right text-red-600">-{formatCurrency(Number(d.amount))}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
+                                    {/* Salary-Based Deduction Groups */}
+                                    <div className="space-y-3">
+                                        {salaryGroups.map((group, index) => {
+                                            // Determine salary for this group
+                                            const groupSalary = group.salary
+                                                ? Number(group.salary.amount)
+                                                : getEffectiveAmount(employee.salaries, period.year, period.month);
+                                            const groupPera = getEffectiveAmount(employee.peras, period.year, period.month);
+                                            const groupRata = employee.is_rata_eligible
+                                                ? getEffectiveAmount(employee.ratas, period.year, period.month)
+                                                : 0;
+                                            const groupHazardPay = getEffectiveAmountForDateRange(employee.hazard_pays, period.year, period.month);
+                                            const groupClothingAllowance = getEffectiveAmountForDateRange(
+                                                employee.clothing_allowances,
+                                                period.year,
+                                                period.month,
+                                            );
+                                            const groupGrossPay = groupSalary + groupPera + groupRata + groupHazardPay + groupClothingAllowance;
+                                            const groupTotal = group.deductions.reduce((sum, d) => sum + Number(d.amount), 0);
+                                            const groupAdjustments = filteredAdjustments
+                                                .filter(
+                                                    (a: any) =>
+                                                        Number(a.pay_period_year) === period.year && Number(a.pay_period_month) === period.month,
+                                                )
+                                                .reduce((s: number, a: any) => s + computeSignedAmount(a), 0);
+                                            const groupNetPay = groupGrossPay - groupTotal + groupAdjustments;
 
-                                    {/* Summary Section */}
-                                    <div className="bg-muted/20 border-t">
-                                        <div className="grid grid-cols-2 divide-x">
-                                            <div className="grid grid-cols-2">
-                                                <div className="text-muted-foreground px-4 py-2 text-sm">Basic Salary</div>
-                                                <div className="px-4 py-2 text-right text-sm font-medium">{formatCurrency(periodSalary)}</div>
-                                            </div>
-                                            <div className="grid grid-cols-2">
-                                                <div className="text-muted-foreground px-4 py-2 text-sm">PERA</div>
-                                                <div className="px-4 py-2 text-right text-sm font-medium">+{formatCurrency(periodPera)}</div>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 divide-x border-t">
-                                            <div className="grid grid-cols-2">
-                                                <div className="text-muted-foreground px-4 py-2 text-sm">RATA</div>
-                                                <div className="px-4 py-2 text-right text-sm font-medium">
-                                                    {employee.is_rata_eligible ? `+${formatCurrency(periodRata)}` : '-'}
+                                            // Salary label
+                                            const salaryLabel = group.salary
+                                                ? `${formatCurrency(Number(group.salary.amount))} (${new Date(group.salary.effective_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`
+                                                : `${formatCurrency(groupSalary)} (Current)`;
+
+                                            return (
+                                                <div
+                                                    key={`${period.year}-${period.month}-salary-${group.salaryId}`}
+                                                    className="overflow-hidden rounded-lg border bg-white shadow-sm"
+                                                >
+                                                    {/* Header with Salary Info */}
+                                                    <div className="bg-muted/30 flex items-center justify-between border-b px-4 py-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-sm font-medium">Salary: {salaryLabel}</span>
+                                                            <Badge variant="secondary" className="text-xs">
+                                                                {group.deductions.length} deduction{group.deductions.length !== 1 ? 's' : ''}
+                                                            </Badge>
+                                                        </div>
+                                                        <div className="text-sm">
+                                                            Net Pay: <span className="font-bold text-green-600">{formatCurrency(groupNetPay)}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Deductions Table */}
+                                                    <Table>
+                                                        <TableHeader>
+                                                            <TableRow className="bg-muted/50">
+                                                                <TableHead className="font-semibold">Deduction Type</TableHead>
+                                                                <TableHead className="text-right font-semibold">Amount</TableHead>
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {group.deductions.map((d) => (
+                                                                <TableRow key={d.id}>
+                                                                    <TableCell className="uppercase">{d.deduction_type?.name ?? '—'}</TableCell>
+                                                                    <TableCell className="text-right text-red-600">
+                                                                        -{formatCurrency(Number(d.amount))}
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                        </TableBody>
+                                                    </Table>
+
+                                                    {/* Summary Section */}
+                                                    <div className="bg-muted/20 border-t">
+                                                        <div className="grid grid-cols-2 divide-x">
+                                                            <div className="grid grid-cols-2">
+                                                                <div className="text-muted-foreground px-4 py-2 text-sm">Basic Salary</div>
+                                                                <div className="px-4 py-2 text-right text-sm font-medium">
+                                                                    {formatCurrency(groupSalary)}
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-2">
+                                                                <div className="text-muted-foreground px-4 py-2 text-sm">PERA</div>
+                                                                <div className="px-4 py-2 text-right text-sm font-medium">
+                                                                    +{formatCurrency(groupPera)}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 divide-x border-t">
+                                                            <div className="grid grid-cols-2">
+                                                                <div className="text-muted-foreground px-4 py-2 text-sm">RATA</div>
+                                                                <div className="px-4 py-2 text-right text-sm font-medium">
+                                                                    {employee.is_rata_eligible ? `+${formatCurrency(groupRata)}` : '-'}
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-2">
+                                                                <div className="text-muted-foreground px-4 py-2 text-sm">Hazard Pay</div>
+                                                                <div className="px-4 py-2 text-right text-sm font-medium">
+                                                                    +{formatCurrency(groupHazardPay)}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 divide-x border-t">
+                                                            <div className="grid grid-cols-2">
+                                                                <div className="text-muted-foreground px-4 py-2 text-sm">Clothing Allow.</div>
+                                                                <div className="px-4 py-2 text-right text-sm font-medium">
+                                                                    +{formatCurrency(groupClothingAllowance)}
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 bg-blue-50">
+                                                                <div className="px-4 py-2 text-sm font-medium text-blue-800">Gross Pay</div>
+                                                                <div className="px-4 py-2 text-right font-bold text-blue-800">
+                                                                    {formatCurrency(groupGrossPay)}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 divide-x border-t">
+                                                            <div className="grid grid-cols-2 bg-red-50">
+                                                                <div className="px-4 py-2 text-sm font-medium text-red-800">Total Deductions</div>
+                                                                <div className="px-4 py-2 text-right font-bold text-red-800">
+                                                                    -{formatCurrency(groupTotal)}
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 bg-green-50">
+                                                                <div className="px-4 py-2 text-sm font-medium text-green-800">Net Pay</div>
+                                                                <div className="px-4 py-2 text-right font-bold text-green-800">
+                                                                    {formatCurrency(groupNetPay)}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="grid grid-cols-2">
-                                                <div className="text-muted-foreground px-4 py-2 text-sm">Hazard Pay</div>
-                                                <div className="px-4 py-2 text-right text-sm font-medium">+{formatCurrency(periodHazardPay)}</div>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 divide-x border-t">
-                                            <div className="grid grid-cols-2">
-                                                <div className="text-muted-foreground px-4 py-2 text-sm">Clothing Allow.</div>
-                                                <div className="px-4 py-2 text-right text-sm font-medium">
-                                                    +{formatCurrency(periodClothingAllowance)}
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-2 bg-blue-50">
-                                                <div className="px-4 py-2 text-sm font-medium text-blue-800">Gross Pay</div>
-                                                <div className="px-4 py-2 text-right font-bold text-blue-800">{formatCurrency(periodGrossPay)}</div>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 divide-x border-t">
-                                            <div className="grid grid-cols-2 bg-red-50">
-                                                <div className="px-4 py-2 text-sm font-medium text-red-800">Total Deductions</div>
-                                                <div className="px-4 py-2 text-right font-bold text-red-600">-{formatCurrency(period.total)}</div>
-                                            </div>
-                                            <div className="grid grid-cols-2 bg-green-50">
-                                                <div className="px-4 py-2 text-sm font-medium text-green-800">Net Pay</div>
-                                                <div className="px-4 py-2 text-right font-bold text-green-600">{formatCurrency(periodNetPay)}</div>
-                                            </div>
-                                        </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             );

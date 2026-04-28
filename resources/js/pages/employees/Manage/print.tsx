@@ -15,6 +15,7 @@ interface PrintReportPageProps {
     allClothingAllowances?: { id: number; amount: string | number; start_date: string; end_date?: string | null }[];
     filterMonth?: string | null;
     filterYear?: string | null;
+    filterSalaryId?: string | null;
     printType?: 'all' | 'deductions' | 'claims';
 }
 
@@ -48,7 +49,7 @@ function getEffectiveAmount(history: { amount: number; effective_date: string }[
 
 // Helper function for date range allowances (hazard pay, clothing allowance)
 function getEffectiveAmountForDateRange(
-    history: { amount: number; start_date: string; end_date?: string }[] | undefined,
+    history: { amount: number | string; start_date: string; end_date?: string | null }[] | undefined,
     periodYear: number,
     periodMonth: number,
 ): number {
@@ -89,6 +90,30 @@ function getEffectiveAmountForDateRange(
     return Number(effectiveRecord?.amount ?? 0);
 }
 
+// Helper function to get a specific salary by ID
+function getSalaryAmountById(salaries: { id: number; amount: number; effective_date: string }[] | undefined, salaryId: number): number {
+    if (!salaries || salaries.length === 0) return 0;
+    const salary = salaries.find((s) => s.id === salaryId);
+    return salary ? Number(salary.amount) : 0;
+}
+
+// Helper function to group deductions by salary_id
+function groupDeductionsBySalary(deductionList: EmployeeDeduction[]) {
+    const grouped = new Map<string | number, { salaryId: string | number | null; salary: any; deductions: EmployeeDeduction[] }>();
+    for (const d of deductionList) {
+        const key = d.salary_id ?? 'null';
+        if (!grouped.has(key)) {
+            grouped.set(key, {
+                salaryId: d.salary_id ?? null,
+                salary: d.salary ?? null,
+                deductions: [],
+            });
+        }
+        grouped.get(key)!.deductions.push(d);
+    }
+    return Array.from(grouped.values());
+}
+
 interface MonthlyDeductionRow {
     year: number;
     month: number;
@@ -110,10 +135,11 @@ export default function EmployeePrintReport({
     allClothingAllowances,
     filterMonth,
     filterYear,
+    filterSalaryId,
     printType = 'all',
 }: PrintReportPageProps) {
     const clothingHistory = allClothingAllowances || employee.clothing_allowances || [];
-    
+
     // Group deductions by year-month
     const deductionsByPeriod: Record<string, MonthlyDeductionRow> = {};
     for (const d of allDeductions) {
@@ -227,7 +253,7 @@ export default function EmployeePrintReport({
     }
 
     // Helper function to sum compensation for date range records
-    function sumCompensationForDateRange(history: { amount: number; start_date: string; end_date?: string }[] | undefined): number {
+    function sumCompensationForDateRange(history: { amount: number | string; start_date: string; end_date?: string | null }[] | undefined): number {
         if (!history || history.length === 0) return 0;
         return history.reduce((sum, record) => sum + Number(record.amount), 0);
     }
@@ -242,7 +268,10 @@ export default function EmployeePrintReport({
     }
 
     // Helper function to sum date range compensation for a specific year
-    function sumCompensationForYearDateRange(history: { amount: number; start_date: string; end_date?: string }[] | undefined, year: number): number {
+    function sumCompensationForYearDateRange(
+        history: { amount: number | string; start_date: string; end_date?: string | null }[] | undefined,
+        year: number,
+    ): number {
         if (!history || history.length === 0) return 0;
         return history.reduce((sum, record) => {
             const recordYear = new Date(record.start_date).getFullYear();
@@ -262,7 +291,12 @@ export default function EmployeePrintReport({
     let isYearlyView: boolean = false;
 
     if (filterMonth && filterYear) {
-        salary = getEffectiveAmount(employee.salaries, parseInt(filterYear), parseInt(filterMonth));
+        // If filterSalaryId is provided, use that specific salary instead of effective amount
+        if (filterSalaryId && filterSalaryId !== 'null') {
+            salary = getSalaryAmountById(employee.salaries, parseInt(filterSalaryId));
+        } else {
+            salary = getEffectiveAmount(employee.salaries, parseInt(filterYear), parseInt(filterMonth));
+        }
         pera = getEffectiveAmount(employee.peras, parseInt(filterYear), parseInt(filterMonth));
         rata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, parseInt(filterYear), parseInt(filterMonth)) : 0;
         hazardPay = getEffectiveAmountForDateRange(employee.hazard_pays, parseInt(filterYear), parseInt(filterMonth));
@@ -411,9 +445,7 @@ export default function EmployeePrintReport({
                                                 {(isAllTimeView || isYearlyView) && ' *'}
                                             </td>
                                             <td className="border border-black p-2 font-bold">Claims</td>
-                                            <td className="border border-black p-2 text-right text-blue-600">
-                                                {formatCurrency(totalAllClaims)}
-                                            </td>
+                                            <td className="border border-black p-2 text-right text-blue-600">{formatCurrency(totalAllClaims)}</td>
                                         </tr>
                                         <tr>
                                             <td className="border border-black p-2 font-bold">Gross Pay</td>
@@ -491,39 +523,87 @@ export default function EmployeePrintReport({
                                                     )}
                                                 </div>
 
-                                                {/* Deductions Table */}
-                                                {deductionPeriod && printType !== 'claims' && (
-                                                    <table className="mb-4 w-full border-collapse border border-black">
-                                                        <thead>
-                                                            <tr className="bg-gray-100">
-                                                                <th className="border border-black px-2 py-1 text-left text-[10px] font-semibold">
-                                                                    Deduction Type
-                                                                </th>
-                                                                <th className="w-28 border border-black px-2 py-1 text-right text-[10px] font-semibold">
-                                                                    Amount
-                                                                </th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {deductionPeriod.items.map((d) => (
-                                                                <tr key={d.id}>
-                                                                    <td className="border border-black px-2 py-1 text-[10px] uppercase">
-                                                                        {d.deduction_type?.name ?? '—'}
-                                                                    </td>
-                                                                    <td className="border border-black px-2 py-1 text-right text-[10px] text-red-600">
-                                                                        {formatCurrency(Number(d.amount))}
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                            <tr className="bg-gray-50 font-bold">
-                                                                <td className="border border-black px-2 py-1 text-[10px] uppercase">TOTAL</td>
-                                                                <td className="border border-black px-2 py-1 text-right text-[10px] text-red-600">
-                                                                    {formatCurrency(deductionPeriod.total)}
-                                                                </td>
-                                                            </tr>
-                                                        </tbody>
-                                                    </table>
-                                                )}
+                                                {/* Deductions Table - Grouped by Salary */}
+                                                {deductionPeriod &&
+                                                    printType !== 'claims' &&
+                                                    (() => {
+                                                        const salaryGroups = groupDeductionsBySalary(deductionPeriod.items);
+                                                        return (
+                                                            <div className="mb-4 space-y-4">
+                                                                {salaryGroups.map((group, idx) => {
+                                                                    // Determine salary amount for this group
+                                                                    let groupSalary: number;
+                                                                    if (group.salary) {
+                                                                        groupSalary = Number(group.salary.amount);
+                                                                    } else {
+                                                                        // For NULL salary_id, use effective salary for the period
+                                                                        groupSalary = getEffectiveAmount(employee.salaries, year, month);
+                                                                    }
+
+                                                                    const groupTotal = group.deductions.reduce((sum, d) => sum + Number(d.amount), 0);
+                                                                    const groupNetPay = groupSalary - groupTotal;
+
+                                                                    const salaryLabel = group.salary
+                                                                        ? `Salary: ${formatCurrency(Number(group.salary.amount))} (${new Date(group.salary.effective_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })})`
+                                                                        : `Salary: ${formatCurrency(groupSalary)} (Current)`;
+
+                                                                    return (
+                                                                        <div key={`salary-${idx}`}>
+                                                                            <div className="mb-1 text-[10px] font-semibold">{salaryLabel}</div>
+                                                                            <table className="w-full border-collapse border border-black">
+                                                                                <thead>
+                                                                                    <tr className="bg-gray-100">
+                                                                                        <th className="border border-black px-2 py-1 text-left text-[10px] font-semibold">
+                                                                                            Deduction Type
+                                                                                        </th>
+                                                                                        <th className="w-28 border border-black px-2 py-1 text-right text-[10px] font-semibold">
+                                                                                            Amount
+                                                                                        </th>
+                                                                                    </tr>
+                                                                                </thead>
+                                                                                <tbody>
+                                                                                    {group.deductions.map((d) => (
+                                                                                        <tr key={d.id}>
+                                                                                            <td className="border border-black px-2 py-1 text-[10px] uppercase">
+                                                                                                {d.deduction_type?.name ?? '—'}
+                                                                                            </td>
+                                                                                            <td className="border border-black px-2 py-1 text-right text-[10px] text-red-600">
+                                                                                                {formatCurrency(Number(d.amount))}
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    ))}
+                                                                                    <tr className="bg-gray-100">
+                                                                                        <td className="border border-black px-2 py-1 text-[10px] font-semibold">
+                                                                                            Basic Salary
+                                                                                        </td>
+                                                                                        <td className="border border-black px-2 py-1 text-right text-[10px] font-semibold">
+                                                                                            {formatCurrency(groupSalary)}
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                    <tr className="bg-gray-100">
+                                                                                        <td className="border border-black px-2 py-1 text-[10px] font-semibold">
+                                                                                            Total Deductions
+                                                                                        </td>
+                                                                                        <td className="border border-black px-2 py-1 text-right text-[10px] font-semibold text-red-600">
+                                                                                            {formatCurrency(groupTotal)}
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                    <tr className="bg-gray-50 font-bold">
+                                                                                        <td className="border border-black px-2 py-1 text-[10px] uppercase">
+                                                                                            Net Pay
+                                                                                        </td>
+                                                                                        <td className="border border-black px-2 py-1 text-right text-[10px] text-green-600">
+                                                                                            {formatCurrency(groupNetPay)}
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                </tbody>
+                                                                            </table>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        );
+                                                    })()}
 
                                                 {/* Claims Section */}
                                                 {claimPeriod && printType !== 'deductions' && (
@@ -550,7 +630,9 @@ export default function EmployeePrintReport({
                                                                             <div className="text-[10px] font-medium uppercase">
                                                                                 {c.claim_type?.name ?? '—'}
                                                                             </div>
-                                                                            <div className="text-[9px] text-gray-500">{c.purpose}</div>
+                                                                            {c.purpose && c.purpose.trim() && c.purpose.trim().length > 1 && (
+                                                                                <div className="text-[9px] text-gray-500">{c.purpose}</div>
+                                                                            )}
                                                                         </td>
                                                                         <td className="border border-black px-2 py-1 text-right text-[10px] text-green-600">
                                                                             {formatCurrency(Number(c.amount))}

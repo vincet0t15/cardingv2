@@ -13,14 +13,14 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, RefreshCcw, Save } from 'lucide-react';
 
 interface Props {
-    employees: Employee[];
-    adjustmentTypes: AdjustmentType[];
-    referenceTypes: ReferenceType[];
+    employees?: Employee[];
+    adjustmentTypes?: AdjustmentType[];
+    referenceTypes?: ReferenceType[];
     adjustment?: any;
     preSelectedEmployeeId?: string | null;
 }
 
-export default function Create({ employees, adjustmentTypes, referenceTypes, adjustment, preSelectedEmployeeId }: Props) {
+export default function Create({ employees = [], adjustmentTypes = [], referenceTypes = [], adjustment, preSelectedEmployeeId }: Props) {
     const isEdit = !!adjustment;
 
     // Dynamic breadcrumbs based on context
@@ -107,7 +107,15 @@ export default function Create({ employees, adjustmentTypes, referenceTypes, adj
                 <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <Button variant="outline" size="icon">
-                            <Link href={preSelectedEmployeeId ? route('manage.employees.index', preSelectedEmployeeId) : route('adjustments.index')}>
+                            <Link
+                                href={
+                                    preSelectedEmployeeId
+                                        ? route('manage.employees.index', preSelectedEmployeeId)
+                                        : adjustment
+                                          ? route('manage.employees.index', adjustment.employee_id)
+                                          : route('manage.employees.index')
+                                }
+                            >
                                 <ArrowLeft className="h-4 w-4" />
                             </Link>
                         </Button>
@@ -135,8 +143,8 @@ export default function Create({ employees, adjustmentTypes, referenceTypes, adj
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            {/* Employee Selection - Only show if not pre-selected */}
-                            {!preSelectedEmployeeId && (
+                            {/* Employee Selection - Only show if not pre-selected and not editing */}
+                            {!preSelectedEmployeeId && !isEdit && (
                                 <div className="space-y-2">
                                     <Label htmlFor="employee_id" className="required">
                                         Employee
@@ -329,14 +337,18 @@ export default function Create({ employees, adjustmentTypes, referenceTypes, adj
                                     onClick={() =>
                                         (window.location.href = preSelectedEmployeeId
                                             ? route('manage.employees.index', preSelectedEmployeeId)
-                                            : route('adjustments.index'))
+                                            : adjustment
+                                              ? route('employees.show', adjustment.employee_id)
+                                              : route('manage.employees.index'))
                                     }
                                 >
                                     <Link
                                         href={
                                             preSelectedEmployeeId
                                                 ? route('manage.employees.index', preSelectedEmployeeId)
-                                                : route('adjustments.index')
+                                                : adjustment
+                                                  ? route('employees.show', adjustment.employee_id)
+                                                  : route('manage.employees.index')
                                         }
                                     >
                                         Cancel

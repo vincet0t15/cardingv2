@@ -36,6 +36,7 @@ interface EditDeductionPageProps {
     deductionCategories?: DeductionCategory[];
     existingDeductions: EmployeeDeduction[];
     takenPeriods: string[];
+    preSelectSalaryId?: string | null;
 }
 
 export default function EditDeductionPage({
@@ -44,6 +45,7 @@ export default function EditDeductionPage({
     deductionCategories = [],
     existingDeductions,
     takenPeriods,
+    preSelectSalaryId,
 }: EditDeductionPageProps) {
     const [salaryOption, setSalaryOption] = useState<'current' | 'previous'>('current');
     const [selectedSalaryId, setSelectedSalaryId] = useState<number | null>(null);
@@ -93,6 +95,11 @@ export default function EditDeductionPage({
     const initialPeriod = getInitialPeriod();
 
     const getInitialSalaryId = () => {
+        // If preSelectSalaryId is provided from URL parameter, use it
+        if (preSelectSalaryId !== undefined && preSelectSalaryId !== null) {
+            return preSelectSalaryId === 'null' ? null : preSelectSalaryId;
+        }
+        // Otherwise, check if existing deductions have a salary_id
         if (existingDeductions.length > 0 && existingDeductions[0].salary_id) {
             return String(existingDeductions[0].salary_id);
         }
@@ -111,12 +118,13 @@ export default function EditDeductionPage({
         pay_period_month: initialPeriod.month,
         pay_period_year: initialPeriod.year,
         salary_id: getInitialSalaryId(),
-        salary_amount:
-            existingDeductions.length > 0 && existingDeductions[0].salary_id
-                ? getSalaryAmount(existingDeductions[0].salary_id)
-                : currentSalary
-                  ? String(currentSalary.amount)
-                  : '0',
+        salary_amount: (() => {
+            const initialSalaryId = getInitialSalaryId();
+            if (initialSalaryId) {
+                return getSalaryAmount(initialSalaryId === 'null' ? null : Number(initialSalaryId));
+            }
+            return currentSalary ? String(currentSalary.amount) : '0';
+        })(),
         deductions: deductionTypes.map((dt) => {
             const existing = existingMap.get(dt.id);
             return {

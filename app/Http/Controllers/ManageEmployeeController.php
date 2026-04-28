@@ -159,6 +159,7 @@ class ManageEmployeeController extends Controller
 
         $deductionsData = $deductionsQuery
             ->with('deductionType')
+            ->with('salary')
             ->orderBy('pay_period_year', 'desc')
             ->orderBy('pay_period_month', 'desc')
             ->get();
@@ -453,6 +454,7 @@ class ManageEmployeeController extends Controller
         $this->authorize('view', $employee);
         $filterMonth = $request->input('month');
         $filterYear = $request->input('year');
+        $filterSalaryId = $request->input('salary_id');
         $printType = $request->input('type', 'all');
 
         // Re-fetch employee with all relationships to ensure proper serialization
@@ -482,7 +484,7 @@ class ManageEmployeeController extends Controller
         ])->findOrFail($employee->id);
 
         // Get all deductions
-        $deductionsQuery = EmployeeDeduction::with('deductionType')
+        $deductionsQuery = EmployeeDeduction::with('deductionType', 'salary')
             ->where('employee_id', $employee->id);
 
         if ($filterMonth) {
@@ -490,6 +492,14 @@ class ManageEmployeeController extends Controller
         }
         if ($filterYear) {
             $deductionsQuery->where('pay_period_year', $filterYear);
+        }
+        if ($filterSalaryId !== null && $filterSalaryId !== '') {
+            // If salary_id is 'null' string, filter for NULL values, otherwise filter by ID
+            if ($filterSalaryId === 'null') {
+                $deductionsQuery->whereNull('salary_id');
+            } else {
+                $deductionsQuery->where('salary_id', $filterSalaryId);
+            }
         }
 
         $allDeductions = $deductionsQuery->orderBy('pay_period_year', 'desc')
@@ -546,6 +556,7 @@ class ManageEmployeeController extends Controller
             'allClothingAllowances' => $allClothingAllowances,
             'filterMonth' => $filterMonth,
             'filterYear' => $filterYear,
+            'filterSalaryId' => $filterSalaryId,
             'printType' => $printType,
         ]);
     }

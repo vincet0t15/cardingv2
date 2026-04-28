@@ -26,6 +26,8 @@ class Claim extends Model
         'amount' => 'decimal:2',
     ];
 
+    protected $with = ['salary', 'claimType'];
+
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);

@@ -8,7 +8,7 @@ import type { Claim } from '@/types/claim';
 import type { ClaimType } from '@/types/claimType';
 import type { Employee } from '@/types/employee';
 import { useForm } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 interface EditClaimDialogProps {
     open: boolean;
@@ -19,7 +19,18 @@ interface EditClaimDialogProps {
 }
 
 export function EditClaimDialog({ open, onClose, employee, claim, claimTypes }: EditClaimDialogProps) {
+    const [salaryOption, setSalaryOption] = useState<'current' | 'previous'>('current');
+    const [selectedSalaryId, setSelectedSalaryId] = useState<number | null>(null);
+
+    // Get current salary from employee data
+    const currentSalary = employee.salaries && employee.salaries.length > 0 ? Number(employee.salaries[0].amount) : 0;
+
+    // Format currency helper
+    const formatCurrency = (amount: number) =>
+        new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(amount);
+
     const { data, setData, put, processing, errors, reset } = useForm({
+        salary_id: claim.salary_id || null,
         claim_type_id: String(claim.claim_type_id),
         claim_date: claim.claim_date,
         amount: String(claim.amount),
@@ -29,7 +40,13 @@ export function EditClaimDialog({ open, onClose, employee, claim, claimTypes }: 
 
     useEffect(() => {
         if (open) {
+            // Determine if claim is using current or previous salary
+            const isCurrentSalary = !claim.salary_id || claim.salary_id === employee.salaries?.[0]?.id;
+            setSalaryOption(isCurrentSalary ? 'current' : 'previous');
+            setSelectedSalaryId(claim.salary_id || null);
+
             setData({
+                salary_id: claim.salary_id || null,
                 claim_type_id: String(claim.claim_type_id),
                 claim_date: claim.claim_date,
                 amount: String(claim.amount),
@@ -38,6 +55,11 @@ export function EditClaimDialog({ open, onClose, employee, claim, claimTypes }: 
             });
         }
     }, [open, claim]);
+
+    const handleSalaryChange = (salaryId: number | null) => {
+        setSelectedSalaryId(salaryId);
+        setData('salary_id', salaryId);
+    };
 
     const claimTypeItems = claimTypes.map((t) => ({ value: String(t.id), label: t.name }));
 
@@ -59,6 +81,65 @@ export function EditClaimDialog({ open, onClose, employee, claim, claimTypes }: 
                 </DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <div className="grid gap-4 py-4">
+                        {/* Salary Selection */}
+                        <div className="rounded-md border p-4">
+                            <Label className="mb-3 block">Select Salary Basis</Label>
+                            <div className="space-y-3">
+                                <label htmlFor="edit-current-salary" className="flex cursor-pointer items-start space-x-3">
+                                    <input
+                                        type="radio"
+                                        id="edit-current-salary"
+                                        name="edit-salary-option"
+                                        value="current"
+                                        checked={salaryOption === 'current'}
+                                        onChange={() => {
+                                            setSalaryOption('current');
+                                            handleSalaryChange(null);
+                                        }}
+                                        className="mt-1"
+                                    />
+                                    <div className="flex-1">
+                                        <span className="font-medium">Current Salary</span>
+                                        <p className="text-muted-foreground mt-1 text-sm">
+                                            {currentSalary > 0 ? `Using current salary: ${formatCurrency(currentSalary)}` : 'No current salary found'}
+                                        </p>
+                                    </div>
+                                </label>
+                                <label htmlFor="edit-previous-salary" className="flex cursor-pointer items-start space-x-3">
+                                    <input
+                                        type="radio"
+                                        id="edit-previous-salary"
+                                        name="edit-salary-option"
+                                        value="previous"
+                                        checked={salaryOption === 'previous'}
+                                        onChange={() => setSalaryOption('previous')}
+                                        className="mt-1"
+                                    />
+                                    <div className="flex-1">
+                                        <span className="font-medium">Previous Salary</span>
+                                        <p className="text-muted-foreground mt-1 text-sm">Select from salary history</p>
+                                        {salaryOption === 'previous' && (
+                                            <div className="mt-2 max-w-xs">
+                                                <CustomComboBox
+                                                    items={
+                                                        employee.salaries
+                                                            ?.filter((s) => s.id !== employee.salaries?.[0]?.id)
+                                                            .map((s) => ({
+                                                                value: String(s.id),
+                                                                label: `${formatCurrency(Number(s.amount))} - Effective: ${new Date(s.effective_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+                                                            })) ?? []
+                                                    }
+                                                    placeholder="Select previous salary"
+                                                    value={selectedSalaryId ? String(selectedSalaryId) : null}
+                                                    onSelect={(value) => handleSalaryChange(value ? parseInt(value) : null)}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
                         <div className="grid gap-2">
                             <Label>Claim Type *</Label>
                             <CustomComboBox

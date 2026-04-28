@@ -160,7 +160,7 @@ export function EmployeeClaims({ employee, claims, claimTypes, availableYears, f
                                                 </span>
                                             </span>
                                         ) : (
-                                            '—'
+                                            <span className="text-slate-500">Current</span>
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right font-medium text-green-600">{formatCurrency(Number(claim.amount))}</TableCell>
