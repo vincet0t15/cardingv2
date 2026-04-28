@@ -2,18 +2,18 @@ import Heading from '@/components/heading';
 import Pagination from '@/components/paginationData';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { PaginatedDataResponse } from '@/types/pagination';
 import { Supplier } from '@/types/supplier';
 import { Head, Link, router } from '@inertiajs/react';
-import { PlusIcon, Search, Users, Edit, Trash2, Eye, Trash } from 'lucide-react';
+import { Edit, Eye, PlusIcon, Search, Trash, Users } from 'lucide-react';
 import { useState } from 'react';
 import { CreateSupplierDialog } from './create-dialog';
 import { DeleteSupplierDialog } from './delete-dialog';
 import { EditSupplierDialog } from './edit-dialog';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface Props {
     suppliers: PaginatedDataResponse<Supplier>;
@@ -66,7 +66,7 @@ export default function Suppliers({ suppliers, filters }: Props) {
                     <Card className="border-0 bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-lg">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium text-sky-50">Active (page)</CardTitle>
-                            <Users className="text-sky-100 h-4 w-4" />
+                            <Users className="h-4 w-4 text-sky-100" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-3xl font-bold">{formatNumber(activeCount)}</div>
@@ -77,7 +77,7 @@ export default function Suppliers({ suppliers, filters }: Props) {
                     <Card className="border-0 bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-lg">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium text-orange-50">Inactive (page)</CardTitle>
-                            <Users className="text-orange-100 h-4 w-4" />
+                            <Users className="h-4 w-4 text-orange-100" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-3xl font-bold">{formatNumber(inactiveCount)}</div>
@@ -88,10 +88,12 @@ export default function Suppliers({ suppliers, filters }: Props) {
                     <Card className="border-0 bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white shadow-lg">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium text-violet-50">This Page</CardTitle>
-                            <Users className="text-violet-100 h-4 w-4" />
+                            <Users className="h-4 w-4 text-violet-100" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold">{formatNumber(suppliers.data.length)} <span className="text-sm">/</span> {formatNumber(suppliers.per_page)}</div>
+                            <div className="text-3xl font-bold">
+                                {formatNumber(suppliers.data.length)} <span className="text-sm">/</span> {formatNumber(suppliers.per_page)}
+                            </div>
                             <p className="text-xs text-violet-50/80">Showing rows on this page</p>
                         </CardContent>
                     </Card>
@@ -101,7 +103,12 @@ export default function Suppliers({ suppliers, filters }: Props) {
                 <div className="rounded-lg border border-teal-200 bg-teal-50 p-4 text-teal-800 shadow-sm">
                     <div className="flex items-start gap-3">
                         <svg className="mt-0.5 h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
                         </svg>
                         <div className="text-sm">
                             <p className="mb-1 font-semibold">Quick Tip</p>
@@ -130,18 +137,20 @@ export default function Suppliers({ suppliers, filters }: Props) {
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <Button variant="ghost" onClick={() => setSearch('')}>Clear</Button>
+                            <Button variant="ghost" onClick={() => setSearch('')}>
+                                Clear
+                            </Button>
                         </div>
                     </div>
                 </div>
 
                 {/* Desktop table (hidden on small screens) */}
-                <div className="hidden lg:block w-full overflow-hidden rounded-lg border bg-white shadow">
+                <div className="hidden w-full overflow-hidden rounded-lg border bg-white shadow lg:block">
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
                                 <TableHead className="w-52">Supplier</TableHead>
-                                <TableHead>Owner</TableHead>
+
                                 <TableHead>Address</TableHead>
                                 <TableHead className="hidden md:table-cell">Contact</TableHead>
                                 <TableHead className="hidden lg:table-cell">Email</TableHead>
@@ -160,18 +169,19 @@ export default function Suppliers({ suppliers, filters }: Props) {
                                 suppliers.data.map((supplier) => (
                                     <TableRow key={supplier.id}>
                                         <TableCell className="flex items-center gap-3">
-                                            <div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center text-sm font-semibold text-slate-700">
+                                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700">
                                                 {supplier.name?.charAt(0).toUpperCase() || '-'}
                                             </div>
                                             <div>
-                                                <Link href={route('suppliers.transactions.show', supplier.id)} className="font-medium hover:underline">
+                                                <Link
+                                                    href={route('suppliers.transactions.show', supplier.id)}
+                                                    className="font-medium hover:underline"
+                                                >
                                                     {supplier.name}
                                                 </Link>
-                                                <div className="text-xs text-muted-foreground">{supplier.owner_name || ''}</div>
+                                                <div className="text-muted-foreground text-xs">{supplier.owner_name || ''}</div>
                                             </div>
                                         </TableCell>
-
-                                        <TableCell className="text-muted-foreground">{supplier.owner_name || '-'}</TableCell>
                                         <TableCell className="text-muted-foreground max-w-xs truncate">{supplier.address || '-'}</TableCell>
                                         <TableCell className="hidden md:table-cell">{supplier.contact_number || '-'}</TableCell>
                                         <TableCell className="hidden lg:table-cell">{supplier.email || '-'}</TableCell>
@@ -183,7 +193,11 @@ export default function Suppliers({ suppliers, filters }: Props) {
                                         </TableCell>
 
                                         <TableCell className="flex items-center justify-end gap-2">
-                                            <Button variant="ghost" size="sm" onClick={() => router.get(route('suppliers.transactions.show', supplier.id))}>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => router.get(route('suppliers.transactions.show', supplier.id))}
+                                            >
                                                 <Eye className="h-4 w-4 text-slate-600" />
                                             </Button>
                                             <Button variant="ghost" size="sm" onClick={() => setEditingSupplier(supplier)}>
@@ -201,24 +215,26 @@ export default function Suppliers({ suppliers, filters }: Props) {
                 </div>
 
                 {/* Mobile list (visible on small screens) */}
-                <div className="block lg:hidden w-full">
+                <div className="block w-full lg:hidden">
                     {suppliers.data.length === 0 ? (
-                        <div className="rounded-lg border bg-white p-6 text-center text-muted-foreground">No suppliers found. Click "Add Supplier" to create one.</div>
+                        <div className="text-muted-foreground rounded-lg border bg-white p-6 text-center">
+                            No suppliers found. Click "Add Supplier" to create one.
+                        </div>
                     ) : (
                         <div className="flex flex-col gap-3">
                             {suppliers.data.map((supplier) => (
                                 <div key={supplier.id} className="rounded-lg border bg-white p-4 shadow-sm">
                                     <div className="flex items-start gap-3">
-                                        <div className="h-10 w-10 flex-shrink-0 rounded-full bg-slate-100 flex items-center justify-center text-sm font-semibold text-slate-700">
+                                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700">
                                             {supplier.name?.charAt(0).toUpperCase() || '-'}
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center justify-between gap-2">
-                                                <div className="truncate font-medium text-sm">
+                                                <div className="truncate text-sm font-medium">
                                                     <Link href={route('suppliers.transactions.show', supplier.id)} className="hover:underline">
                                                         {supplier.name}
                                                     </Link>
-                                                    <div className="text-xs text-muted-foreground">{supplier.owner_name || ''}</div>
+                                                    <div className="text-muted-foreground text-xs">{supplier.owner_name || ''}</div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <Badge variant={supplier.is_active ? 'secondary' : 'destructive'} className="rounded-sm text-xs">
@@ -227,7 +243,7 @@ export default function Suppliers({ suppliers, filters }: Props) {
                                                 </div>
                                             </div>
 
-                                            <div className="mt-2 text-sm text-muted-foreground">
+                                            <div className="text-muted-foreground mt-2 text-sm">
                                                 <div className="truncate">{supplier.address || '-'}</div>
                                                 <div className="mt-1 flex items-center gap-3 text-xs">
                                                     <span className="hidden md:inline">{supplier.contact_number || '-'}</span>
@@ -236,7 +252,11 @@ export default function Suppliers({ suppliers, filters }: Props) {
                                             </div>
 
                                             <div className="mt-3 flex items-center gap-2">
-                                                <Button variant="ghost" size="sm" onClick={() => router.get(route('suppliers.transactions.show', supplier.id))}>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => router.get(route('suppliers.transactions.show', supplier.id))}
+                                                >
                                                     <Eye className="h-4 w-4 text-slate-600" />
                                                 </Button>
                                                 <Button variant="ghost" size="sm" onClick={() => setEditingSupplier(supplier)}>
