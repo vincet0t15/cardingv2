@@ -18,7 +18,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { AlertTriangle, Database, Download, RefreshCw, Trash2, Upload } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -138,6 +138,22 @@ export default function Backup({ backups, pagination, databaseName }: BackupProp
             return;
         }
 
+        // Validate file size (100MB = 104857600 bytes)
+        const maxSize = 104857600;
+        if (uploadForm.data.backup_file.size > maxSize) {
+            toast.error('File size exceeds 100MB limit');
+            return;
+        }
+
+        // Validate file type
+        const allowedExtensions = ['sql', 'gz', 'zip'];
+        const fileName = uploadForm.data.backup_file.name;
+        const fileExtension = fileName.split('.').pop()?.toLowerCase();
+        if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
+            toast.error('Invalid file type. Only .sql, .gz, and .zip files are allowed');
+            return;
+        }
+
         uploadForm.post(route('settings.backup.upload-restore'), {
             forceFormData: true,
             preserveScroll: true,
@@ -156,7 +172,12 @@ export default function Backup({ backups, pagination, databaseName }: BackupProp
             },
             onError: (errors) => {
                 console.error('Upload restore errors:', errors);
-                toast.error('Failed to restore from uploaded file. Please check the logs.');
+                // Handle validation errors from server
+                if (errors.backup_file) {
+                    toast.error(`File validation error: ${errors.backup_file}`);
+                } else {
+                    toast.error('Failed to restore from uploaded file. Please check the logs.');
+                }
             },
         });
     };

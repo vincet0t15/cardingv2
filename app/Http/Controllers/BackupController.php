@@ -39,7 +39,7 @@ class BackupController extends Controller
             ];
 
             foreach ($possiblePaths as $path) {
-                $mysqldump = $path.'\mysqldump.exe';
+                $mysqldump = $path . '\mysqldump.exe';
                 if (File::exists($mysqldump)) {
                     return $path;
                 }
@@ -102,7 +102,7 @@ class BackupController extends Controller
                 copy($sqlitePath, $backupPath);
                 $fileSize = File::size($backupPath);
 
-                return back()->with('success', 'Backup created successfully! ('.$this->formatFileSize($fileSize).')');
+                return back()->with('success', 'Backup created successfully! (' . $this->formatFileSize($fileSize) . ')');
             }
 
             if (! in_array($connection, ['mysql', 'mariadb'])) {
@@ -116,13 +116,13 @@ class BackupController extends Controller
                         throw new \Exception('mysqldump not found in common Windows locations');
                     }
 
-                    $mysqldump = $mysqlPath.DIRECTORY_SEPARATOR.'mysqldump.exe';
+                    $mysqldump = $mysqlPath . DIRECTORY_SEPARATOR . 'mysqldump.exe';
                 } else {
                     $mysqldump = '/usr/bin/mysqldump';
                 }
 
                 if (! File::exists($mysqldump)) {
-                    throw new \Exception('mysqldump not found at: '.$mysqldump);
+                    throw new \Exception('mysqldump not found at: ' . $mysqldump);
                 }
 
                 Log::info('Backup create: preparing mysqldump', [
@@ -136,13 +136,13 @@ class BackupController extends Controller
 
                 $command = [
                     $mysqldump,
-                    '-h'.$dbConfig['host'],
-                    '-P'.$dbConfig['port'],
-                    '-u'.$dbConfig['username'],
+                    '-h' . $dbConfig['host'],
+                    '-P' . $dbConfig['port'],
+                    '-u' . $dbConfig['username'],
                 ];
 
                 if (! empty($dbConfig['password'])) {
-                    $command[] = '-p'.$dbConfig['password'];
+                    $command[] = '-p' . $dbConfig['password'];
                 }
 
                 $command = array_merge($command, [
@@ -158,7 +158,7 @@ class BackupController extends Controller
                 \exec($escapedCommand, $output, $returnCode);
 
                 if ($returnCode !== 0) {
-                    throw new \Exception('mysqldump failed with code: '.$returnCode.' Output: '.implode("\n", $output));
+                    throw new \Exception('mysqldump failed with code: ' . $returnCode . ' Output: ' . implode("\n", $output));
                 }
             } else {
                 $this->dumpDatabaseManually($backupPath);
@@ -174,9 +174,9 @@ class BackupController extends Controller
                 throw new \Exception('Backup file is empty - check database credentials');
             }
 
-            return back()->with('success', 'Backup created successfully! ('.$this->formatFileSize($fileSize).')');
+            return back()->with('success', 'Backup created successfully! (' . $this->formatFileSize($fileSize) . ')');
         } catch (\Exception $e) {
-            Log::error('Backup failed: '.$e->getMessage());
+            Log::error('Backup failed: ' . $e->getMessage());
 
             return back()->with('error', $e->getMessage());
         }
@@ -211,12 +211,12 @@ class BackupController extends Controller
     public function uploadRestore(Request $request)
     {
         $request->validate([
-            'backup_file' => 'required|file|max:204800',
+            'backup_file' => 'required|file|max:102400|mimes:sql,gz,zip',
         ]);
 
         try {
             $file = $request->file('backup_file');
-            $fileName = time().'_'.$file->getClientOriginalName();
+            $fileName = time() . '_' . $file->getClientOriginalName();
 
             $path = storage_path("app/temp/{$fileName}");
             File::ensureDirectoryExists(storage_path('app/temp'));
@@ -260,13 +260,13 @@ class BackupController extends Controller
                     throw new \Exception('mysql not found in common Windows locations');
                 }
 
-                $mysql = $mysqlPath.DIRECTORY_SEPARATOR.'mysql.exe';
+                $mysql = $mysqlPath . DIRECTORY_SEPARATOR . 'mysql.exe';
             } else {
                 $mysql = '/usr/bin/mysql';
             }
 
             if (! File::exists($mysql)) {
-                throw new \Exception('mysql not found at: '.$mysql);
+                throw new \Exception('mysql not found at: ' . $mysql);
             }
 
             Log::info('Backup restore: preparing mysql import', [
@@ -280,18 +280,18 @@ class BackupController extends Controller
 
             $command = [
                 $mysql,
-                '-h'.$dbConfig['host'],
-                '-P'.$dbConfig['port'],
-                '-u'.$dbConfig['username'],
+                '-h' . $dbConfig['host'],
+                '-P' . $dbConfig['port'],
+                '-u' . $dbConfig['username'],
             ];
 
             if (! empty($dbConfig['password'])) {
-                $command[] = '-p'.$dbConfig['password'];
+                $command[] = '-p' . $dbConfig['password'];
             }
 
             $command[] = $dbConfig['database'];
 
-            $shellCommand = implode(' ', array_map('escapeshellarg', $command)).' < '.escapeshellarg($filePath);
+            $shellCommand = implode(' ', array_map('escapeshellarg', $command)) . ' < ' . escapeshellarg($filePath);
             Log::info('Backup restore: executing command', ['command' => $shellCommand]);
 
             $output = [];
@@ -304,7 +304,7 @@ class BackupController extends Controller
             ]);
 
             if ($returnCode !== 0) {
-                throw new \Exception('mysql restore failed with code: '.$returnCode.' Output: '.implode("\n", $output));
+                throw new \Exception('mysql restore failed with code: ' . $returnCode . ' Output: ' . implode("\n", $output));
             }
         } else {
             $this->restoreDatabaseManually($filePath);
@@ -359,7 +359,7 @@ class BackupController extends Controller
         $pdo = DB::connection()->getPdo();
         $tables = $pdo->query('SHOW TABLES')->fetchAll(\PDO::FETCH_COLUMN);
 
-        $sql = "-- Carding backup generated on ".now()->toDateTimeString()."\n";
+        $sql = "-- Carding backup generated on " . now()->toDateTimeString() . "\n";
         $sql .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
 
         foreach ($tables as $table) {
@@ -372,7 +372,7 @@ class BackupController extends Controller
             }
 
             $sql .= $tableSql;
-            $sql .= $createSql.";\n\n";
+            $sql .= $createSql . ";\n\n";
 
             $rows = $pdo->query("SELECT * FROM `{$table}`")->fetchAll(\PDO::FETCH_ASSOC);
             if (empty($rows)) {
@@ -380,11 +380,11 @@ class BackupController extends Controller
             }
 
             $columns = array_keys($rows[0]);
-            $columnList = implode(', ', array_map(fn ($column) => '`'.$column.'`', $columns));
+            $columnList = implode(', ', array_map(fn($column) => '`' . $column . '`', $columns));
 
             foreach ($rows as $row) {
                 $values = array_map([$this, 'quoteSqlValue'], array_values($row));
-                $sql .= "INSERT INTO `{$table}` ({$columnList}) VALUES (".implode(', ', $values).");\n";
+                $sql .= "INSERT INTO `{$table}` ({$columnList}) VALUES (" . implode(', ', $values) . ");\n";
             }
 
             $sql .= "\n";
@@ -467,6 +467,6 @@ class BackupController extends Controller
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
         $i = floor(log($bytes, 1024));
 
-        return round($bytes / pow(1024, $i), 2).' '.$units[$i];
+        return round($bytes / pow(1024, $i), 2) . ' ' . $units[$i];
     }
 }
