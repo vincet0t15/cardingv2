@@ -113,6 +113,16 @@ export default function RolesIndex({ roles, permissions }: RolesIndexProps) {
         return selectedCount > 0 && selectedCount < perms.length;
     };
 
+    const CATEGORY_LABELS: Record<string, string> = {
+        claims: 'Employee Claims',
+        adjustments: 'Employee Adjustments',
+        'employee-deductions': 'Employee Deductions',
+    };
+
+    const getCategoryLabel = (category: string) => {
+        return CATEGORY_LABELS[category] ?? category.replace(/_/g, ' ');
+    };
+
     const groupedPermissions = permissions.reduce(
         (acc, permission) => {
             const category = permission.split('.')[0] || 'other';
@@ -221,7 +231,7 @@ export default function RolesIndex({ roles, permissions }: RolesIndexProps) {
                                     {Object.entries(groupedPermissions).map(([category, perms]) => (
                                         <div key={category}>
                                             <div className="mb-2 flex items-center justify-between">
-                                                <h4 className="text-sm font-semibold capitalize">{category.replace(/_/g, ' ')}</h4>
+                                                <h4 className="text-sm font-semibold">{getCategoryLabel(category)}</h4>
                                                 <div className="flex items-center space-x-2">
                                                     <Checkbox
                                                         id={`select-all-${category}`}
@@ -284,7 +294,7 @@ export default function RolesIndex({ roles, permissions }: RolesIndexProps) {
                                     {Object.entries(groupedPermissions).map(([category, perms]) => (
                                         <div key={category}>
                                             <div className="mb-2 flex items-center justify-between">
-                                                <h4 className="text-sm font-semibold capitalize">{category.replace(/_/g, ' ')}</h4>
+                                                <h4 className="text-sm font-semibold">{getCategoryLabel(category)}</h4>
                                                 <div className="flex items-center space-x-2">
                                                     <Checkbox
                                                         id={`edit-select-all-${category}`}

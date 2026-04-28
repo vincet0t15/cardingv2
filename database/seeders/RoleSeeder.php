@@ -191,11 +191,68 @@ class RoleSeeder extends Seeder
         $superAdminRole = Role::firstOrCreate(['name' => 'super admin', 'guard_name' => 'web']);
         $superAdminRole->syncPermissions(Permission::all());
 
-        // Ensure HR and Finance roles exist (some seeders reference them)
+        // HR role with specific permissions
         $hrRole = Role::firstOrCreate(['name' => 'hr', 'guard_name' => 'web']);
-        $financeRole = Role::firstOrCreate(['name' => 'finance', 'guard_name' => 'web']);
+        $hrPermissions = [
+            'employees.view',
+            'employees.edit',
+            'employees.manage',
+            'claims.view',
+            'claims.create',
+            'claims.edit',
+            'claims.delete',
+            'claims.manage',
+            'adjustments.view',
+            'adjustments.create',
+            'adjustments.edit',
+            'adjustments.approve',
+            'adjustments.reject',
+            'adjustments.process',
+            'adjustments.manage',
+            'deductions.view',
+            'deductions.create',
+            'deductions.edit',
+            'deductions.manage',
+            'payroll.view',
+            'payroll.manage',
+        ];
+        $hrRole->syncPermissions($hrPermissions);
 
-        // Employee role - can view and create adjustments
+        // Finance role with specific permissions
+        $financeRole = Role::firstOrCreate(['name' => 'finance', 'guard_name' => 'web']);
+        $financePermissions = [
+            'employees.view',
+            'employees.manage',
+            'adjustments.view',
+            'adjustments.create',
+            'adjustments.edit',
+            'adjustments.approve',
+            'adjustments.reject',
+            'adjustments.process',
+            'adjustments.manage',
+            'claims.view',
+            'claims.create',
+            'claims.edit',
+            'claims.delete',
+            'claims.manage',
+            'deductions.view',
+            'deductions.manage',
+            'payroll.view',
+            'payroll.export',
+            'payroll.manage',
+            'suppliers.view',
+            'suppliers.manage',
+        ];
+        $financeRole->syncPermissions($financePermissions);
+
+        // Employee role with basic permissions
         $employeeRole = Role::firstOrCreate(['name' => 'employee', 'guard_name' => 'web']);
+        $employeePermissions = [
+            'adjustments.view',
+            'adjustments.create',
+            'claims.view',
+            'claims.create',
+        ];
+        $employeeRole->syncPermissions($employeePermissions);
     }
 }

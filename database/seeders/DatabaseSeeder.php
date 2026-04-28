@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
         $this->call(\Database\Seeders\DeleteRequestPermissionSeeder::class);
         $this->call(\Database\Seeders\DeductionCategoryPermissionSeeder::class);
         $this->call(\Database\Seeders\AssignDeductionPermissionsSeeder::class);
+        $this->call(\Database\Seeders\AdjustmentRolePermissionSeeder::class);
 
         $password = env('ADMIN_DEFAULT_PASSWORD', '@dm1nv1nc3');
         $adminUser = User::updateOrCreate(

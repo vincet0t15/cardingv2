@@ -79,6 +79,16 @@ export default function PermissionsIndex({ permissions }: PermissionsIndexProps)
         });
     };
 
+    const CATEGORY_LABELS: Record<string, string> = {
+        claims: 'Employee Claims',
+        adjustments: 'Employee Adjustments',
+        'employee-deductions': 'Employee Deductions',
+    };
+
+    const getCategoryLabel = (category: string) => {
+        return CATEGORY_LABELS[category] ?? category.replace(/_/g, ' ');
+    };
+
     const groupedPermissions = permissions.reduce(
         (acc, permission) => {
             const category = permission.name.split('.')[0] || 'other';
@@ -105,7 +115,7 @@ export default function PermissionsIndex({ permissions }: PermissionsIndexProps)
                 {/* Permissions Table by Category */}
                 {Object.entries(groupedPermissions).map(([category, perms]) => (
                     <div key={category} className="space-y-3">
-                        <h3 className="text-lg font-semibold capitalize">{category.replace(/_/g, ' ')}</h3>
+                        <h3 className="text-lg font-semibold">{getCategoryLabel(category)}</h3>
                         <div className="rounded-md border">
                             <Table>
                                 <TableHeader>

@@ -57,10 +57,15 @@ class AdjustmentPolicy
 
     /**
      * Determine whether the user can delete the model.
+     *
+     * Note: We allow the delete action to reach the controller, where it will be
+     * handled by the HandlesDeletionRequests trait. If the user doesn't have the
+     * 'adjustments.delete' permission, a deletion request will be created instead.
      */
     public function delete(User $user, Adjustment $adjustment): bool
     {
-        return $user->can('adjustments.delete') &&
-            in_array($adjustment->status, ['pending', 'rejected']);
+        // Allow deletion if status is pending or rejected
+        // The actual permission check is handled in the destroy method
+        return in_array($adjustment->status, ['pending', 'rejected']);
     }
 }

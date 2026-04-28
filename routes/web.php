@@ -200,6 +200,11 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
     // Delete all deductions for a specific pay period (month + year)
     Route::delete('manage/employees/{employee}/deductions', [ManageEmployeeController::class, 'destroyDeductionsForPeriod'])->name('manage.employees.deductions.destroyPeriod');
 
+    // ADJUSTMENTS in Manage Employee
+    Route::middleware(['permission:adjustments.create'])->post('manage/employees/{employee}/adjustments', [AdjustmentController::class, 'store'])->name('manage.employees.adjustments.store');
+    Route::middleware(['permission:adjustments.edit'])->put('manage/employees/{employee}/adjustments/{adjustment}', [AdjustmentController::class, 'update'])->name('manage.employees.adjustments.update');
+    Route::middleware(['permission:adjustments.delete'])->delete('manage/employees/{employee}/adjustments/{adjustment}', [AdjustmentController::class, 'destroy'])->name('manage.employees.adjustments.destroy');
+
     // CLAIMS - View
     Route::middleware(['permission:claims.view'])->get('manage/employees/{employee}/claims', [ClaimController::class, 'index'])->name('manage.employees.claims.index');
     // CLAIMS - Create

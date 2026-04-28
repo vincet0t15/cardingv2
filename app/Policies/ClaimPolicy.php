@@ -29,7 +29,9 @@ class ClaimPolicy
 
     public function delete(User $user, Claim $claim): bool
     {
-        return $user->can('claims.delete');
+        // Allow deletion to reach the controller
+        // The actual permission check is handled in the destroy method with HandlesDeletionRequests trait
+        return true;
     }
 
     public function restore(User $user, Claim $claim): bool
