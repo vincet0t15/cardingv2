@@ -1,3 +1,5 @@
+import { DeleteRequestApproveDialog } from '@/components/DeleteRequestApproveDialog';
+import { DeleteRequestRejectDialog } from '@/components/DeleteRequestRejectDialog';
 import Heading from '@/components/heading';
 import Pagination from '@/components/paginationData';
 import { Badge } from '@/components/ui/badge';
@@ -50,9 +52,10 @@ interface DeleteRequestsIndexProps {
 }
 
 export default function DeleteRequestsIndex({ deleteRequests, filters }: DeleteRequestsIndexProps) {
-    const [selectedRequest, setSelectedRequest] = useState<DeleteRequest | null>(null);
-    const [showRejectModal, setShowRejectModal] = useState(false);
-    const [rejectReason, setRejectReason] = useState('');
+    const [selectedApproveRequest, setSelectedApproveRequest] = useState<DeleteRequest | null>(null);
+    const [selectedRejectRequest, setSelectedRejectRequest] = useState<DeleteRequest | null>(null);
+    const [isApproving, setIsApproving] = useState(false);
+    const [isRejecting, setIsRejecting] = useState(false);
     const currentTab = filters.status || 'all';
 
     const handleTabChange = (tab: string) => {
@@ -64,30 +67,39 @@ export default function DeleteRequestsIndex({ deleteRequests, filters }: DeleteR
     };
 
     const handleApprove = (id: number) => {
-        if (!confirm('Are you sure you want to approve this delete request? The item will be permanently deleted.')) return;
-
+        setIsApproving(true);
         router.post(
             `/delete-requests/${id}/approve`,
             {},
             {
-                onSuccess: () => toast.success('Delete request approved successfully'),
-                onError: () => toast.error('Failed to approve delete request'),
+                onSuccess: () => {
+                    toast.success('Delete request approved successfully');
+                    setSelectedApproveRequest(null);
+                    setIsApproving(false);
+                },
+                onError: () => {
+                    toast.error('Failed to approve delete request');
+                    setIsApproving(false);
+                },
             },
         );
     };
 
-    const handleReject = (id: number) => {
+    const handleReject = (id: number, reason: string) => {
+        setIsRejecting(true);
         router.post(
             `/delete-requests/${id}/reject`,
-            { reason: rejectReason },
+            { reason },
             {
                 onSuccess: () => {
                     toast.success('Delete request rejected');
-                    setShowRejectModal(false);
-                    setRejectReason('');
-                    setSelectedRequest(null);
+                    setSelectedRejectRequest(null);
+                    setIsRejecting(false);
                 },
-                onError: () => toast.error('Failed to reject delete request'),
+                onError: () => {
+                    toast.error('Failed to reject delete request');
+                    setIsRejecting(false);
+                },
             },
         );
     };
@@ -165,7 +177,7 @@ export default function DeleteRequestsIndex({ deleteRequests, filters }: DeleteR
                                                             <Button
                                                                 size="sm"
                                                                 variant="ghost"
-                                                                onClick={() => handleApprove(request.id)}
+                                                                onClick={() => setSelectedApproveRequest(request)}
                                                                 className="h-8 text-green-600 hover:text-green-700"
                                                             >
                                                                 <CheckCircle className="h-4 w-4" />
@@ -173,10 +185,7 @@ export default function DeleteRequestsIndex({ deleteRequests, filters }: DeleteR
                                                             <Button
                                                                 size="sm"
                                                                 variant="ghost"
-                                                                onClick={() => {
-                                                                    setSelectedRequest(request);
-                                                                    setShowRejectModal(true);
-                                                                }}
+                                                                onClick={() => setSelectedRejectRequest(request)}
                                                                 className="h-8 text-red-600 hover:text-red-700"
                                                             >
                                                                 <XCircle className="h-4 w-4" />
@@ -195,43 +204,24 @@ export default function DeleteRequestsIndex({ deleteRequests, filters }: DeleteR
                     </TabsContent>
                 </Tabs>
             </div>
-            {/* Reject Modal */}
-            {showRejectModal && selectedRequest && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
-                        <h3 className="mb-4 text-lg font-semibold">Reject Delete Request</h3>
-                        <p className="text-muted-foreground mb-4">
-                            Are you sure you want to reject this delete request for {getModelName(selectedRequest.requestable_type)} (ID:{' '}
-                            {selectedRequest.requestable_id})?
-                        </p>
-                        <div className="mb-4">
-                            <label className="text-sm font-medium">Reason (optional)</label>
-                            <textarea
-                                value={rejectReason}
-                                onChange={(e) => setRejectReason(e.target.value)}
-                                className="mt-1 w-full rounded-md border p-2"
-                                rows={3}
-                                placeholder="Enter reason for rejection..."
-                            />
-                        </div>
-                        <div className="flex justify-end gap-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => {
-                                    setShowRejectModal(false);
-                                    setSelectedRequest(null);
-                                    setRejectReason('');
-                                }}
-                            >
-                                Cancel
-                            </Button>
-                            <Button variant="destructive" onClick={() => handleReject(selectedRequest.id)}>
-                                Reject Request
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
+
+            {/* Approve Dialog */}
+            <DeleteRequestApproveDialog
+                isOpen={selectedApproveRequest !== null}
+                request={selectedApproveRequest}
+                onClose={() => setSelectedApproveRequest(null)}
+                onConfirm={handleApprove}
+                isLoading={isApproving}
+            />
+
+            {/* Reject Dialog */}
+            <DeleteRequestRejectDialog
+                isOpen={selectedRejectRequest !== null}
+                request={selectedRejectRequest}
+                onClose={() => setSelectedRejectRequest(null)}
+                onConfirm={handleReject}
+                isLoading={isRejecting}
+            />
         </AppLayout>
     );
 }
