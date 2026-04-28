@@ -129,7 +129,6 @@ export default function DeleteRequestsIndex({ deleteRequests, filters }: DeleteR
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>ID</TableHead>
                                         <TableHead>Type</TableHead>
                                         <TableHead>Item ID</TableHead>
                                         <TableHead>Requested By</TableHead>
@@ -149,7 +148,6 @@ export default function DeleteRequestsIndex({ deleteRequests, filters }: DeleteR
                                     ) : (
                                         deleteRequests.data.map((request) => (
                                             <TableRow key={request.id}>
-                                                <TableCell className="font-medium">#{request.id}</TableCell>
                                                 <TableCell>{getModelName(request.requestable_type)}</TableCell>
                                                 <TableCell>{request.requestable_id}</TableCell>
                                                 <TableCell>{request.requestedBy?.name ?? 'Unknown'}</TableCell>
