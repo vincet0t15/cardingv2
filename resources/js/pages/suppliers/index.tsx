@@ -9,7 +9,7 @@ import AppLayout from '@/layouts/app-layout';
 import { PaginatedDataResponse } from '@/types/pagination';
 import { Supplier } from '@/types/supplier';
 import { Head, Link, router } from '@inertiajs/react';
-import { Edit, Eye, PlusIcon, Search, Trash, Users } from 'lucide-react';
+import { Edit, Eye, Pencil, PlusIcon, Search, Trash, Users } from 'lucide-react';
 import { useState } from 'react';
 import { CreateSupplierDialog } from './create-dialog';
 import { DeleteSupplierDialog } from './delete-dialog';
@@ -155,7 +155,7 @@ export default function Suppliers({ suppliers, filters }: Props) {
                                 <TableHead className="hidden md:table-cell">Contact</TableHead>
                                 <TableHead className="hidden lg:table-cell">Email</TableHead>
                                 <TableHead>Status</TableHead>
-                                <TableHead className="w-36">Actions</TableHead>
+                                <TableHead className="w-36 text-center">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -187,12 +187,12 @@ export default function Suppliers({ suppliers, filters }: Props) {
                                         <TableCell className="hidden lg:table-cell">{supplier.email || '-'}</TableCell>
 
                                         <TableCell>
-                                            <Badge variant={supplier.is_active ? 'secondary' : 'destructive'} className="rounded-sm">
+                                            <Badge variant={supplier.is_active ? 'default' : 'destructive'} className="rounded-sm">
                                                 {supplier.is_active ? 'Active' : 'Inactive'}
                                             </Badge>
                                         </TableCell>
 
-                                        <TableCell className="flex items-center justify-end gap-2">
+                                        <TableCell className="flex items-center justify-end">
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -201,7 +201,7 @@ export default function Suppliers({ suppliers, filters }: Props) {
                                                 <Eye className="h-4 w-4 text-slate-600" />
                                             </Button>
                                             <Button variant="ghost" size="sm" onClick={() => setEditingSupplier(supplier)}>
-                                                <Edit className="h-4 w-4 text-teal-600" />
+                                                <Pencil className="h-4 w-4 text-teal-600" />
                                             </Button>
                                             <Button variant="ghost" size="sm" onClick={() => setDeletingSupplier(supplier)}>
                                                 <Trash className="h-4 w-4 text-orange-600" />

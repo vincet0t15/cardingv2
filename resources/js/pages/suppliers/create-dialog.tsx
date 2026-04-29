@@ -49,7 +49,7 @@ export function CreateSupplierDialog({ open, onClose }: CreateSupplierDialogProp
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="min-w-lg bg-white">
                 <DialogHeader>
                     <DialogTitle>Add Supplier</DialogTitle>
                     <DialogDescription>Enter the supplier details below.</DialogDescription>
@@ -137,7 +137,7 @@ export function CreateSupplierDialog({ open, onClose }: CreateSupplierDialogProp
                         <Button type="button" variant="outline" onClick={onClose}>
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={processing}>
+                        <Button type="submit" disabled={processing} variant={'default'}>
                             Save Supplier
                         </Button>
                     </div>

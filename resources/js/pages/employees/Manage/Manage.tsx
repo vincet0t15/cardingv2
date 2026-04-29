@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
 import { Separator } from '@/components/ui/separator';
@@ -124,17 +124,6 @@ export default function EmployeeManagePage({
             setActiveTab(tabParam);
         }
     }, [url]);
-
-    // Update URL when tab changes
-    const handleTabChange = (value: string) => {
-        setActiveTab(value);
-        const url = new URL(window.location.href);
-        url.searchParams.set('tab', value);
-        if (value !== 'compensation') {
-            url.searchParams.delete('comp_tab');
-        }
-        window.history.replaceState({}, '', url.toString());
-    };
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Employees', href: '/employees' },
         { title: `${employee.last_name}, ${employee.first_name}`, href: `/manage/employees/${employee.id}` },
@@ -241,29 +230,43 @@ export default function EmployeeManagePage({
                 <Separator className="bg-slate-200/60" />
 
                 {/* --- TABS SECTION --- */}
-                <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+                <Tabs value={activeTab} className="space-y-6">
                     <div className="flex items-center justify-between overflow-x-auto pb-1">
                         <TabsList>
-                            <TabsTrigger value="overview">
-                                <LayoutDashboard className="h-4 w-4" /> Overview
+                            <TabsTrigger asChild value="overview">
+                                <Link href={route('manage.employees.index', { employee: employee.id, tab: 'overview' })}>
+                                    <LayoutDashboard className="h-4 w-4" /> Overview
+                                </Link>
                             </TabsTrigger>
-                            <TabsTrigger value="compensation">
-                                <CoinsIcon className="h-4 w-4" /> Compensation
+                            <TabsTrigger asChild value="compensation">
+                                <Link href={route('manage.employees.index', { employee: employee.id, tab: 'compensation' })}>
+                                    <CoinsIcon className="h-4 w-4" /> Compensation
+                                </Link>
                             </TabsTrigger>
-                            <TabsTrigger value="deductions">
-                                <TrendingDown className="h-4 w-4" /> Deductions
+                            <TabsTrigger asChild value="deductions">
+                                <Link href={route('manage.employees.index', { employee: employee.id, tab: 'deductions' })}>
+                                    <TrendingDown className="h-4 w-4" /> Deductions
+                                </Link>
                             </TabsTrigger>
-                            <TabsTrigger value="claims">
-                                <Receipt className="h-4 w-4" /> Claims
+                            <TabsTrigger asChild value="claims">
+                                <Link href={route('manage.employees.index', { employee: employee.id, tab: 'claims' })}>
+                                    <Receipt className="h-4 w-4" /> Claims
+                                </Link>
                             </TabsTrigger>
-                            <TabsTrigger value="adjustments">
-                                <RefreshCcw className="h-4 w-4" /> Adjustments
+                            <TabsTrigger asChild value="adjustments">
+                                <Link href={route('manage.employees.index', { employee: employee.id, tab: 'adjustments' })}>
+                                    <RefreshCcw className="h-4 w-4" /> Adjustments
+                                </Link>
                             </TabsTrigger>
-                            <TabsTrigger value="reports">
-                                <FileText className="h-4 w-4" /> Reports
+                            <TabsTrigger asChild value="reports">
+                                <Link href={route('manage.employees.index', { employee: employee.id, tab: 'reports' })}>
+                                    <FileText className="h-4 w-4" /> Reports
+                                </Link>
                             </TabsTrigger>
-                            <TabsTrigger value="settings">
-                                <Settings className="h-4 w-4" /> Settings
+                            <TabsTrigger asChild value="settings">
+                                <Link href={route('manage.employees.index', { employee: employee.id, tab: 'settings' })}>
+                                    <Settings className="h-4 w-4" /> Settings
+                                </Link>
                             </TabsTrigger>
                         </TabsList>
                     </div>
