@@ -104,15 +104,12 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
         setDeleteDialogOpen(true);
     };
 
+    const getTypeName = (type: string | AdjustmentType): string => {
+        return typeof type === 'string' ? type : type.name;
+    };
+
     const getTypeBadge = (adjustment: Adjustment) => {
-        let typeName: string = '—';
-        if (adjustment.adjustment_type) {
-            if (typeof adjustment.adjustment_type === 'object' && 'name' in adjustment.adjustment_type) {
-                typeName = String(adjustment.adjustment_type.name);
-            } else if (typeof adjustment.adjustment_type === 'string') {
-                typeName = adjustment.adjustment_type;
-            }
-        }
+        const typeName = getTypeName(adjustment.adjustment_type);
         const isPositive = ['Salary Refund', 'Underpayment', 'Overtime Adjustment', 'Deduction Refund', 'Holiday Pay Adjustment'].includes(typeName);
 
         if (isPositive) {
@@ -177,10 +174,10 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
                                 <TableHead className="text-xs font-medium tracking-wider text-slate-500 uppercase">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
-                        <TableBody>
+                        <TableBody className="bg-white">
                             {filteredAdjustments.map((adjustment) => (
                                 <TableRow key={adjustment.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                    <TableCell>{getTypeBadge(adjustment)}</TableCell>
+                                    <TableCell>{getTypeName(adjustment.adjustment_type)}</TableCell>
                                     <TableCell className="text-right">
                                         <span
                                             className={`font-semibold ${
