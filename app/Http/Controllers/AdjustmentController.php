@@ -87,7 +87,7 @@ class AdjustmentController extends Controller
     {
         $this->authorize('create', Adjustment::class);
 
-        $employees = Employee::with(['office', 'employmentStatus'])
+        $employees = Employee::with(['office', 'employmentStatus', 'latestSalary', 'latestHazardPay', 'latestClothingAllowance'])
             ->orderBy('last_name')
             ->get();
 
@@ -140,11 +140,11 @@ class AdjustmentController extends Controller
             'status' => Adjustment::STATUS_PENDING,
         ]);
 
-        // Always redirect to the manage employee page after creating an adjustment
+        // Always redirect to the manage employee page on the adjustments tab after creating an adjustment
         $employeeId = $request->employee_id;
 
         return redirect()
-            ->route('manage.employees.index', $employeeId)
+            ->route('manage.employees.index', ['employee' => $employeeId, 'tab' => 'adjustments'])
             ->with('success', 'Adjustment created successfully and pending approval.');
     }
 
@@ -169,7 +169,7 @@ class AdjustmentController extends Controller
     {
         $this->authorize('update', $adjustment);
 
-        $employees = Employee::with(['office', 'employmentStatus'])
+        $employees = Employee::with(['office', 'employmentStatus', 'latestSalary', 'latestHazardPay', 'latestClothingAllowance'])
             ->orderBy('last_name')
             ->get();
 

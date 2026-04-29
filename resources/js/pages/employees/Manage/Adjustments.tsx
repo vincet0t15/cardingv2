@@ -1,7 +1,6 @@
 import { CustomComboBox } from '@/components/CustomComboBox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Employee } from '@/types/employee';
 import { Link, router } from '@inertiajs/react';
@@ -132,7 +131,7 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
                         Manage refunds, corrections, and biometric adjustments for this employee
                     </p>
                 </div>
-                <Button asChild className="bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md hover:shadow-lg">
+                <Button asChild variant={'default'}>
                     <Link href={route('adjustments.create', { employee_id: employee.id, tab: 'adjustments' })}>
                         <Plus className="mr-2 h-4 w-4" />
                         New Adjustment
@@ -141,30 +140,27 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
             </div>
 
             {/* Filters */}
-            <Card>
-                <CardContent className="p-4">
-                    <div className="flex flex-wrap items-center gap-3">
-                        <CustomComboBox
-                            items={FULL_MONTHS.map((month, index) => ({ value: String(index + 1), label: month }))}
-                            placeholder="All Months"
-                            value={filterMonth}
-                            onSelect={(value) => setFilterMonth(value)}
-                        />
-                        <CustomComboBox
-                            items={availableYears.map((year) => ({ value: String(year), label: String(year) }))}
-                            placeholder="All Years"
-                            value={filterYear}
-                            onSelect={(value) => setFilterYear(value)}
-                        />
-                        {hasActiveFilters && (
-                            <Button variant="ghost" onClick={clearFilters}>
-                                <X className="mr-1 h-4 w-4" />
-                                Clear Filters
-                            </Button>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
+
+            <div className="flex flex-wrap items-center gap-3">
+                <CustomComboBox
+                    items={FULL_MONTHS.map((month, index) => ({ value: String(index + 1), label: month }))}
+                    placeholder="All Months"
+                    value={filterMonth}
+                    onSelect={(value) => setFilterMonth(value)}
+                />
+                <CustomComboBox
+                    items={availableYears.map((year) => ({ value: String(year), label: String(year) }))}
+                    placeholder="All Years"
+                    value={filterYear}
+                    onSelect={(value) => setFilterYear(value)}
+                />
+                {hasActiveFilters && (
+                    <Button variant="ghost" onClick={clearFilters}>
+                        <X className="mr-1 h-4 w-4" />
+                        Clear Filters
+                    </Button>
+                )}
+            </div>
 
             {/* Adjustments Table */}
             <div className="rounded-md border">

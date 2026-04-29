@@ -168,7 +168,7 @@ export default function EmployeeManagePage({
                 </Button>
 
                 {/* --- PROFESSIONAL HEADER SECTION --- */}
-                <header className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50 p-6 dark:border-blue-800 dark:from-blue-900/10 dark:to-purple-900/10">
+                <header className="rounded-md border border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50 p-6 dark:border-blue-800 dark:from-blue-900/10 dark:to-purple-900/10">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
                         <Avatar className="h-24 w-24 border-4 border-white shadow-lg dark:border-gray-800">
                             {employee.image_path ? (
