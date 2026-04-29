@@ -682,6 +682,37 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                                             );
                                         })}
                                     </div>
+
+                                    {period.adjustments.length > 0 && (
+                                        <div className="overflow-hidden rounded-sm border bg-white shadow-sm">
+                                            <div className="bg-muted/30 border-b px-4 py-3 text-sm font-semibold">Adjustments for period</div>
+                                            <Table className="rounded-none">
+                                                <TableHeader>
+                                                    <TableRow className="bg-muted/50">
+                                                        <TableHead className="font-semibold">Type</TableHead>
+                                                        <TableHead className="font-semibold">Reason</TableHead>
+                                                        <TableHead className="text-right font-semibold">Amount</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {period.adjustments.map((adjustment: any) => (
+                                                        <TableRow key={adjustment.id}>
+                                                            <TableCell className="uppercase">{getAdjustmentTypeName(adjustment)}</TableCell>
+                                                            <TableCell className="text-muted-foreground max-w-[200px] truncate">
+                                                                {adjustment.reason ?? adjustment.notes ?? '—'}
+                                                            </TableCell>
+                                                            <TableCell
+                                                                className={`text-right ${computeSignedAmount(adjustment) >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                                                            >
+                                                                {computeSignedAmount(adjustment) >= 0 ? '+' : '-'}
+                                                                {formatCurrency(Math.abs(computeSignedAmount(adjustment)))}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}

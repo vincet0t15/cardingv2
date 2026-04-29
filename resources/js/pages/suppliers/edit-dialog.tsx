@@ -59,7 +59,7 @@ export function EditSupplierDialog({ supplier, onClose }: EditSupplierDialogProp
 
     return (
         <Dialog open={!!supplier} onOpenChange={onClose}>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="min-w-lg">
                 <DialogHeader>
                     <DialogTitle>Edit Supplier</DialogTitle>
                     <DialogDescription>Update the supplier details.</DialogDescription>
