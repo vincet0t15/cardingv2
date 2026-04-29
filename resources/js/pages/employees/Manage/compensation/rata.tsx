@@ -199,13 +199,13 @@ export default function CompensationRata({ employee }: CompensationRataProps) {
 
             {/* Not eligible notice */}
             {!employee.is_rata_eligible && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                <div className="rounded-md border bg-gradient-to-br from-emerald-50 to-teal-50 p-5 shadow-sm dark:from-emerald-950/30 dark:to-teal-950/30">
                     This employee is not marked as RATA eligible. Enable it in the Settings tab to manage RATA records.
                 </div>
             )}
 
             {/* Current RATA Card */}
-            <div className="rounded-xl border bg-gradient-to-br from-purple-50 to-violet-50 p-5 shadow-sm dark:from-purple-950/30 dark:to-violet-950/30">
+            <div className="rounded-md border bg-gradient-to-br from-purple-50 to-violet-50 p-5 shadow-sm dark:from-purple-950/30 dark:to-violet-950/30">
                 <div className="mb-1 flex items-center gap-2 text-xs font-semibold tracking-wide text-purple-700 uppercase dark:text-purple-400">
                     <TrendingUp className="h-3.5 w-3.5" />
                     Current RATA
@@ -227,9 +227,9 @@ export default function CompensationRata({ employee }: CompensationRataProps) {
             <div>
                 <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">History</p>
                 {ratas.length === 0 ? (
-                    <div className="text-muted-foreground rounded-lg border py-8 text-center text-sm">No RATA history.</div>
+                    <div className="text-muted-foreground rounded-md border py-8 text-center text-sm">No RATA history.</div>
                 ) : (
-                    <div className="overflow-hidden rounded-lg border shadow-sm">
+                    <div className="overflow-hidden rounded-md border shadow-sm">
                         <Table>
                             <TableHeader className="bg-muted/50">
                                 <TableRow>

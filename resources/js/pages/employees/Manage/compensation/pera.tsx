@@ -196,8 +196,8 @@ export default function CompensationPera({ employee }: CompensationPeraProps) {
             </div>
 
             {/* Current PERA Card */}
-            <div className="rounded-xl border bg-gradient-to-br from-blue-50 to-indigo-50 p-5 shadow-sm dark:from-blue-950/30 dark:to-indigo-950/30">
-                <div className="mb-1 flex items-center gap-2 text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-400">
+            <div className="rounded-md border bg-gradient-to-br from-emerald-50 to-teal-50 p-5 shadow-sm dark:from-emerald-950/30 dark:to-teal-950/30">
+                <div className="mb-1 flex items-center gap-2 text-xs font-semibold tracking-wide text-emerald-700 uppercase dark:text-emerald-400">
                     <TrendingUp className="h-3.5 w-3.5" />
                     Current PERA
                 </div>

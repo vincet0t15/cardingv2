@@ -249,7 +249,7 @@ export function CompensationSalary({ employee, sourceOfFundCodes }: Compensation
             </div>
 
             {/* Current Salary Card */}
-            <div className="rounded-xl border bg-gradient-to-br from-emerald-50 to-teal-50 p-5 shadow-sm dark:from-emerald-950/30 dark:to-teal-950/30">
+            <div className="rounded-md border bg-gradient-to-br from-emerald-50 to-teal-50 p-5 shadow-sm dark:from-emerald-950/30 dark:to-teal-950/30">
                 <div className="mb-1 flex items-center gap-2 text-xs font-semibold tracking-wide text-emerald-700 uppercase dark:text-emerald-400">
                     <TrendingUp className="h-3.5 w-3.5" />
                     Current Salary
@@ -279,9 +279,9 @@ export function CompensationSalary({ employee, sourceOfFundCodes }: Compensation
             <div>
                 <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">History</p>
                 {salaries.length === 0 ? (
-                    <div className="text-muted-foreground rounded-lg border py-8 text-center text-sm">No salary history.</div>
+                    <div className="text-muted-foreground rounded-md border py-8 text-center text-sm">No salary history.</div>
                 ) : (
-                    <div className="overflow-hidden rounded-lg border shadow-sm">
+                    <div className="overflow-hidden rounded-md border shadow-sm">
                         <Table>
                             <TableHeader className="bg-muted/50">
                                 <TableRow>
