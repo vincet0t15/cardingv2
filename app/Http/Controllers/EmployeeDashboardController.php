@@ -40,6 +40,18 @@ class EmployeeDashboardController extends Controller
             'salaries' => function ($query) {
                 $query->orderBy('effective_date', 'desc')->with('sourceOfFundCode');
             },
+            'peras' => function ($query) {
+                $query->orderBy('effective_date', 'desc');
+            },
+            'ratas' => function ($query) {
+                $query->orderBy('effective_date', 'desc');
+            },
+            'hazardPays' => function ($query) {
+                $query->orderBy('start_date', 'desc');
+            },
+            'clothingAllowances' => function ($query) {
+                $query->orderBy('start_date', 'desc');
+            },
         ]);
 
         // Deductions - Get ALL data first for year dropdown
@@ -64,7 +76,7 @@ class EmployeeDashboardController extends Controller
             ->get();
 
         $groupedDeductions = $deductions->groupBy(function ($d) {
-            return $d->pay_period_year.'-'.str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+            return $d->pay_period_year . '-' . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
         })->map(function ($group) {
             return $group->map(function ($d) {
                 return [
@@ -166,7 +178,7 @@ class EmployeeDashboardController extends Controller
             ->get();
 
         $groupedAdjustments = $adjustments->groupBy(function ($a) {
-            return $a->pay_period_year.'-'.str_pad($a->pay_period_month, 2, '0', STR_PAD_LEFT);
+            return $a->pay_period_year . '-' . str_pad($a->pay_period_month, 2, '0', STR_PAD_LEFT);
         })->map(function ($group) {
             return $group->map(function ($a) {
                 return [
@@ -201,7 +213,7 @@ class EmployeeDashboardController extends Controller
 
         // Available years - from ALL data, not filtered data
         $allDeductionsForYears = EmployeeDeduction::where('employee_id', $employee->id)->select('pay_period_year')->distinct()->pluck('pay_period_year');
-        $allClaimsForYears = Claim::where('employee_id', $employee->id)->get()->map(fn ($c) => Carbon::parse($c->claim_date)->year)->unique();
+        $allClaimsForYears = Claim::where('employee_id', $employee->id)->get()->map(fn($c) => Carbon::parse($c->claim_date)->year)->unique();
         $allAdjustmentsForYears = Adjustment::where('employee_id', $employee->id)->select('pay_period_year')->distinct()->pluck('pay_period_year');
 
         $availableYears = collect()

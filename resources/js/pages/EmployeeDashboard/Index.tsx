@@ -58,7 +58,34 @@ const getEffectiveAmount = (history: any[] | undefined, year: number, month: num
         }
     }
 
-    return Number(sortedHistory[sortedHistory.length - 1]?.amount ?? 0);
+    return 0;
+};
+
+const getEffectiveAmountForDateRange = (history: any[] | undefined, year: number, month: number): number => {
+    if (!history || history.length === 0) return 0;
+
+    const periodStart = new Date(year, month - 1, 1);
+    const periodEnd = new Date(year, month, 0);
+    periodEnd.setHours(23, 59, 59, 999);
+
+    const matched = history
+        .filter((record) => {
+            const [startYear, startMonth, startDay] = record.start_date.split('-').map(Number);
+            const startDate = new Date(startYear, startMonth - 1, startDay);
+
+            let endDate: Date | null = null;
+            if (record.end_date) {
+                const [endYear, endMonth, endDay] = record.end_date.split('-').map(Number);
+                endDate = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
+            }
+
+            const startsBeforeOrInPeriod = startDate <= periodEnd;
+            const stillActive = !endDate || endDate >= periodStart;
+            return startsBeforeOrInPeriod && stillActive;
+        })
+        .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
+
+    return Number(matched[0]?.amount ?? 0);
 };
 
 export default function EmployeeDashboard({
@@ -74,7 +101,7 @@ export default function EmployeeDashboard({
     userRoles,
     pagination,
 }: EmployeeDashboardProps) {
-    const [activeTab, setActiveTab] = useState<'deductions' | 'claims' | 'adjustments'>('deductions');
+    const [activeTab, setActiveTab] = useState<'deductions' | 'claims' | 'adjustments' | 'payslip'>('deductions');
 
     const handleFilterChange = (key: string, value: string | null) => {
         router.get(route('employee.dashboard'), { ...filters, [key]: value || undefined, page: 1 }, { preserveState: true, preserveScroll: true });
@@ -84,9 +111,27 @@ export default function EmployeeDashboard({
         router.get(route('employee.dashboard'), { ...filters, page }, { preserveState: true, preserveScroll: true });
     };
 
-    const handlePrint = (period: string, type: 'deductions' | 'claims' | 'adjustments') => {
+    const payPeriods = [...new Set([...Object.keys(deductions), ...Object.keys(claims), ...Object.keys(adjustments)])].sort((a, b) =>
+        b.localeCompare(a),
+    );
+
+    const selectedPayslipPeriod =
+        filters.month && filters.year ? `${filters.year}-${String(filters.month).padStart(2, '0')}` : (payPeriods[0] ?? null);
+
+    const getPayslipPrintUrl = (period: string) => {
         const [year, month] = period.split('-');
-        window.open(route('employees.print', [employee.id, { month, year, type }]), '_blank');
+        return route('employees.print', { employee: employee.id, month, year, type: 'all' });
+    };
+
+    const handlePrint = (period: string, type: 'deductions' | 'claims' | 'adjustments' | 'payslip') => {
+        const [year, month] = period.split('-');
+
+        if (type === 'payslip') {
+            window.open(getPayslipPrintUrl(period), '_blank');
+            return;
+        }
+
+        window.open(route('employees.print', { employee: employee.id, month, year, type }), '_blank');
     };
 
     const getPeriodLabel = (period: string) => {
@@ -108,9 +153,11 @@ export default function EmployeeDashboard({
                         const monthNum = parseInt(month);
 
                         const salary = getEffectiveAmount(employee.salaries, yearNum, monthNum);
-                        const pera = employee.latestPera ? getAmountValue(employee.latestPera.amount) : 0;
-                        const rata = employee.latestRata ? getAmountValue(employee.latestRata.amount) : 0;
-                        const grossPay = salary + pera + rata;
+                        const pera = getEffectiveAmount(employee.peras, yearNum, monthNum);
+                        const rata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, yearNum, monthNum) : 0;
+                        const hazardPay = getEffectiveAmountForDateRange(employee.hazardPays, yearNum, monthNum);
+                        const clothingAllowance = getEffectiveAmountForDateRange(employee.clothingAllowances, yearNum, monthNum);
+                        const grossPay = salary + pera + rata + hazardPay + clothingAllowance;
                         const totalDeductions = sumAmounts(items);
                         const netPay = grossPay - totalDeductions;
 
@@ -296,6 +343,141 @@ export default function EmployeeDashboard({
         );
     };
 
+    const renderPayslip = () => {
+        if (!selectedPayslipPeriod) {
+            return <div className="text-muted-foreground py-8 text-center">Select a month and year to view your payslip.</div>;
+        }
+
+        const [year, month] = selectedPayslipPeriod.split('-').map(Number);
+        const salary = getEffectiveAmount(employee.salaries, year, month);
+        const pera = getEffectiveAmount(employee.peras, year, month);
+        const rata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, year, month) : 0;
+        const hazardPay = getEffectiveAmountForDateRange(employee.hazardPays, year, month);
+        const clothingAllowance = getEffectiveAmountForDateRange(employee.clothingAllowances, year, month);
+        const grossPay = salary + pera + rata + hazardPay + clothingAllowance;
+
+        const selectedDeductions = deductions[selectedPayslipPeriod] ?? [];
+        const selectedAdjustments = adjustments[selectedPayslipPeriod] ?? [];
+        const selectedClaims = claims[selectedPayslipPeriod] ?? [];
+
+        const totalDeductionsPeriod = selectedDeductions.reduce((sum, d) => sum + getAmountValue(d.amount), 0);
+        const totalAdjustmentsPeriod = selectedAdjustments.reduce((sum, a) => sum + getAmountValue(a.amount), 0);
+        const totalClaimsPeriod = selectedClaims.reduce((sum, c) => sum + getAmountValue(c.amount), 0);
+        const netPay = grossPay - totalDeductionsPeriod + totalAdjustmentsPeriod;
+
+        return (
+            <div className="space-y-6">
+                <div className="flex flex-col gap-3 rounded-lg border bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p className="text-muted-foreground text-sm">Payslip for</p>
+                        <h2 className="text-xl font-semibold">{getPeriodLabel(selectedPayslipPeriod)}</h2>
+                    </div>
+                    <Button variant="default" className="gap-2" onClick={() => window.open(getPayslipPrintUrl(selectedPayslipPeriod), '_blank')}>
+                        <Printer className="h-4 w-4" /> Print Payslip
+                    </Button>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="rounded-lg border bg-slate-50 p-4">
+                        <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Basic Salary</p>
+                        <p className="mt-2 text-2xl font-bold">{formatCurrency(salary)}</p>
+                    </div>
+                    <div className="rounded-lg border bg-slate-50 p-4">
+                        <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">PERA</p>
+                        <p className="mt-2 text-2xl font-bold">{formatCurrency(pera)}</p>
+                    </div>
+                    <div className="rounded-lg border bg-slate-50 p-4">
+                        <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">RATA</p>
+                        <p className="mt-2 text-2xl font-bold">{formatCurrency(rata)}</p>
+                    </div>
+                    <div className="rounded-lg border bg-slate-50 p-4">
+                        <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Hazard Pay</p>
+                        <p className="mt-2 text-2xl font-bold">{formatCurrency(hazardPay)}</p>
+                    </div>
+                    <div className="rounded-lg border bg-slate-50 p-4">
+                        <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Clothing Allowance</p>
+                        <p className="mt-2 text-2xl font-bold">{formatCurrency(clothingAllowance)}</p>
+                    </div>
+                    <div className="rounded-lg border bg-slate-50 p-4">
+                        <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Gross Pay</p>
+                        <p className="mt-2 text-2xl font-bold text-blue-700">{formatCurrency(grossPay)}</p>
+                    </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                    <div className="rounded-lg border bg-red-50 p-4">
+                        <p className="text-xs tracking-[0.2em] text-red-600 uppercase">Total Deductions</p>
+                        <p className="mt-2 text-2xl font-bold text-red-700">- {formatCurrency(totalDeductionsPeriod)}</p>
+                    </div>
+                    <div className="rounded-lg border bg-green-50 p-4">
+                        <p className="text-xs tracking-[0.2em] text-green-600 uppercase">Total Adjustments</p>
+                        <p className="mt-2 text-2xl font-bold text-green-700">{formatCurrency(totalAdjustmentsPeriod)}</p>
+                    </div>
+                    <div className="rounded-lg border bg-blue-50 p-4">
+                        <p className="text-xs tracking-[0.2em] text-blue-600 uppercase">Claims (Separate)</p>
+                        <p className="mt-2 text-2xl font-bold text-blue-700">{formatCurrency(totalClaimsPeriod)}</p>
+                    </div>
+                </div>
+
+                <div className="rounded-lg border bg-white p-4 shadow-sm">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                        <div>
+                            <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Net Pay</p>
+                            <p className="mt-2 text-3xl font-bold text-emerald-700">{formatCurrency(netPay)}</p>
+                        </div>
+                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-800">
+                            After deductions & adjustments
+                        </span>
+                    </div>
+                    <div className="mt-4 space-y-3">
+                        {selectedDeductions.length > 0 && (
+                            <div>
+                                <h3 className="text-sm font-semibold">Deductions</h3>
+                                <Table>
+                                    <TableHeader className="bg-muted/20">
+                                        <TableRow>
+                                            <TableHead className="flex-1">Type</TableHead>
+                                            <TableHead className="w-24 text-right">Amount</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {selectedDeductions.map((d: any) => (
+                                            <TableRow key={d.id}>
+                                                <TableCell>{d.deduction_type?.name || 'Unknown'}</TableCell>
+                                                <TableCell className="text-right">{formatCurrency(getAmountValue(d.amount))}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        )}
+                        {selectedAdjustments.length > 0 && (
+                            <div>
+                                <h3 className="text-sm font-semibold">Adjustments</h3>
+                                <Table>
+                                    <TableHeader className="bg-muted/20">
+                                        <TableRow>
+                                            <TableHead className="flex-1">Type</TableHead>
+                                            <TableHead className="w-24 text-right">Amount</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {selectedAdjustments.map((a: any) => (
+                                            <TableRow key={a.id}>
+                                                <TableCell>{a.adjustment_type?.name || 'Unknown'}</TableCell>
+                                                <TableCell className="text-right">{formatCurrency(getAmountValue(a.amount))}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <TooltipProvider>
             <div className="bg-background min-h-screen w-full">
@@ -341,22 +523,32 @@ export default function EmployeeDashboard({
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <Tabs
                                 value={activeTab}
-                                onValueChange={(value) => setActiveTab(value as 'deductions' | 'claims' | 'adjustments')}
+                                onValueChange={(value) => setActiveTab(value as 'deductions' | 'claims' | 'adjustments' | 'payslip')}
                                 className="flex-1"
                             >
                                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                                    <TabsList className="bg-muted/50 grid grid-cols-3">
+                                    <TabsList className="bg-muted/50 grid grid-cols-4">
                                         <TabsTrigger value="deductions">Deductions ({Object.keys(deductions).length})</TabsTrigger>
                                         <TabsTrigger value="claims">Claims ({Object.keys(claims).length})</TabsTrigger>
                                         <TabsTrigger value="adjustments">Adjustments ({Object.keys(adjustments).length})</TabsTrigger>
+                                        <TabsTrigger value="payslip">Payslip</TabsTrigger>
                                     </TabsList>
                                     <Button
                                         variant="default"
                                         size="default"
                                         onClick={() => {
-                                            const data = activeTab === 'deductions' ? deductions : activeTab === 'claims' ? claims : adjustments;
-                                            const period = Object.keys(data)[0];
-                                            if (period) handlePrint(period, activeTab);
+                                            if (activeTab === 'deductions') {
+                                                const period = Object.keys(deductions)[0];
+                                                if (period) handlePrint(period, 'deductions');
+                                            } else if (activeTab === 'claims') {
+                                                const period = Object.keys(claims)[0];
+                                                if (period) handlePrint(period, 'claims');
+                                            } else if (activeTab === 'adjustments') {
+                                                const period = Object.keys(adjustments)[0];
+                                                if (period) handlePrint(period, 'adjustments');
+                                            } else if (activeTab === 'payslip' && selectedPayslipPeriod) {
+                                                handlePrint(selectedPayslipPeriod, 'payslip');
+                                            }
                                         }}
                                         className="gap-2"
                                     >
@@ -371,6 +563,9 @@ export default function EmployeeDashboard({
                                 </TabsContent>
                                 <TabsContent value="adjustments" className="mt-4">
                                     {renderAdjustments()}
+                                </TabsContent>
+                                <TabsContent value="payslip" className="mt-4">
+                                    {renderPayslip()}
                                 </TabsContent>
                             </Tabs>
                         </div>
