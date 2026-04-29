@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DeleteRequest;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -60,6 +61,7 @@ class DeleteRequestController extends Controller
 
         if (!$model) {
             $deleteRequest->update(['status' => DeleteRequest::STATUS_REJECTED]);
+            $this->markRequestNotificationAsRead($deleteRequest);
             return redirect()->back()->with('error', 'The requested item no longer exists.');
         }
 
@@ -70,6 +72,8 @@ class DeleteRequestController extends Controller
             'approved_by' => Auth::id(),
             'approved_at' => now(),
         ]);
+
+        $this->markRequestNotificationAsRead($deleteRequest);
 
         return redirect()->route('delete-requests.index')->with('success', 'Item deleted successfully.');
     }
@@ -89,7 +93,23 @@ class DeleteRequestController extends Controller
             'reason' => $request->input('reason'),
         ]);
 
+        $this->markRequestNotificationAsRead($deleteRequest);
+
         return redirect()->route('delete-requests.index')->with('success', 'Delete request rejected.');
+    }
+
+    protected function markRequestNotificationAsRead(DeleteRequest $deleteRequest): void
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return;
+        }
+
+        Notification::where('user_id', $user->id)
+            ->where('notifiable_type', DeleteRequest::class)
+            ->where('notifiable_id', $deleteRequest->id)
+            ->update(['is_read' => true]);
     }
 
     public function myRequests(Request $request)

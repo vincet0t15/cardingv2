@@ -483,6 +483,21 @@ class ManageEmployeeController extends Controller
         $adjustmentCount = $adjustments->count();
         $clothingCount = $clothingAllowances->count();
 
+        $hasEmployeeManagePermission = $user->can('employees.manage');
+
+        $canDeleteDeductions = $hasEmployeeManagePermission || $deductionCount === 0 || $user->can('deductions.manage') || $user->can('deductions.delete');
+        $canDeleteAdjustments = $hasEmployeeManagePermission || $adjustmentCount === 0 || $user->can('adjustments.manage') || $user->can('adjustments.delete');
+        $canDeleteClothingAllowances = $hasEmployeeManagePermission || $clothingCount === 0 || $user->can('clothing_allowances.delete');
+        $canDeleteAllItems = $canDeleteDeductions && $canDeleteAdjustments && $canDeleteClothingAllowances;
+
+        if ($canDeleteAllItems) {
+            $deductions->each->delete();
+            $adjustments->each->delete();
+            $clothingAllowances->each->delete();
+
+            return back()->with('success', "Deleted {$deductionCount} deduction(s), {$adjustmentCount} adjustment(s), and {$clothingCount} clothing allowance(s) for period {$validated['pay_period_month']}/{$validated['pay_period_year']}.");
+        }
+
         // Create deletion request with details about all items
         $itemDetails = [];
         if ($deductionCount > 0) $itemDetails[] = "{$deductionCount} deduction(s)";

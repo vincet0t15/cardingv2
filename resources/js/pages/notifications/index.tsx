@@ -106,6 +106,23 @@ export default function NotificationsIndex() {
         }
     };
 
+    const markNotificationAsRead = async (notificationId: number) => {
+        try {
+            const response = await fetch(route('notifications.mark-as-read', notificationId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+            });
+
+            return response.ok;
+        } catch (error) {
+            console.error('Failed to mark notification as read:', error);
+            return false;
+        }
+    };
+
     const handleApproveDeleteRequest = async (notificationId: number) => {
         const notification = notifications.data.find((n) => n.id === notificationId);
         if (!notification?.notifiable_id) {
@@ -124,6 +141,7 @@ export default function NotificationsIndex() {
             });
 
             if (response.ok) {
+                await markNotificationAsRead(notificationId);
                 toast.success('Delete request approved');
                 window.location.reload();
             } else {
@@ -155,6 +173,7 @@ export default function NotificationsIndex() {
             });
 
             if (response.ok) {
+                await markNotificationAsRead(notificationId);
                 toast.success('Delete request rejected');
                 window.location.reload();
             } else {
@@ -209,8 +228,12 @@ export default function NotificationsIndex() {
                                         notifiable_id={notification.notifiable_id}
                                         notifiable_type={notification.notifiable_type}
                                         onMarkAsRead={handleMarkAsRead}
-                                        onApprove={notification.type === 'delete_request' ? handleApproveDeleteRequest : undefined}
-                                        onReject={notification.type === 'delete_request' ? handleRejectDeleteRequest : undefined}
+                                        onApprove={
+                                            notification.type === 'delete_request' && notification.actionable ? handleApproveDeleteRequest : undefined
+                                        }
+                                        onReject={
+                                            notification.type === 'delete_request' && notification.actionable ? handleRejectDeleteRequest : undefined
+                                        }
                                     />
                                 ))}
                             </div>

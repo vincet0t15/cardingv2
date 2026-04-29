@@ -27,18 +27,22 @@ trait HandlesDeletionRequests
      * @param bool $forceApproval If true, always creates a deletion request (even with permission)
      * @return RedirectResponse
      */
-    protected function handleDeletion(Model $model, string $permissionName, ?string $reason = null, bool $forceApproval = false): RedirectResponse
+    protected function handleDeletion(Model $model, string $permissionName, ?string $reason = null, bool $forceApproval = false, ?callable $beforeDelete = null): RedirectResponse
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
 
         // Check if user has direct permission to delete and approval is not forced
         if (!$forceApproval && $user?->hasPermissionTo($permissionName)) {
+            if ($beforeDelete) {
+                $beforeDelete($model);
+            }
+
             $model->delete();
             $modelName = class_basename($model);
             return redirect()
                 ->back()
-                ->with('success', "{$modelName} deleted successfully by super admin.");
+                ->with('success', "{$modelName} deleted successfully.");
         }
 
         // User doesn't have permission or approval is forced - create delete request

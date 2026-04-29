@@ -160,45 +160,18 @@ class EmployeeController extends Controller
 
     public function destroy(Request $request, Employee $employee): RedirectResponse
     {
-        $user = Auth::user();
-
-
-        if ($user->hasPermissionTo('employees.delete')) {
-            // Use the raw stored path when deleting the file. The model's
-            // accessor returns a full URL which Storage::delete won't match.
-            $old = $employee->getRawOriginal('image_path');
-            if ($old) {
-                Storage::disk('public')->delete($old);
+        return $this->handleDeletion(
+            $employee,
+            'employees.delete',
+            $request->input('reason', 'No reason provided'),
+            false,
+            function (Employee $employee) {
+                $old = $employee->getRawOriginal('image_path');
+                if ($old) {
+                    Storage::disk('public')->delete($old);
+                }
             }
-            $employee->delete();
-            return redirect()->route('employees.index')->with('success', 'Employee deleted successfully');
-        }
-
-        $reason = $request->input('reason', 'No reason provided');
-
-        $deleteRequest = DeleteRequest::create([
-            'requestable_type' => Employee::class,
-            'requestable_id' => $employee->id,
-            'requested_by' => $user->id,
-            'status' => DeleteRequest::STATUS_PENDING,
-            'reason' => $reason,
-        ]);
-
-        // Notify super admins
-        $superAdmins = \Spatie\Permission\Models\Role::where('name', 'super admin')->first()?->users ?? collect();
-        foreach ($superAdmins as $admin) {
-            Notification::create([
-                'user_id' => $admin->id,
-                'type' => 'delete_request',
-                'title' => 'Delete Request',
-                'message' => "{$user->name} requested to delete employee: {$employee->full_name} (ID: {$employee->id})",
-                'link' => '/delete-requests',
-                'notifiable_id' => $deleteRequest->id,
-                'notifiable_type' => DeleteRequest::class,
-            ]);
-        }
-
-        return redirect()->back()->with('info', 'You do not have permission to delete. A delete request has been sent to admin.');
+        );
     }
 
     public function restore(int $id): RedirectResponse

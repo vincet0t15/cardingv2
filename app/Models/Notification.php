@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\DeleteRequest;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -9,6 +10,8 @@ use Illuminate\Support\Facades\Auth;
 
 class Notification extends Model
 {
+    protected $appends = ['actionable'];
+
     protected $fillable = [
         'user_id',
         'type',
@@ -40,6 +43,17 @@ class Notification extends Model
     public function markAsRead(): void
     {
         $this->update(['is_read' => true]);
+    }
+
+    public function getActionableAttribute(): bool
+    {
+        if ($this->type !== self::TYPE_DELETE_REQUEST) {
+            return false;
+        }
+
+        $request = $this->notifiable;
+
+        return $request instanceof DeleteRequest && $request->status === DeleteRequest::STATUS_PENDING;
     }
 
     public static function notifyAdmins(string $type, string $title, string $message, ?string $link = null, ?Model $notifiable = null): void

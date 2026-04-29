@@ -12,6 +12,7 @@ class NotificationController extends Controller
     {
         $notifications = $request->user()
             ->notifications()
+            ->with('notifiable')
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
@@ -24,6 +25,7 @@ class NotificationController extends Controller
     {
         $notifications = $request->user()
             ->notifications()
+            ->with('notifiable')
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
