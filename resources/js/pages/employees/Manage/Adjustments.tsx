@@ -137,15 +137,15 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
                     <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Pending</p>
                     <p className="mt-2 text-2xl font-semibold text-amber-600">{statistics.total_pending}</p>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
                     <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Approved</p>
                     <p className="mt-2 text-2xl font-semibold text-emerald-600">{statistics.total_approved}</p>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
                     <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Total amount</p>
                     <p className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(statistics.total_amount)}</p>
                 </div>

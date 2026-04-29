@@ -160,10 +160,10 @@ export default function Index({ adjustments, employees, filters, statistics }: P
 
             <div className="space-y-6">
                 {/* Header */}
-                <div className="rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 p-6 dark:from-teal-950/30 dark:via-cyan-950/30 dark:to-blue-950/30">
+                <div className="rounded-md border border-teal-200 bg-gradient-to-r from-teal-50 via-cyan-50 to-blue-50 p-6 dark:from-teal-950/30 dark:via-cyan-950/30 dark:to-blue-950/30">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
                                 <RefreshCcw className="h-6 w-6" />
                             </div>
                             <div>

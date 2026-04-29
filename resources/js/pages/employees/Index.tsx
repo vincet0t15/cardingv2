@@ -244,7 +244,7 @@ export default function Employees({ employees, offices, employmentStatuses, filt
                     </div>
                 </div>
 
-                <div className="w-full overflow-hidden rounded-2xl border border-slate-200 shadow-xl dark:border-slate-800 dark:bg-slate-950">
+                <div className="w-full overflow-hidden rounded-md border border-slate-200 shadow-xl dark:border-slate-800 dark:bg-slate-950">
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>

@@ -79,6 +79,7 @@ class AuditLogController extends Controller
             ->selectRaw('sum(case when action = "updated" then 1 else 0 end) as updated_count')
             ->selectRaw('sum(case when action = "deleted" then 1 else 0 end) as deleted_count')
             ->groupBy('user_id')
+            ->reorder()
             ->orderByDesc('total_actions')
             ->with('user')
             ->get()

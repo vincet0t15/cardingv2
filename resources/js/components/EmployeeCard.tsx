@@ -56,7 +56,7 @@ export function EmployeeCard({
     return (
         <>
             {/* Profile Header */}
-            <div className="flex items-center gap-6 rounded-2xl border bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 p-6 dark:from-green-900/20 dark:via-emerald-900/20 dark:to-teal-900/20">
+            <div className="flex items-center gap-6 rounded-md border bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 p-6 dark:from-green-900/20 dark:via-emerald-900/20 dark:to-teal-900/20">
                 <div className="relative">
                     {employee.image_path ? (
                         <img

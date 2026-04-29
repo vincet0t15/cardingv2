@@ -33,7 +33,8 @@ export function NavMain({ items = [] }: { items: NavGroup[] }) {
             '/audit-logs': 'text-gray-500',
         };
 
-        return colorMap[href] || 'text-slate-500';
+        const cleanHref = href.includes('?') ? href.split('?')[0] : href;
+        return colorMap[cleanHref] || 'text-slate-500';
     };
 
     return (

@@ -18,6 +18,7 @@ import { Link, usePage } from '@inertiajs/react';
 
 import {
     Banknote,
+    BarChart3,
     Building2,
     Calculator,
     CoinsIcon,
@@ -203,6 +204,11 @@ const mainNavItems: NavGroup[] = [
                 title: 'Audit Logs',
                 href: '/audit-logs',
                 icon: FileText,
+            },
+            {
+                title: 'Performance Metrics',
+                href: '/audit-logs?tab=performance',
+                icon: BarChart3,
             },
         ],
     },

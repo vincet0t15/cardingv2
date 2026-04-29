@@ -255,7 +255,7 @@ export default function EmployeeManagePage({
                             <TabsTrigger
                                 asChild
                                 value="overview"
-                                className="rounded-full px-4 py-2 text-sm font-medium text-slate-600 shadow-slate-200/60 transition hover:font-semibold hover:text-slate-900 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow"
+                                className="px-4 py-2 text-sm font-medium text-slate-600 shadow-slate-200/60 transition hover:font-semibold hover:text-slate-900 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow"
                             >
                                 <Link href={route('manage.employees.index', { employee: employee.id, tab: 'overview' })}>
                                     <LayoutDashboard className="h-4 w-4" /> Overview
@@ -264,7 +264,7 @@ export default function EmployeeManagePage({
                             <TabsTrigger
                                 asChild
                                 value="compensation"
-                                className="rounded-full px-4 py-2 text-sm font-medium text-slate-600 shadow-slate-200/60 transition hover:bg-white hover:text-slate-900 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow"
+                                className="px-4 py-2 text-sm font-medium text-slate-600 shadow-slate-200/60 transition hover:font-semibold hover:text-slate-900 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow"
                             >
                                 <Link href={route('manage.employees.index', { employee: employee.id, tab: 'compensation' })}>
                                     <CoinsIcon className="h-4 w-4" /> Compensation

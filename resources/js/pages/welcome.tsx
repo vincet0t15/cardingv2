@@ -169,7 +169,7 @@ export default function Welcome() {
                         ].map((feature) => (
                             <div
                                 key={feature.title}
-                                className="group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl dark:border-slate-700/50 dark:bg-slate-800/50"
+                                className="group relative overflow-hidden rounded-md border border-slate-200/60 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl dark:border-slate-700/50 dark:bg-slate-800/50"
                             >
                                 <div
                                     className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${feature.color} text-white shadow-lg`}
@@ -232,7 +232,7 @@ export default function Welcome() {
                         </div>
                         <div className="relative">
                             <div className="absolute inset-0 bg-gradient-to-r from-orange-400/20 to-blue-500/20 blur-3xl" />
-                            <div className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+                            <div className="relative rounded-md border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-800">
                                 <div className="mb-4 flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <div className="h-3 w-3 rounded-full bg-red-400" />
