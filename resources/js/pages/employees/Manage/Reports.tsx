@@ -120,8 +120,13 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
         const years = new Set<number>();
         allDeductions.forEach((d) => years.add(d.pay_period_year));
         allClaims.forEach((c) => years.add(new Date(c.claim_date).getFullYear()));
+        adjustments.forEach((a: any) => {
+            if (a.pay_period_year) {
+                years.add(Number(a.pay_period_year));
+            }
+        });
         return Array.from(years).sort((a, b) => b - a);
-    }, [allDeductions, allClaims]);
+    }, [allDeductions, allClaims, adjustments]);
 
     // Filter deductions based on selected month/year
     const filteredDeductions = useMemo(() => {
@@ -152,28 +157,6 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
         deductionsByPeriod[key].items.push(d);
         deductionsByPeriod[key].total += Number(d.amount);
     }
-    const deductionPeriods = Object.values(deductionsByPeriod).sort((a, b) => b.year - a.year || b.month - a.month);
-
-    // Group deductions by year for yearly totals
-    const deductionsByYear: Record<number, number> = {};
-    for (const d of filteredDeductions) {
-        deductionsByYear[d.pay_period_year] = (deductionsByYear[d.pay_period_year] ?? 0) + Number(d.amount);
-    }
-
-    // Group claims by year
-    const claimsByYearMap: Record<number, YearlyClaimRow> = {};
-    for (const c of filteredClaims) {
-        const year = new Date(c.claim_date).getFullYear();
-        if (!claimsByYearMap[year]) {
-            claimsByYearMap[year] = { year, items: [], total: 0 };
-        }
-        claimsByYearMap[year].items.push(c);
-        claimsByYearMap[year].total += Number(c.amount);
-    }
-    const claimYears = Object.values(claimsByYearMap).sort((a, b) => b.year - a.year);
-
-    const totalAllDeductions = filteredDeductions.reduce((sum, d) => sum + Number(d.amount), 0);
-    const totalAllClaims = filteredClaims.reduce((sum, c) => sum + Number(c.amount), 0);
 
     // Filter adjustments by selected month/year
     const filteredAdjustments = useMemo(() => {
@@ -200,7 +183,6 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
             return -amt;
         }
 
-        // Default: treat as positive (adds to net pay)
         return amt;
     };
 
@@ -208,6 +190,85 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
     const totalAdjustments = useMemo(() => {
         return filteredAdjustments.reduce((sum: number, a: any) => sum + computeSignedAmount(a), 0);
     }, [filteredAdjustments]);
+
+    const reportPeriodMap = new Map<
+        string,
+        {
+            year: number;
+            month: number;
+            items: EmployeeDeduction[];
+            claims: Claim[];
+            adjustments: any[];
+            totalDeductions: number;
+            totalClaims: number;
+            totalAdjustments: number;
+        }
+    >();
+
+    const addPeriod = (year: number, month: number) => {
+        const key = `${year}-${String(month).padStart(2, '0')}`;
+        if (!reportPeriodMap.has(key)) {
+            reportPeriodMap.set(key, {
+                year,
+                month,
+                items: [],
+                claims: [],
+                adjustments: [],
+                totalDeductions: 0,
+                totalClaims: 0,
+                totalAdjustments: 0,
+            });
+        }
+        return reportPeriodMap.get(key)!;
+    };
+
+    for (const key of Object.keys(deductionsByPeriod)) {
+        const { year, month, items, total } = deductionsByPeriod[key];
+        const period = addPeriod(year, month);
+        period.items = items;
+        period.totalDeductions = total;
+    }
+
+    for (const c of filteredClaims) {
+        const claimDate = new Date(c.claim_date);
+        const year = claimDate.getFullYear();
+        const month = claimDate.getMonth() + 1;
+        const period = addPeriod(year, month);
+        period.claims.push(c);
+        period.totalClaims += Number(c.amount);
+    }
+
+    for (const a of filteredAdjustments) {
+        if (!a.pay_period_year || !a.pay_period_month) continue;
+        const year = Number(a.pay_period_year);
+        const month = Number(a.pay_period_month);
+        const period = addPeriod(year, month);
+        period.adjustments.push(a);
+        period.totalAdjustments += computeSignedAmount(a);
+    }
+
+    const reportPeriods = Array.from(reportPeriodMap.values()).sort((a, b) => b.year - a.year || b.month - a.month);
+
+    // Group deductions by year for yearly totals
+    const deductionsByYear: Record<number, number> = {};
+    for (const d of filteredDeductions) {
+        deductionsByYear[d.pay_period_year] = (deductionsByYear[d.pay_period_year] ?? 0) + Number(d.amount);
+    }
+
+    // Group claims by year
+    const claimsByYearMap: Record<number, YearlyClaimRow> = {};
+    for (const c of filteredClaims) {
+        const year = new Date(c.claim_date).getFullYear();
+        if (!claimsByYearMap[year]) {
+            claimsByYearMap[year] = { year, items: [], total: 0 };
+        }
+        claimsByYearMap[year].items.push(c);
+        claimsByYearMap[year].total += Number(c.amount);
+    }
+    const claimYears = Object.values(claimsByYearMap).sort((a, b) => b.year - a.year);
+
+    const totalAllDeductions = filteredDeductions.reduce((sum, d) => sum + Number(d.amount), 0);
+    const totalAllClaims = filteredClaims.reduce((sum, c) => sum + Number(c.amount), 0);
 
     // Normalize and return an adjustment type display name (handles object or string shapes)
     const getAdjustmentTypeName = (a: any) => {
@@ -396,6 +457,17 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                     </CardContent>
                 </Card>
 
+                <Card className="border-violet-200 bg-violet-50">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium text-violet-800">Total Adjustments</CardTitle>
+                        <Receipt className="h-4 w-4 text-violet-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-violet-700">{formatCurrency(totalAdjustments)}</div>
+                        <p className="mt-1 text-xs text-violet-600">{filteredAdjustments.length} adjustment entries</p>
+                    </CardContent>
+                </Card>
+
                 <Card className="border-green-200 bg-green-50">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium text-green-800">Net Pay</CardTitle>
@@ -403,7 +475,7 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-green-700">{formatCurrency(netPay)}</div>
-                        <p className="mt-1 text-xs text-green-600">Gross Pay - Deductions</p>
+                        <p className="mt-1 text-xs text-green-600">Gross Pay + Claims + Adjustments - Deductions</p>
                         {isAllTimeView && <p className="mt-1 text-xs text-green-600">Sum of all periods</p>}
                         {isYearlyView && <p className="mt-1 text-xs text-green-600">Total for {filterYear}</p>}
                     </CardContent>
@@ -427,23 +499,32 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
             <div className="space-y-4">
                 <h3 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">Period Breakdown</h3>
 
-                {deductionPeriods.length === 0 ? (
-                    <div className="text-muted-foreground rounded-sm border py-10 text-center text-sm">No deductions recorded.</div>
+                {reportPeriods.length === 0 ? (
+                    <div className="text-muted-foreground rounded-sm border py-10 text-center text-sm">No report entries recorded.</div>
                 ) : (
                     <div className="space-y-4">
-                        {deductionPeriods.map((period) => {
+                        {reportPeriods.map((period) => {
                             // Group deductions by salary basis
                             const salaryGroups = groupDeductionsBySalary(period.items);
+                            if (salaryGroups.length === 0) {
+                                salaryGroups.push({ salaryId: null, salary: null, deductions: [] });
+                            }
 
                             return (
                                 <div key={`${period.year}-${period.month}`}>
                                     {/* Period Header */}
-                                    <div className="mb-2 flex items-center gap-2 px-1">
+                                    <div className="mb-2 flex flex-wrap items-center gap-2 px-1">
                                         <span className="font-semibold">
                                             {FULL_MONTHS[period.month - 1]} {period.year}
                                         </span>
                                         <Badge variant="secondary" className="text-xs">
                                             {period.items.length} deduction{period.items.length !== 1 ? 's' : ''}
+                                        </Badge>
+                                        <Badge variant="secondary" className="text-xs">
+                                            {period.claims.length} claim{period.claims.length !== 1 ? 's' : ''}
+                                        </Badge>
+                                        <Badge variant="secondary" className="text-xs">
+                                            {period.adjustments.length} adjustment{period.adjustments.length !== 1 ? 's' : ''}
                                         </Badge>
                                     </div>
 
@@ -488,7 +569,7 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                                             return (
                                                 <div
                                                     key={`${period.year}-${period.month}-salary-${group.salaryId}`}
-                                                    className="overflow-hidden rounded-lg border bg-white shadow-sm"
+                                                    className="overflow-hidden rounded-sm border bg-white shadow-sm"
                                                 >
                                                     {/* Header with Salary Info */}
                                                     <div className="bg-muted/30 flex items-center justify-between border-b px-4 py-3">
@@ -574,17 +655,26 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                                                                     +{formatCurrency(groupClaims)}
                                                                 </div>
                                                             </div>
-                                                            <div className="grid grid-cols-2 bg-red-50">
-                                                                <div className="px-4 py-2 text-sm font-medium text-red-800">Total Deductions</div>
-                                                                <div className="px-4 py-2 text-right font-bold text-red-800">
-                                                                    -{formatCurrency(groupTotal)}
+                                                            <div className="grid grid-cols-2 bg-violet-50">
+                                                                <div className="px-4 py-2 text-sm font-medium text-violet-800">Adjustments</div>
+                                                                <div className="px-4 py-2 text-right font-bold text-violet-800">
+                                                                    {groupAdjustments >= 0 ? '+' : '-'}
+                                                                    {formatCurrency(Math.abs(groupAdjustments))}
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div className="grid grid-cols-2 divide-x border-t bg-green-50">
-                                                            <div className="px-4 py-2 text-sm font-medium text-green-800">Net Pay</div>
-                                                            <div className="px-4 py-2 text-right font-bold text-green-800">
-                                                                {formatCurrency(groupNetPay)}
+                                                        <div className="grid grid-cols-2 divide-x border-t">
+                                                            <div className="grid grid-cols-2">
+                                                                <div className="text-muted-foreground px-4 py-2 text-sm">Total Deductions</div>
+                                                                <div className="px-4 py-2 text-right font-medium text-red-800">
+                                                                    -{formatCurrency(groupTotal)}
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 bg-green-50">
+                                                                <div className="px-4 py-2 text-sm font-medium text-green-800">Net Pay</div>
+                                                                <div className="px-4 py-2 text-right font-bold text-green-800">
+                                                                    {formatCurrency(groupNetPay)}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>

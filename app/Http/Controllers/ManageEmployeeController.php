@@ -120,7 +120,7 @@ class ManageEmployeeController extends Controller
         $loadAdjustmentsData = in_array($tab, ['adjustments', 'overview', 'reports', 'deductions'], true);
         $loadReportData = $tab === 'reports';
 
-        if ($loadOverviewData || $loadDeductionData || $loadReportData) {
+        if ($loadOverviewData || $loadDeductionData || $loadReportData || $loadAdjustmentsData) {
             $allClaims = Claim::where('employee_id', $employee->id)
                 ->with('claimType')
                 ->orderBy('claim_date', 'desc')

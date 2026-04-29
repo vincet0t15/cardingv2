@@ -233,37 +233,37 @@ export default function EmployeeManagePage({
                 <Tabs value={activeTab} className="space-y-6">
                     <div className="flex items-center justify-between overflow-x-auto pb-1">
                         <TabsList>
-                            <TabsTrigger asChild value="overview">
+                            <TabsTrigger asChild value="overview" className="px-3 py-1.5 rounded-full text-sm font-medium inline-flex items-center gap-2 border border-transparent hover:bg-slate-100 data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md transition">
                                 <Link href={route('manage.employees.index', { employee: employee.id, tab: 'overview' })}>
                                     <LayoutDashboard className="h-4 w-4" /> Overview
                                 </Link>
                             </TabsTrigger>
-                            <TabsTrigger asChild value="compensation">
+                            <TabsTrigger asChild value="compensation" className="px-3 py-1.5 rounded-full text-sm font-medium inline-flex items-center gap-2 border border-transparent hover:bg-slate-100 data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md transition">
                                 <Link href={route('manage.employees.index', { employee: employee.id, tab: 'compensation' })}>
                                     <CoinsIcon className="h-4 w-4" /> Compensation
                                 </Link>
                             </TabsTrigger>
-                            <TabsTrigger asChild value="deductions">
+                            <TabsTrigger asChild value="deductions" className="px-3 py-1.5 rounded-full text-sm font-medium inline-flex items-center gap-2 border border-transparent hover:bg-slate-100 data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md transition">
                                 <Link href={route('manage.employees.index', { employee: employee.id, tab: 'deductions' })}>
                                     <TrendingDown className="h-4 w-4" /> Deductions
                                 </Link>
                             </TabsTrigger>
-                            <TabsTrigger asChild value="claims">
+                            <TabsTrigger asChild value="claims" className="px-3 py-1.5 rounded-full text-sm font-medium inline-flex items-center gap-2 border border-transparent hover:bg-slate-100 data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md transition">
                                 <Link href={route('manage.employees.index', { employee: employee.id, tab: 'claims' })}>
                                     <Receipt className="h-4 w-4" /> Claims
                                 </Link>
                             </TabsTrigger>
-                            <TabsTrigger asChild value="adjustments">
+                            <TabsTrigger asChild value="adjustments" className="px-3 py-1.5 rounded-full text-sm font-medium inline-flex items-center gap-2 border border-transparent hover:bg-slate-100 data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md transition">
                                 <Link href={route('manage.employees.index', { employee: employee.id, tab: 'adjustments' })}>
                                     <RefreshCcw className="h-4 w-4" /> Adjustments
                                 </Link>
                             </TabsTrigger>
-                            <TabsTrigger asChild value="reports">
+                            <TabsTrigger asChild value="reports" className="px-3 py-1.5 rounded-full text-sm font-medium inline-flex items-center gap-2 border border-transparent hover:bg-slate-100 data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md transition">
                                 <Link href={route('manage.employees.index', { employee: employee.id, tab: 'reports' })}>
                                     <FileText className="h-4 w-4" /> Reports
                                 </Link>
                             </TabsTrigger>
-                            <TabsTrigger asChild value="settings">
+                            <TabsTrigger asChild value="settings" className="px-3 py-1.5 rounded-full text-sm font-medium inline-flex items-center gap-2 border border-transparent hover:bg-slate-100 data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-md transition">
                                 <Link href={route('manage.employees.index', { employee: employee.id, tab: 'settings' })}>
                                     <Settings className="h-4 w-4" /> Settings
                                 </Link>
