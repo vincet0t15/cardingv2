@@ -117,13 +117,13 @@ export default function GeneralFundIndex({ generalFunds, filters }: GeneralFundP
                 <Heading title="General Funds" description="Manage general fund entries and their source of fund codes." />
 
                 {/* Summary Cards */}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-2">
+                <div className="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <Card className="border-0 bg-gradient-to-br from-sky-600 to-indigo-600 text-white shadow-lg">
                         <CardHeader className="flex items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Total Funds</CardTitle>
                             <FileText className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{totalFunds}</div>
                             <p className="text-sm opacity-90">General funds</p>
                         </CardContent>
@@ -134,7 +134,7 @@ export default function GeneralFundIndex({ generalFunds, filters }: GeneralFundP
                             <CardTitle className="text-sm font-medium">Total Codes</CardTitle>
                             <Hash className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{totalCodes}</div>
                             <p className="text-sm opacity-90">Source of fund codes</p>
                         </CardContent>
@@ -145,7 +145,7 @@ export default function GeneralFundIndex({ generalFunds, filters }: GeneralFundP
                             <CardTitle className="text-sm font-medium">Active Funds</CardTitle>
                             <div className="h-4 w-4 rounded-full bg-white/30" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold text-white">{totalActive}</div>
                             <p className="text-sm opacity-90">Currently active</p>
                         </CardContent>
@@ -156,7 +156,7 @@ export default function GeneralFundIndex({ generalFunds, filters }: GeneralFundP
                             <CardTitle className="text-sm font-medium">Inactive Funds</CardTitle>
                             <div className="h-4 w-4 rounded-full bg-white/30" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold text-white">{totalInactive}</div>
                             <p className="text-sm opacity-90">Currently inactive</p>
                         </CardContent>

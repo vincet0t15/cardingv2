@@ -165,13 +165,13 @@ export default function RatasIndex({ employees, offices, employmentStatuses, fil
                 <Heading title="Representation and Transportation Allowance (RATA)" description="Manage RATA records for eligible employees only." />
 
                 {/* Summary Cards */}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-2">
+                <div className="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <Card className="border-0 bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-lg">
                         <CardHeader className="flex items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
                             <User className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatNumber(totalEmployees)}</div>
                             <p className="text-sm opacity-90">{employeesWithRata} with RATA</p>
                         </CardContent>
@@ -182,7 +182,7 @@ export default function RatasIndex({ employees, offices, employmentStatuses, fil
                             <CardTitle className="text-sm font-medium">Total RATA</CardTitle>
                             <CreditCard className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatCurrency(totalRata)}</div>
                             <p className="text-sm opacity-90">Monthly total</p>
                         </CardContent>
@@ -193,7 +193,7 @@ export default function RatasIndex({ employees, offices, employmentStatuses, fil
                             <CardTitle className="text-sm font-medium">Average RATA</CardTitle>
                             <CreditCard className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatCurrency(averageRata)}</div>
                             <p className="text-sm opacity-90">Per employee</p>
                         </CardContent>
@@ -204,7 +204,7 @@ export default function RatasIndex({ employees, offices, employmentStatuses, fil
                             <CardTitle className="text-sm font-medium">Highest RATA</CardTitle>
                             <TrendingUp className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatCurrency(highestRata)}</div>
                             <p className="text-sm opacity-90">Maximum</p>
                         </CardContent>

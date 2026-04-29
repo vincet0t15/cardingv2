@@ -1,18 +1,6 @@
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
-import {
-    Sidebar,
-    SidebarContent,
-    SidebarFooter,
-    SidebarGroup,
-    SidebarGroupContent,
-    SidebarGroupLabel,
-    SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
-    SidebarSeparator,
-} from '@/components/ui/sidebar';
+import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavGroup } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 
@@ -241,7 +229,6 @@ export function AppSidebar() {
         }>;
     };
     const authUser = pageProps.auth?.user;
-    const performanceMetrics = pageProps.performanceMetrics ?? [];
 
     // If linked employee (not admin) → show employee nav only
     const isEmployeeOnly = authUser?.is_employee === true && authUser?.is_admin !== true;
@@ -264,26 +251,6 @@ export function AppSidebar() {
 
             <SidebarContent>
                 <NavMain items={navItems} />
-                {performanceMetrics.length > 0 && (
-                    <>
-                        <SidebarSeparator />
-                        <SidebarGroup>
-                            <SidebarGroupLabel>Performance Metrics</SidebarGroupLabel>
-                            <SidebarGroupContent>
-                                {performanceMetrics.slice(0, 8).map((metric) => (
-                                    <div key={metric.user_id} className="rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-700">
-                                        <div className="font-medium">{metric.user_name}</div>
-                                        <div className="mt-1 grid grid-cols-3 gap-2 text-xs text-slate-500">
-                                            <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">C {metric.created_count}</span>
-                                            <span className="rounded bg-blue-50 px-2 py-1 text-blue-700">U {metric.updated_count}</span>
-                                            <span className="rounded bg-red-50 px-2 py-1 text-red-700">D {metric.deleted_count}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </SidebarGroupContent>
-                        </SidebarGroup>
-                    </>
-                )}
             </SidebarContent>
 
             <SidebarFooter>

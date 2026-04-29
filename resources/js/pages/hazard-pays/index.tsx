@@ -166,13 +166,13 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
                 <Heading title="Hazard Pay" description="Manage hazard pay records for employees." />
 
                 {/* Summary Cards */}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-2">
+                <div className="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <Card className="border-0 bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-lg">
                         <CardHeader className="flex items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
                             <User className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatNumber(totalEmployees)}</div>
                             <p className="text-sm opacity-90">{employeesWithHazard} with Hazard Pay</p>
                         </CardContent>
@@ -183,7 +183,7 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
                             <CardTitle className="text-sm font-medium">Total Hazard Pay</CardTitle>
                             <HardHat className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatCurrency(totalHazard)}</div>
                             <p className="text-sm opacity-90">Monthly total</p>
                         </CardContent>
@@ -194,7 +194,7 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
                             <CardTitle className="text-sm font-medium">Average Hazard Pay</CardTitle>
                             <HardHat className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatCurrency(averageHazard)}</div>
                             <p className="text-sm opacity-90">Per employee</p>
                         </CardContent>
@@ -205,7 +205,7 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
                             <CardTitle className="text-sm font-medium">Highest Hazard Pay</CardTitle>
                             <TrendingUp className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatCurrency(highestHazard)}</div>
                             <p className="text-sm opacity-90">Maximum</p>
                         </CardContent>

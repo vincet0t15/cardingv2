@@ -200,13 +200,13 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                 <Heading title="Employee Deductions" description="Manage employee deductions for payroll processing." />
 
                 {/* Summary Cards */}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-2">
+                <div className="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <Card className="border-0 bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-lg">
                         <CardHeader className="flex items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Employees</CardTitle>
                             <User className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatNumber(totalEmployees)}</div>
                             <p className="text-sm opacity-90">{employeesWithDeductions} with deductions</p>
                         </CardContent>
@@ -217,7 +217,7 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                             <CardTitle className="text-sm font-medium">Total Deductions</CardTitle>
                             <TrendingDown className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold text-amber-50">{formatCurrency(totalDeductionsAll)}</div>
                             <p className="text-sm opacity-90">Monthly total</p>
                         </CardContent>
@@ -228,7 +228,7 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                             <CardTitle className="text-sm font-medium">Average</CardTitle>
                             <TrendingDown className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatCurrency(averageDeduction)}</div>
                             <p className="text-sm opacity-90">Per employee</p>
                         </CardContent>
@@ -239,7 +239,7 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                             <CardTitle className="text-sm font-medium">Highest</CardTitle>
                             <TrendingDown className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatCurrency(highestDeduction)}</div>
                             <p className="text-sm opacity-90">Maximum deduction</p>
                         </CardContent>
@@ -247,7 +247,7 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                 </div>
 
                 {/* Instruction Note */}
-                <div className="rounded-lg border border-teal-200 bg-teal-50 p-4 text-teal-800 dark:border-teal-800 dark:bg-teal-900/20 dark:text-teal-300 mt-3">
+                <div className="mt-3 rounded-lg border border-teal-200 bg-teal-50 p-4 text-teal-800 dark:border-teal-800 dark:bg-teal-900/20 dark:text-teal-300">
                     <div className="flex items-start gap-3">
                         <svg className="mt-0.5 h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path
@@ -259,7 +259,9 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                         </svg>
                         <div className="text-sm">
                             <p className="mb-1 font-semibold">How to manage deductions:</p>
-                            <p className="text-teal-700 dark:text-teal-400">Click an employee's avatar or row to view their details and manage deductions.</p>
+                            <p className="text-teal-700 dark:text-teal-400">
+                                Click an employee's avatar or row to view their details and manage deductions.
+                            </p>
                         </div>
                     </div>
                 </div>

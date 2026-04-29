@@ -57,7 +57,7 @@ export default function Suppliers({ suppliers, filters }: Props) {
                             <CardTitle className="text-sm font-medium text-emerald-50">Total Suppliers</CardTitle>
                             <Users className="h-4 w-4 text-emerald-100" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-bold">{formatNumber(totalSuppliers)}</div>
                             <p className="text-xs text-emerald-50/80">All suppliers</p>
                         </CardContent>
@@ -68,7 +68,7 @@ export default function Suppliers({ suppliers, filters }: Props) {
                             <CardTitle className="text-sm font-medium text-sky-50">Active (page)</CardTitle>
                             <Users className="h-4 w-4 text-sky-100" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-bold">{formatNumber(activeCount)}</div>
                             <p className="text-xs text-sky-50/80">Active suppliers (this page)</p>
                         </CardContent>
@@ -79,7 +79,7 @@ export default function Suppliers({ suppliers, filters }: Props) {
                             <CardTitle className="text-sm font-medium text-orange-50">Inactive (page)</CardTitle>
                             <Users className="h-4 w-4 text-orange-100" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-bold">{formatNumber(inactiveCount)}</div>
                             <p className="text-xs text-orange-50/80">Inactive suppliers (this page)</p>
                         </CardContent>
@@ -90,7 +90,7 @@ export default function Suppliers({ suppliers, filters }: Props) {
                             <CardTitle className="text-sm font-medium text-violet-50">This Page</CardTitle>
                             <Users className="h-4 w-4 text-violet-100" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-bold">
                                 {formatNumber(suppliers.data.length)} <span className="text-sm">/</span> {formatNumber(suppliers.per_page)}
                             </div>

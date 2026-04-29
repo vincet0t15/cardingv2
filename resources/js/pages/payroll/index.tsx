@@ -247,13 +247,13 @@ export default function PayrollIndex({ employees, offices, employmentStatuses, f
                 </div>
 
                 {/* Summary Cards */}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-2">
+                <div className="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <Card className="border-0 bg-gradient-to-br from-sky-600 to-indigo-600 text-white shadow-lg">
                         <CardHeader className="flex items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Employees</CardTitle>
                             <Wallet className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatNumber(employees.data.length)}</div>
                             <p className="text-sm opacity-90">Employees on this page</p>
                         </CardContent>
@@ -264,7 +264,7 @@ export default function PayrollIndex({ employees, offices, employmentStatuses, f
                             <CardTitle className="text-sm font-medium">Total Salaries</CardTitle>
                             <Wallet className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatCurrency(getTotalSalary())}</div>
                             <p className="text-sm opacity-90">Basic pay (sum)</p>
                         </CardContent>
@@ -275,7 +275,7 @@ export default function PayrollIndex({ employees, offices, employmentStatuses, f
                             <CardTitle className="text-sm font-medium">PERA</CardTitle>
                             <Coins className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatCurrency(getTotalPera())}</div>
                             <p className="text-sm opacity-90">Personnel Economic Relief Allowance</p>
                         </CardContent>
@@ -286,20 +286,20 @@ export default function PayrollIndex({ employees, offices, employmentStatuses, f
                             <CardTitle className="text-sm font-medium">RATA</CardTitle>
                             <Wallet className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatCurrency(getTotalRata())}</div>
                             <p className="text-sm opacity-90">RATA (Regional/Allowance)</p>
                         </CardContent>
                     </Card>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-4">
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <Card className="border-0 bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-lg">
                         <CardHeader className="flex items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Hazard Pay</CardTitle>
                             <MinusCircle className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatCurrency(getTotalHazardPay())}</div>
                             <p className="text-sm opacity-90">Hazard pay total</p>
                         </CardContent>
@@ -310,7 +310,7 @@ export default function PayrollIndex({ employees, offices, employmentStatuses, f
                             <CardTitle className="text-sm font-medium">Clothing Allowance</CardTitle>
                             <Wallet className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatCurrency(getTotalClothingAllowance())}</div>
                             <p className="text-sm opacity-90">Clothing allowance total</p>
                         </CardContent>
@@ -321,7 +321,7 @@ export default function PayrollIndex({ employees, offices, employmentStatuses, f
                             <CardTitle className="text-sm font-medium">Deductions</CardTitle>
                             <MinusCircle className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold text-amber-50">{formatCurrency(getTotalDeductions())}</div>
                             <p className="text-sm opacity-90">Total deductions</p>
                         </CardContent>
@@ -332,7 +332,7 @@ export default function PayrollIndex({ employees, offices, employmentStatuses, f
                             <CardTitle className="text-sm font-medium">Net Pay</CardTitle>
                             <Wallet className="h-5 w-5 opacity-90" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold text-green-200">{formatCurrency(getTotalNet())}</div>
                             <p className="text-sm opacity-90">After deductions</p>
                         </CardContent>
