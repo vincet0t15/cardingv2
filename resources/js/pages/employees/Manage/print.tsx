@@ -323,8 +323,8 @@ export default function EmployeePrintReport({
         isAllTimeView = true;
     }
 
-    const grossPay = salary + pera + rata + hazardPay + clothingAllowance + totalAllClaims + adjustments;
-    const netPay = grossPay - totalAllDeductions;
+    const grossPay = salary + pera + rata + hazardPay + clothingAllowance;
+    const netPay = grossPay + adjustments - totalAllDeductions;
 
     const currentDate = new Date().toLocaleDateString('en-PH', {
         year: 'numeric',
@@ -768,7 +768,7 @@ export default function EmployeePrintReport({
                                                                     {formatCurrency(yearAdjustments)}
                                                                 </td>
                                                                 <td className="border border-black px-2 py-1 text-right font-bold">
-                                                                    {formatCurrency(yearClaims + yearAdjustments - yearDeductions)}
+                                                                    {formatCurrency(yearAdjustments - yearDeductions)}
                                                                 </td>
                                                             </tr>
                                                         );
@@ -785,7 +785,7 @@ export default function EmployeePrintReport({
                                                         {formatCurrency(totalAllAdjustments)}
                                                     </td>
                                                     <td className="border border-black px-2 py-1 text-right">
-                                                        {formatCurrency(totalAllClaims + totalAllAdjustments - totalAllDeductions)}
+                                                        {formatCurrency(totalAllAdjustments - totalAllDeductions)}
                                                     </td>
                                                 </tr>
                                             </tbody>
