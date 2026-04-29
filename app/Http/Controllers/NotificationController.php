@@ -14,7 +14,12 @@ class NotificationController extends Controller
             ->notifications()
             ->with('notifiable')
             ->orderBy('created_at', 'desc')
-            ->paginate(20);
+            ->paginate(20)
+            ->through(function ($notification) {
+                return array_merge($notification->toArray(), [
+                    'actionable' => $notification->actionable,
+                ]);
+            });
 
         return Inertia::render('notifications/index', [
             'notifications' => $notifications,
@@ -28,7 +33,12 @@ class NotificationController extends Controller
             ->with('notifiable')
             ->orderBy('created_at', 'desc')
             ->limit(5)
-            ->get();
+            ->get()
+            ->map(function ($notification) {
+                return array_merge($notification->toArray(), [
+                    'actionable' => $notification->actionable,
+                ]);
+            });
 
         return response()->json([
             'notifications' => $notifications,

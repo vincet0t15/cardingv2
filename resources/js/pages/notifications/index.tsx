@@ -17,6 +17,7 @@ interface Notification {
     notifiable_id?: number;
     notifiable_type?: string;
     is_read: boolean;
+    actionable?: boolean;
     created_at: string;
     updated_at: string;
 }
@@ -234,6 +235,7 @@ export default function NotificationsIndex() {
                                         onReject={
                                             notification.type === 'delete_request' && notification.actionable ? handleRejectDeleteRequest : undefined
                                         }
+                                        alwaysShowActions={notification.type === 'delete_request'}
                                     />
                                 ))}
                             </div>

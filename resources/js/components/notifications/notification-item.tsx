@@ -17,6 +17,7 @@ interface NotificationItemProps {
     onDelete?: (id: number) => void;
     onApprove?: (id: number) => void;
     onReject?: (id: number) => void;
+    alwaysShowActions?: boolean;
     compact?: boolean;
 }
 
@@ -34,6 +35,7 @@ export function NotificationItem({
     onDelete,
     onApprove,
     onReject,
+    alwaysShowActions = false,
     compact = false,
 }: NotificationItemProps) {
     const getIcon = () => {
@@ -76,7 +78,12 @@ export function NotificationItem({
                 </div>
                 <p className="text-muted-foreground mt-1 text-xs">{format(new Date(createdAt), 'MMM d, h:mm a')}</p>
             </div>
-            <div className="flex flex-shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            <div
+                className={cn(
+                    'flex flex-shrink-0 items-center gap-1 transition-opacity',
+                    alwaysShowActions ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                )}
+            >
                 {type === 'delete_request' && (onApprove || onReject) && (
                     <>
                         {onApprove && (
