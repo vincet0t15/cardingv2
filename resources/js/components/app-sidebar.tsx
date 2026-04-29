@@ -1,6 +1,18 @@
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarSeparator } from '@/components/ui/sidebar';
+import {
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarGroup,
+    SidebarGroupContent,
+    SidebarGroupLabel,
+    SidebarHeader,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
+    SidebarSeparator,
+} from '@/components/ui/sidebar';
 import { type NavGroup } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 
@@ -212,7 +224,7 @@ const employeeNavItems: NavGroup[] = [
 
 export function AppSidebar() {
     const pageProps = usePage().props as {
-        auth?: { user?: { is_employee?: boolean; is_admin?: boolean } | null }
+        auth?: { user?: { is_employee?: boolean; is_admin?: boolean } | null };
         performanceMetrics?: Array<{
             user_id: number;
             user_name: string;
