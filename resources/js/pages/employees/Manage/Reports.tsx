@@ -407,7 +407,7 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                         <CardTitle className="text-sm font-medium">Basic Salary</CardTitle>
                         <TrendingDown className="text-muted-foreground h-4 w-4" />
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="bg-transparent">
                         <div className="text-2xl font-bold">{formatCurrency(salary)}</div>
                     </CardContent>
                 </Card>
@@ -417,7 +417,7 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                         <CardTitle className="text-sm font-medium">PERA</CardTitle>
                         <Receipt className="text-muted-foreground h-4 w-4" />
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="bg-transparent">
                         <div className="text-2xl font-bold">{formatCurrency(pera)}</div>
                     </CardContent>
                 </Card>
@@ -428,7 +428,7 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                             <CardTitle className="text-sm font-medium">RATA</CardTitle>
                             <Receipt className="text-muted-foreground h-4 w-4" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="text-2xl font-bold">{formatCurrency(rata)}</div>
                         </CardContent>
                     </Card>
@@ -439,7 +439,7 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                         <CardTitle className="text-sm font-medium text-slate-800">Gross Pay</CardTitle>
                         <TrendingDown className="h-4 w-4 text-slate-500" />
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="bg-transparent">
                         <div className="text-2xl font-bold text-slate-900">{formatCurrency(grossPay)}</div>
                         {isAllTimeView && <p className="mt-1 text-xs text-slate-600">Sum of all periods</p>}
                         {isYearlyView && <p className="mt-1 text-xs text-slate-600">Total for {filterYear}</p>}
@@ -451,7 +451,7 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                         <CardTitle className="text-sm font-medium text-red-800">Total Deductions</CardTitle>
                         <TrendingDown className="h-4 w-4 text-red-500" />
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="bg-transparent">
                         <div className="text-2xl font-bold text-red-700">{formatCurrency(totalAllDeductions)}</div>
                         <p className="mt-1 text-xs text-red-600">{filteredDeductions.length} deduction entries</p>
                     </CardContent>
@@ -462,7 +462,7 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                         <CardTitle className="text-sm font-medium text-violet-800">Total Adjustments</CardTitle>
                         <Receipt className="h-4 w-4 text-violet-500" />
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="bg-transparent">
                         <div className="text-2xl font-bold text-violet-700">{formatCurrency(totalAdjustments)}</div>
                         <p className="mt-1 text-xs text-violet-600">{filteredAdjustments.length} adjustment entries</p>
                     </CardContent>
@@ -473,7 +473,7 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                         <CardTitle className="text-sm font-medium text-green-800">Net Pay</CardTitle>
                         <Receipt className="h-4 w-4 text-green-500" />
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="bg-transparent">
                         <div className="text-2xl font-bold text-green-700">{formatCurrency(netPay)}</div>
                         <p className="mt-1 text-xs text-green-600">Gross Pay + Claims + Adjustments - Deductions</p>
                         {isAllTimeView && <p className="mt-1 text-xs text-green-600">Sum of all periods</p>}
@@ -486,7 +486,7 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                         <CardTitle className="text-sm font-medium text-blue-800">Total Claims</CardTitle>
                         <Receipt className="h-4 w-4 text-blue-500" />
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="bg-transparent">
                         <div className="text-2xl font-bold text-blue-700">{formatCurrency(totalAllClaims)}</div>
                         <p className="mt-1 text-xs text-blue-600">
                             {filteredClaims.length} claim{filteredClaims.length !== 1 ? 's' : ''} recorded
@@ -730,7 +730,7 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                     </div>
                 ) : (
                     <Card>
-                        <CardContent>
+                        <CardContent className="bg-transparent">
                             <div className="w-full overflow-hidden rounded-sm border shadow-sm">
                                 <Table>
                                     <TableHeader className="bg-muted/90">
@@ -790,7 +790,7 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                                     <CardTitle className="text-sm">{yearRow.year}</CardTitle>
                                     <span className="text-sm font-semibold text-green-600">{formatCurrency(yearRow.total)}</span>
                                 </CardHeader>
-                                <CardContent>
+                                <CardContent className="bg-transparent">
                                     <div className="w-full overflow-hidden rounded-sm border shadow-sm">
                                         <Table>
                                             <TableHeader className="bg-muted/90">

@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Link } from '@inertiajs/react';
 
 export interface PerformanceMetric {
     user_id: number;
@@ -33,16 +34,24 @@ export default function PerformanceMetrics({ metrics = [] }: PerformanceMetricsP
                         <tbody>
                             {metrics.length === 0 ? (
                                 <tr>
-                                    <td colSpan={3} className="text-muted-foreground px-4 py-8 text-center text-sm">
+                                    <td colSpan={4} className="text-muted-foreground px-4 py-8 text-center text-sm">
                                         No performance data available
                                     </td>
                                 </tr>
                             ) : (
                                 metrics.map((metric) => (
                                     <tr key={metric.user_id} className="hover:bg-muted/50 border-b">
-                                        <td className="px-4 py-3 text-sm font-medium">{metric.user_name}</td>
+                                        <td className="px-4 py-3 text-sm font-medium">
+                                            <Link
+                                                href={route('audit-logs.performance.user', { user: metric.user_id })}
+                                                className="hover:text-primary text-slate-900"
+                                            >
+                                                {metric.user_name}
+                                            </Link>
+                                        </td>
                                         <td className="px-4 py-3 text-right text-sm">{metric.created_count}</td>
                                         <td className="px-4 py-3 text-right text-sm">{metric.updated_count}</td>
+                                        <td className="px-4 py-3 text-right text-sm">{metric.total_actions}</td>
                                     </tr>
                                 ))
                             )}

@@ -298,6 +298,7 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
 
     // AUDIT LOGS (requires audit_logs.view permission)
     Route::middleware(['permission:audit_logs.view'])->prefix('audit-logs')->group(function () {
+        Route::get('/performance/user/{user}', [AuditLogController::class, 'performanceUser'])->name('audit-logs.performance.user');
         Route::get('/performance', [AuditLogController::class, 'performance'])->name('audit-logs.performance');
         Route::get('/', [AuditLogController::class, 'index'])->name('audit-logs.index');
         Route::get('/{auditLog}', [AuditLogController::class, 'show'])->name('audit-logs.show');

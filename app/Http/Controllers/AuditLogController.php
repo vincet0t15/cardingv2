@@ -83,6 +83,27 @@ class AuditLogController extends Controller
         ]);
     }
 
+    public function performanceUser(int $userId, Request $request)
+    {
+        $user = User::findOrFail($userId);
+
+        $perPage = $request->per_page ?? 20;
+        $auditLogs = $this->buildAuditLogQuery($request)
+            ->where('user_id', $userId)
+            ->with('user')
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage)
+            ->appends($request->except('page'));
+
+        return Inertia::render('AuditLogs/PerformanceUser', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+            ],
+            'auditLogs' => $auditLogs,
+        ]);
+    }
+
     private function buildAuditLogQuery(Request $request)
     {
         return AuditLog::query()
