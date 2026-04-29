@@ -1,3 +1,4 @@
+import Heading from '@/components/heading';
 import PerformanceMetrics from '@/components/PerformanceMetrics';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import type { AuditLog } from '@/types/auditLog';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Calendar, Download, Eye, Filter, Search } from 'lucide-react';
 
 interface AuditLogsIndexProps {
@@ -35,6 +36,7 @@ interface AuditLogsIndexProps {
         deleted_count: number;
         total_actions: number;
     }>;
+    showPerformanceView?: boolean;
     filters: {
         search?: string;
         action?: string;
@@ -47,7 +49,15 @@ interface AuditLogsIndexProps {
     };
 }
 
-export default function Index({ auditLogs, modelTypes, users, stats, performanceMetrics = [], filters }: AuditLogsIndexProps) {
+export default function Index({
+    auditLogs,
+    modelTypes,
+    users,
+    stats,
+    performanceMetrics = [],
+    showPerformanceView = false,
+    filters,
+}: AuditLogsIndexProps) {
     const handleFilterChange = (key: string, value: string | null) => {
         router.get(route('audit-logs.index'), { ...filters, [key]: value, page: 1 }, { preserveState: true, replace: true });
     };
@@ -60,8 +70,8 @@ export default function Index({ auditLogs, modelTypes, users, stats, performance
         window.location.href = route('audit-logs.export', filters);
     };
 
-    const tab = typeof window !== 'undefined' ? new URL(window.location.href).searchParams.get('tab') : null;
-    const isPerformanceTab = tab === 'performance';
+    const page = usePage();
+    const isPerformanceTab = showPerformanceView || page.url.endsWith('/audit-logs/performance');
 
     const getActionBadgeClass = (action: string) => {
         const classes: Record<string, string> = {
@@ -75,11 +85,18 @@ export default function Index({ auditLogs, modelTypes, users, stats, performance
 
     return (
         <AppLayout>
-            <Head title="Audit Logs" />
+            <Head title={isPerformanceTab ? 'Performance Metrics' : 'Audit Logs'} />
 
-            <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
+            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+                <Heading
+                    title={isPerformanceTab ? 'Performance Metrics' : 'Audit Logs'}
+                    description={
+                        isPerformanceTab
+                            ? 'View user performance counts for adds and edits.'
+                            : 'Manage audit logs — view transactions, edit details, and keep audit records up to date.'
+                    }
+                />
                 <div className="flex items-center justify-between">
-                    <h2 className="text-3xl font-bold tracking-tight">{isPerformanceTab ? 'Performance Metrics' : 'Audit Logs'}</h2>
                     <Button onClick={exportLogs}>
                         <Download className="mr-2 h-4 w-4" />
                         Export CSV

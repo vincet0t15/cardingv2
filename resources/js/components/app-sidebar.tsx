@@ -195,7 +195,7 @@ const mainNavItems: NavGroup[] = [
             },
             {
                 title: 'Performance Metrics',
-                href: '/audit-logs?tab=performance',
+                href: '/audit-logs/performance',
                 icon: BarChart3,
             },
         ],
