@@ -289,7 +289,11 @@ export default function CreateEmployee({ employmentStatuses, offices, similarEmp
                                     <div className="flex w-full flex-col gap-1">
                                         <Label>First Name</Label>
                                         <Input name="first_name" value={data.first_name} onChange={handleInputChange} placeholder="First Name" />
-                                        {errors.first_name && <p className="text-destructive text-xs">{errors.first_name}</p>}
+                                        {errors.first_name && (
+                                            <p className="text-destructive text-xs">
+                                                {Array.isArray(errors.first_name) ? errors.first_name[0] : errors.first_name}
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="flex w-full flex-col gap-1">
                                         <Label>Middle Name</Label>
@@ -301,7 +305,11 @@ export default function CreateEmployee({ employmentStatuses, offices, similarEmp
                                     <div className="flex w-full flex-col gap-1">
                                         <Label>Last Name</Label>
                                         <Input name="last_name" value={data.last_name} onChange={handleInputChange} placeholder="Last Name" />
-                                        {errors.last_name && <p className="text-destructive text-xs">{errors.last_name}</p>}
+                                        {errors.last_name && (
+                                            <p className="text-destructive text-xs">
+                                                {Array.isArray(errors.last_name) ? errors.last_name[0] : errors.last_name}
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="flex w-full flex-col gap-1">
                                         <Label>Suffix</Label>
@@ -333,7 +341,11 @@ export default function CreateEmployee({ employmentStatuses, offices, similarEmp
                                             onSelect={(value) => setData('office_id', (value ?? '') as string | number)}
                                             value={String(data.office_id)}
                                         />
-                                        {errors.office_id && <p className="text-destructive text-xs">{errors.office_id}</p>}
+                                        {errors.office_id && (
+                                            <p className="text-destructive text-xs">
+                                                {Array.isArray(errors.office_id) ? errors.office_id[0] : errors.office_id}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
 
@@ -347,7 +359,13 @@ export default function CreateEmployee({ employmentStatuses, offices, similarEmp
                                             value={data.employment_status_id ? String(data.employment_status_id) : null}
                                             onSelect={handleEmploymentStatusChange}
                                         />
-                                        {errors.employment_status_id && <p className="text-destructive text-xs">{errors.employment_status_id}</p>}
+                                        {errors.employment_status_id && (
+                                            <p className="text-destructive text-xs">
+                                                {Array.isArray(errors.employment_status_id)
+                                                    ? errors.employment_status_id[0]
+                                                    : errors.employment_status_id}
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="flex w-full flex-col gap-1">
                                         <Label className="mb-2">RATA Eligible</Label>

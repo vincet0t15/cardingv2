@@ -106,15 +106,11 @@ class EmployeeController extends Controller
         return redirect()->route('employees.show', $employee)->with('success', 'Employee created successfully');
     }
 
-    public function show(Employee $employee): Response
+    public function show(Employee $employee): RedirectResponse
     {
         $this->authorize('view', $employee);
 
-        $employee->load(['office', 'employmentStatus', 'salaries', 'createdBy']);
-
-        return Inertia::render('employees/show', [
-            'employee' => $employee,
-        ]);
+        return redirect()->route('manage.employees.index', $employee)->with('success', 'Employee details loaded');
     }
 
     public function update(Request $request, Employee $employee): RedirectResponse
