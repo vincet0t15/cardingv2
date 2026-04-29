@@ -25,8 +25,9 @@ export default function PerformanceMetrics({ metrics = [] }: PerformanceMetricsP
                         <thead>
                             <tr className="border-b">
                                 <th className="px-4 py-3 text-left text-sm font-medium">User</th>
-                                <th className="px-4 py-3 text-right text-sm font-medium">Adds</th>
-                                <th className="px-4 py-3 text-right text-sm font-medium">Edits</th>
+                                <th className="px-4 py-3 text-right text-sm font-medium">Created</th>
+                                <th className="px-4 py-3 text-right text-sm font-medium">Updated</th>
+                                <th className="px-4 py-3 text-right text-sm font-medium">Total Actions</th>
                             </tr>
                         </thead>
                         <tbody>

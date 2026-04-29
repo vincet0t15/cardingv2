@@ -43,36 +43,12 @@ class AuditLogController extends Controller
             'deleted_count' => (clone $query)->where('action', 'deleted')->count(),
         ];
 
-        $performanceMetrics = (clone $query)
-            ->whereNotNull('user_id')
-            ->selectRaw('user_id, count(*) as total_actions')
-            ->selectRaw('sum(case when action = "created" then 1 else 0 end) as created_count')
-            ->selectRaw('sum(case when action = "updated" then 1 else 0 end) as updated_count')
-            ->selectRaw('sum(case when action = "deleted" then 1 else 0 end) as deleted_count')
-            ->groupBy('user_id')
-            ->reorder()
-            ->orderByDesc('total_actions')
-            ->with('user')
-            ->get()
-            ->map(function ($row) {
-                return [
-                    'user_id' => $row->user_id,
-                    'user_name' => $row->user?->name ?? 'Unknown',
-                    'created_count' => (int) $row->created_count,
-                    'updated_count' => (int) $row->updated_count,
-                    'deleted_count' => (int) $row->deleted_count,
-                    'total_actions' => (int) $row->total_actions,
-                ];
-            });
-
         return Inertia::render('AuditLogs/Index', [
             'auditLogs' => $auditLogs,
             'modelTypes' => $modelTypes,
             'users' => $users,
             'stats' => $stats,
             'filters' => $request->only(['search', 'action', 'model_type', 'user_id', 'date_from', 'date_to', 'per_page', 'exclude_settings']),
-            'performanceMetrics' => $performanceMetrics,
-            'showPerformanceView' => false,
         ]);
     }
 
@@ -102,40 +78,8 @@ class AuditLogController extends Controller
                 ];
             });
 
-        $modelTypes = AuditLog::distinct()->pluck('model_type')
-            ->map(function ($modelType) {
-                return [
-                    'value' => $modelType,
-                    'label' => class_basename($modelType),
-                ];
-            })
-            ->values();
-
-        $users = User::orderBy('name')->get(['id', 'name']);
-
-        $stats = [
-            'total_logs' => (clone $query)->count(),
-            'today_logs' => (clone $query)->whereDate('created_at', today())->count(),
-            'created_count' => (clone $query)->where('action', 'created')->count(),
-            'updated_count' => (clone $query)->where('action', 'updated')->count(),
-            'deleted_count' => (clone $query)->where('action', 'deleted')->count(),
-        ];
-
-        return Inertia::render('AuditLogs/Index', [
-            'auditLogs' => [
-                'data' => [],
-                'links' => [],
-                'current_page' => 1,
-                'last_page' => 1,
-                'per_page' => 20,
-                'total' => 0,
-            ],
-            'modelTypes' => $modelTypes,
-            'users' => $users,
-            'stats' => $stats,
-            'filters' => $request->only(['search', 'action', 'model_type', 'user_id', 'date_from', 'date_to', 'per_page', 'exclude_settings']),
+        return Inertia::render('AuditLogs/Performance', [
             'performanceMetrics' => $performanceMetrics,
-            'showPerformanceView' => true,
         ]);
     }
 
