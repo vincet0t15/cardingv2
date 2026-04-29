@@ -83,7 +83,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                     </Badge>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                    <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-xl shadow-lg">
+                    <Card className="border-blue-200 bg-blue-50 text-blue-800 p-6 rounded-lg shadow-sm">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Basic Salary</CardTitle>
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
@@ -96,7 +96,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-xl shadow-lg">
+                    <Card className="border-green-200 bg-green-50 text-green-800 p-6 rounded-lg shadow-sm">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">PERA</CardTitle>
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
@@ -109,7 +109,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-xl shadow-lg">
+                    <Card className="border-purple-200 bg-purple-50 text-purple-800 p-6 rounded-lg shadow-sm">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">RATA</CardTitle>
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30">
@@ -131,7 +131,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-xl shadow-lg">
+                    <Card className="border-orange-200 bg-orange-50 text-orange-800 p-6 rounded-lg shadow-sm">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Hazard Pay</CardTitle>
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/30">
@@ -149,7 +149,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-gradient-to-br from-pink-500 to-pink-600 text-white p-6 rounded-xl shadow-lg">
+                    <Card className="border-pink-200 bg-pink-50 text-pink-800 p-6 rounded-lg shadow-sm">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Clothing Allow.</CardTitle>
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-pink-100 dark:bg-pink-900/30">
@@ -182,7 +182,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                             </Badge>
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                            <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-xl shadow-lg">
+                            <Card className="border-blue-200 bg-blue-50 text-blue-800 p-6 rounded-lg shadow-sm">
                                 <CardHeader className="flex items-center justify-between pb-2">
                                     <CardTitle className="text-sm font-medium">Basic Salary</CardTitle>
                                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
@@ -197,7 +197,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                                 </CardContent>
                             </Card>
 
-                            <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-xl shadow-lg">
+                            <Card className="border-green-200 bg-green-50 text-green-800 p-6 rounded-lg shadow-sm">
                                 <CardHeader className="flex items-center justify-between pb-2">
                                     <CardTitle className="text-sm font-medium">PERA</CardTitle>
                                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
@@ -210,7 +210,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                                 </CardContent>
                             </Card>
 
-                            <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-xl shadow-lg">
+                            <Card className="border-purple-200 bg-purple-50 text-purple-800 p-6 rounded-lg shadow-sm">
                                 <CardHeader className="flex items-center justify-between pb-2">
                                     <CardTitle className="text-sm font-medium">RATA</CardTitle>
                                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/30">
@@ -234,7 +234,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                                 </CardContent>
                             </Card>
 
-                            <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-xl shadow-lg">
+                            <Card className="border-orange-200 bg-orange-50 text-orange-800 p-6 rounded-lg shadow-sm">
                                 <CardHeader className="flex items-center justify-between pb-2">
                                     <CardTitle className="text-sm font-medium">Hazard Pay</CardTitle>
                                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/30">
@@ -254,7 +254,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                                 </CardContent>
                             </Card>
 
-                            <Card className="bg-gradient-to-br from-pink-500 to-pink-600 text-white p-6 rounded-xl shadow-lg">
+                            <Card className="border-pink-200 bg-pink-50 text-pink-800 p-6 rounded-lg shadow-sm">
                                 <CardHeader className="flex items-center justify-between pb-2">
                                     <CardTitle className="text-sm font-medium">Clothing Allow.</CardTitle>
                                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-pink-100 dark:bg-pink-900/30">
@@ -281,7 +281,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                             {MONTHS[currentMonth - 1]} {currentYear} Activity
                         </h3>
                         <div className="grid gap-4 sm:grid-cols-3">
-                            <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white p-6 rounded-xl shadow-lg">
+                            <Card className="border-red-200 bg-red-50 text-red-800 p-6 rounded-lg shadow-sm">
                                 <CardHeader className="flex items-center justify-between pb-2">
                                     <CardTitle className="text-sm font-medium">Deductions This Month</CardTitle>
                                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30">
@@ -296,7 +296,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                                 </CardContent>
                             </Card>
 
-                            <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white p-6 rounded-xl shadow-lg">
+                            <Card className="border-red-200 bg-red-50 text-red-800 p-6 rounded-lg shadow-sm">
                                 <CardHeader className="flex items-center justify-between pb-2">
                                     <CardTitle className="text-sm font-medium">Claims This Month</CardTitle>
                                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
@@ -311,7 +311,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                                 </CardContent>
                             </Card>
 
-<Card className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-6 rounded-xl shadow-lg">
+<Card className="bg-blue-50 text-blue-800 p-6 rounded-lg shadow-sm">
                                 <CardHeader className="flex items-center justify-between pb-2">
                                     <CardTitle className="text-sm font-medium text-blue-800">Est. Net Pay</CardTitle>
                                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-200 dark:bg-blue-900/50">
@@ -328,7 +328,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                 </div>
 
                 <div className="space-y-6">
-                    <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white p-6 rounded-xl shadow-lg">
+                    <Card className="border-red-200 bg-red-50 text-red-800 p-6 rounded-lg shadow-sm">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-base">
                                 <CalendarDays className="h-5 w-5 text-blue-600" />
@@ -336,26 +336,26 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="grid gap-4 sm:grid-cols-2">
-                            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Current period</p>
                                 <p className="mt-2 text-lg font-semibold text-slate-900">{currentPeriodLabel}</p>
                             </div>
-                            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Claims count</p>
                                 <p className="mt-2 text-lg font-semibold text-emerald-700">{currentMonthClaimsCount}</p>
                             </div>
-                            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Adjustments shown</p>
                                 <p className="mt-2 text-lg font-semibold text-violet-700">{recentAdjustments.length}</p>
                             </div>
-                            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Years of service</p>
                                 <p className="mt-2 text-lg font-semibold text-slate-900">{yearsOfService}</p>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white p-6 rounded-xl shadow-lg">
+                    <Card className="border-red-200 bg-red-50 text-red-800 p-6 rounded-lg shadow-sm">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-base">
                                 <CreditCard className="h-5 w-5 text-slate-700" />
@@ -363,19 +363,19 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="grid gap-3 sm:grid-cols-2">
-                            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Deductions all-time</p>
                                 <p className="mt-2 text-lg font-semibold text-rose-600">{formatCurrency(totalDeductionsAllTime)}</p>
                             </div>
-                            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Claims all-time</p>
                                 <p className="mt-2 text-lg font-semibold text-emerald-600">{formatCurrency(totalClaimsAllTime)}</p>
                             </div>
-                            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Net this month</p>
                                 <p className="mt-2 text-lg font-semibold text-slate-900">{formatCurrency(netThisMonth)}</p>
                             </div>
-                            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Gross this month</p>
                                 <p className="mt-2 text-lg font-semibold text-slate-900">{formatCurrency(grossPay)}</p>
                             </div>
@@ -386,7 +386,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
 
             <div className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
                 <div className="space-y-6">
-                    <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white p-6 rounded-xl shadow-lg">
+                    <Card className="border-red-200 bg-red-50 text-red-800 p-6 rounded-lg shadow-sm">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-base">
                                 <User className="h-5 w-5 text-blue-600" />
@@ -453,7 +453,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                     </Card>
 
                     {currentMonthDeductions.length > 0 && (
-                        <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white p-6 rounded-xl shadow-lg">
+                        <Card className="border-red-200 bg-red-50 text-red-800 p-6 rounded-lg shadow-sm">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2 text-base">
                                     <TrendingDown className="h-5 w-5 text-rose-600" />
@@ -461,7 +461,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
+                                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                     <div className="flex items-center justify-between text-sm text-slate-500">
                                         <span>{currentPeriodLabel}</span>
                                         <span>
@@ -508,7 +508,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
 
                 <div className="space-y-6">
                     {Object.keys(deductions).length > 0 && (
-                        <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white p-6 rounded-xl shadow-lg">
+                        <Card className="border-red-200 bg-red-50 text-red-800 p-6 rounded-lg shadow-sm">
                             <CardHeader>
                                 <CardTitle className="text-base">Latest Deductions Period</CardTitle>
                             </CardHeader>
@@ -542,7 +542,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                     )}
 
                     {recentClaims.length > 0 && (
-                        <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white p-6 rounded-xl shadow-lg">
+                        <Card className="border-red-200 bg-red-50 text-red-800 p-6 rounded-lg shadow-sm">
                             <CardHeader>
                                 <CardTitle className="text-base">Recent Claims Activity</CardTitle>
                             </CardHeader>
@@ -572,7 +572,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                     )}
 
                     {recentAdjustments.length > 0 && (
-                        <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white p-6 rounded-xl shadow-lg">
+                        <Card className="border-red-200 bg-red-50 text-red-800 p-6 rounded-lg shadow-sm">
                             <CardHeader>
                                 <CardTitle className="text-base">Recent Adjustments</CardTitle>
                             </CardHeader>
@@ -605,7 +605,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                     )}
 
                     {employee.salaries && employee.salaries.length > 1 && (
-                        <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white p-6 rounded-xl shadow-lg">
+                        <Card className="border-red-200 bg-red-50 text-red-800 p-6 rounded-lg shadow-sm">
                             <CardHeader>
                                 <CardTitle className="text-base">Compensation History</CardTitle>
                             </CardHeader>

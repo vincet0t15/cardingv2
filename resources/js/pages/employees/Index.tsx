@@ -138,44 +138,44 @@ export default function Employees({ employees, offices, employmentStatuses, filt
 
                 {/* Summary Cards */}
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <Card className="border-0 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg">
+                    <Card className="border-0 bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium text-emerald-50">Total Employees</CardTitle>
                             <Users className="h-4 w-4 text-emerald-100" />
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold">{formatNumber(totalEmployees)}</div>
-                            <p className="text-xs text-emerald-50/80">All employees</p>
+                        <CardContent className="bg-transparent">
+                            <div className="text-3xl font-bold text-white">{formatNumber(totalEmployees)}</div>
+                            <p className="text-xs text-white">All employees</p>
                         </CardContent>
                     </Card>
-                    <Card className="border-0 bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-lg">
+                    <Card className="border-0 bg-gradient-to-br from-sky-500 to-blue-600 shadow-lg">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium text-sky-50">Plantilla/Co-Term</CardTitle>
                             <User className="h-4 w-4 text-sky-100" />
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold">{formatNumber(plantillaCount)}</div>
-                            <p className="text-xs text-sky-50/80">Permanent positions</p>
+                        <CardContent className="bg-transparent">
+                            <div className="text-3xl font-bold text-white">{formatNumber(plantillaCount)}</div>
+                            <p className="text-xs text-white">Permanent positions</p>
                         </CardContent>
                     </Card>
-                    <Card className="border-0 bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-lg">
+                    <Card className="border-0 bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium text-orange-50">COS/JO</CardTitle>
                             <User className="h-4 w-4 text-orange-100" />
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold">{formatNumber(cosjoCount)}</div>
-                            <p className="text-xs text-orange-50/80">Contract of Service</p>
+                        <CardContent className="bg-transparent">
+                            <div className="text-3xl font-bold text-white">{formatNumber(cosjoCount)}</div>
+                            <p className="text-xs text-white">Contract of Service</p>
                         </CardContent>
                     </Card>
-                    <Card className="border-0 bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white shadow-lg">
+                    <Card className="border-0 bg-gradient-to-br from-violet-500 to-fuchsia-600 shadow-lg">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium text-violet-50">Total Offices</CardTitle>
                             <Building2 className="h-4 w-4 text-violet-100" />
                         </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold">{formatNumber(uniqueOffices)}</div>
-                            <p className="text-xs text-violet-50/80">Departments</p>
+                        <CardContent className="bg-transparent">
+                            <div className="text-3xl font-bold text-white">{formatNumber(uniqueOffices)}</div>
+                            <p className="text-xs text-white">Departments</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -244,7 +244,7 @@ export default function Employees({ employees, offices, employmentStatuses, filt
                     </div>
                 </div>
 
-                <div className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-950">
+                <div className="w-full overflow-hidden rounded-2xl border border-slate-200 shadow-xl dark:border-slate-800 dark:bg-slate-950">
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
@@ -277,7 +277,7 @@ export default function Employees({ employees, offices, employmentStatuses, filt
                                                             <User className="h-6 w-6 text-slate-400" />
                                                         </AvatarFallback>
                                                     </Avatar>
-                                                    <div className="absolute -right-1 -bottom-1 rounded-full bg-emerald-600 p-1 text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+                                                    <div className="absolute -right-1 -bottom-1 rounded-full bg-emerald-600 p-1 opacity-0 shadow-md transition-opacity group-hover:opacity-100">
                                                         <Eye className="h-3 w-3" />
                                                     </div>
                                                 </div>

@@ -274,7 +274,7 @@ export default function Dashboard({
             <Head title="Dashboard" />
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
                 {/* Header */}
-                <div className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 p-6 dark:border-blue-800 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-purple-900/20">
+                <div className="rounded-md border border-blue-200 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 p-6 dark:border-blue-800 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-purple-900/20">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Welcome Back, {displayName}</h1>
@@ -356,10 +356,10 @@ export default function Dashboard({
                             {compensationStats.map((stat) => (
                                 <div
                                     key={stat.label}
-                                    className="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
+                                    className="group flex items-center gap-4 rounded-md border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
                                 >
                                     <div
-                                        className={`flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 transition-transform group-hover:scale-110 dark:from-slate-700 dark:to-slate-800`}
+                                        className={`flex h-14 w-14 items-center justify-center rounded-md bg-gradient-to-br from-slate-100 to-slate-50 transition-transform group-hover:scale-110 dark:from-slate-700 dark:to-slate-800`}
                                     >
                                         <stat.icon className={`h-7 w-7 ${stat.color}`} />
                                     </div>
@@ -410,25 +410,15 @@ export default function Dashboard({
 
                 {/* Salary Distribution Chart */}
                 {salaryViewMode === 'byFund' && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Salaries by General Fund</CardTitle>
-                            <CardDescription>
-                                Distribution for {months.find((m) => m.value === filterData.month)?.label || 'Current'} {filterData.year}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ChartPieMultiple
-                                data={salaryDistribution.map((fund) => ({
-                                    code: fund.code,
-                                    description: fund.description,
-                                    total_amount: fund.total_amount,
-                                }))}
-                                title="Salaries by General Fund"
-                                description={`Distribution for ${months.find((m) => m.value === filterData.month)?.label || 'Current'} ${filterData.year}`}
-                            />
-                        </CardContent>
-                    </Card>
+                    <ChartPieMultiple
+                        data={salaryDistribution.map((fund) => ({
+                            code: fund.code,
+                            description: fund.description,
+                            total_amount: fund.total_amount,
+                        }))}
+                        title="Salaries by General Fund"
+                        description={`Distribution for ${months.find((m) => m.value === filterData.month)?.label || 'Current'} ${filterData.year}`}
+                    />
                 )}
 
                 {salaryViewMode === 'byCode' && (
@@ -532,7 +522,7 @@ export default function Dashboard({
                                 {filterData.year}
                             </CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="bg-white">
                             {mostTravelClaims.length > 0 ? (
                                 <div className="space-y-3">
                                     {mostTravelClaims.map((employee, index) => {
@@ -853,7 +843,7 @@ export default function Dashboard({
                             {employeesByOffice.slice(0, 16).map((office) => (
                                 <div
                                     key={office.id}
-                                    className="group flex items-center justify-between rounded-xl border border-slate-200 bg-gradient-to-r from-white to-slate-50 p-4 transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md dark:border-slate-700 dark:from-slate-800 dark:to-slate-900"
+                                    className="group flex items-center justify-between rounded-md border border-slate-200 bg-gradient-to-r from-white to-slate-50 p-4 transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md dark:border-slate-700 dark:from-slate-800 dark:to-slate-900"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 transition-all group-hover:from-blue-100 group-hover:to-indigo-100 dark:from-slate-700 dark:to-slate-800">
@@ -937,10 +927,10 @@ export default function Dashboard({
                                 <button
                                     key={action.title}
                                     onClick={() => router.get(route(action.route))}
-                                    className={`group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-lg ${action.bgHover} dark:border-slate-700 dark:bg-slate-800`}
+                                    className={`group flex items-center gap-3 rounded-md border border-slate-200 bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-lg ${action.bgHover} dark:border-slate-700 dark:bg-slate-800`}
                                 >
                                     <div
-                                        className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${action.color} shadow-sm transition-transform group-hover:scale-110`}
+                                        className={`flex h-12 w-12 items-center justify-center rounded-md bg-gradient-to-br ${action.color} shadow-sm transition-transform group-hover:scale-110`}
                                     >
                                         <action.icon className="h-6 w-6 text-white" />
                                     </div>

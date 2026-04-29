@@ -34,6 +34,7 @@ interface AuditLogsIndexProps {
         date_from?: string;
         date_to?: string;
         per_page?: string;
+        exclude_settings?: string;
     };
 }
 
@@ -195,6 +196,18 @@ export default function Index({ auditLogs, modelTypes, users, stats, filters }: 
                                         ))}
                                     </SelectContent>
                                 </Select>
+                            </div>
+                            <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                                <input
+                                    id="exclude-settings"
+                                    type="checkbox"
+                                    checked={filters.exclude_settings === '1'}
+                                    onChange={(e) => handleFilterChange('exclude_settings', e.target.checked ? '1' : null)}
+                                    className="h-4 w-4 rounded border-slate-300 text-slate-700 focus:ring-slate-500"
+                                />
+                                <label htmlFor="exclude-settings" className="text-sm text-slate-700">
+                                    Exclude system settings
+                                </label>
                             </div>
                             <div>
                                 <Input

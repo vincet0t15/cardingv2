@@ -26,6 +26,9 @@ class AuditLogController extends Controller
                         });
                 });
             })
+            ->when($request->exclude_settings, function ($q) {
+                $q->whereNotIn('model_type', $this->getSettingsModelTypes());
+            })
             ->when($request->action, function ($q, $action) {
                 $q->where('action', $action);
             })
@@ -59,21 +62,44 @@ class AuditLogController extends Controller
         // Get all users for filter
         $users = User::orderBy('name')->get(['id', 'name']);
 
-        // Get statistics
+        // Get statistics for the current filtered query
+        $statsQuery = clone $query;
         $stats = [
-            'total_logs' => AuditLog::count(),
-            'today_logs' => AuditLog::whereDate('created_at', today())->count(),
-            'created_count' => AuditLog::where('action', 'created')->count(),
-            'updated_count' => AuditLog::where('action', 'updated')->count(),
-            'deleted_count' => AuditLog::where('action', 'deleted')->count(),
+            'total_logs' => $statsQuery->count(),
+            'today_logs' => (clone $query)->whereDate('created_at', today())->count(),
+            'created_count' => (clone $query)->where('action', 'created')->count(),
+            'updated_count' => (clone $query)->where('action', 'updated')->count(),
+            'deleted_count' => (clone $query)->where('action', 'deleted')->count(),
         ];
+
+        $performanceMetrics = (clone $query)
+            ->whereNotNull('user_id')
+            ->selectRaw('user_id, count(*) as total_actions')
+            ->selectRaw('sum(case when action = "created" then 1 else 0 end) as created_count')
+            ->selectRaw('sum(case when action = "updated" then 1 else 0 end) as updated_count')
+            ->selectRaw('sum(case when action = "deleted" then 1 else 0 end) as deleted_count')
+            ->groupBy('user_id')
+            ->orderByDesc('total_actions')
+            ->with('user')
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'user_id' => $row->user_id,
+                    'user_name' => $row->user?->name ?? 'Unknown',
+                    'created_count' => (int) $row->created_count,
+                    'updated_count' => (int) $row->updated_count,
+                    'deleted_count' => (int) $row->deleted_count,
+                    'total_actions' => (int) $row->total_actions,
+                ];
+            });
 
         return Inertia::render('AuditLogs/Index', [
             'auditLogs' => $auditLogs,
             'modelTypes' => $modelTypes,
             'users' => $users,
             'stats' => $stats,
-            'filters' => $request->only(['search', 'action', 'model_type', 'user_id', 'date_from', 'date_to', 'per_page']),
+            'filters' => $request->only(['search', 'action', 'model_type', 'user_id', 'date_from', 'date_to', 'per_page', 'exclude_settings']),
+            'performanceMetrics' => $performanceMetrics,
         ]);
     }
 
@@ -99,6 +125,9 @@ class AuditLogController extends Controller
         $query = AuditLog::with('user')
             ->when($request->action, function ($q, $action) {
                 $q->where('action', $action);
+            })
+            ->when($request->exclude_settings, function ($q) {
+                $q->whereNotIn('model_type', $this->getSettingsModelTypes());
             })
             ->when($request->model_type, function ($q, $modelType) {
                 $q->where('model_type', $modelType);
@@ -134,5 +163,19 @@ class AuditLogController extends Controller
         return response($csvData)
             ->header('Content-Type', 'text/csv')
             ->header('Content-Disposition', 'attachment; filename="audit_logs_' . now()->format('Y-m-d') . '.csv"');
+    }
+
+    protected function getSettingsModelTypes(): array
+    {
+        return [
+            \App\Models\Office::class,
+            \App\Models\EmploymentStatus::class,
+            \App\Models\ReferenceType::class,
+            \App\Models\DocumentType::class,
+            \App\Models\DeductionType::class,
+            \App\Models\AdjustmentType::class,
+            \App\Models\SourceOfFundCode::class,
+            \App\Models\GeneralFund::class,
+        ];
     }
 }

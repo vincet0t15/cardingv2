@@ -117,22 +117,21 @@ export function ChartPieMultiple({ data, title = 'Salaries by Source of Fund', d
             </CardContent>
             {data.length > 0 && (
                 <>
-                    <CardContent className="pt-0">
-                        {/* Legend */}
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                            {chartData.map((entry, index) => {
-                                return (
-                                    <div key={index} className="flex items-center gap-2">
-                                        <div className="h-3 w-3 rounded-full" style={{ backgroundColor: entry.color }} />
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate text-xs font-medium">{entry.name}</p>
-                                            <p className="text-muted-foreground text-xs">{formatCurrency(entry.value)}</p>
-                                        </div>
+                    {/* Legend */}
+                    <div className="grid grid-cols-2 gap-2 p-4 sm:grid-cols-3 lg:grid-cols-4">
+                        {chartData.map((entry, index) => {
+                            return (
+                                <div key={index} className="flex items-center gap-2">
+                                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: entry.color }} />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-xs font-medium">{entry.name}</p>
+                                        <p className="text-muted-foreground text-xs">{formatCurrency(entry.value)}</p>
                                     </div>
-                                );
-                            })}
-                        </div>
-                    </CardContent>
+                                </div>
+                            );
+                        })}
+                    </div>
+
                     <CardFooter className="flex-col items-start gap-2 text-sm">
                         <div className="flex gap-2 leading-none font-medium">
                             Total: {formatCurrency(total)} <TrendingUp className="h-4 w-4" />
