@@ -1,12 +1,15 @@
 import { CustomComboBox } from '@/components/CustomComboBox';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import type { DeductionCategory, DeductionType } from '@/types/deductionType';
 import type { Employee } from '@/types/employee';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { type FormEventHandler, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -153,6 +156,12 @@ export default function AddDeductionPage({ employee, deductionTypes, deductionCa
         });
     };
 
+    const getInitials = (employee: Employee) => {
+        const firstName = employee.first_name?.trim() || '';
+        const lastName = employee.last_name?.trim() || '';
+        return `${(firstName[0] || '').toUpperCase()}${(lastName[0] || '').toUpperCase()}`;
+    };
+
     const handleCancel = () => {
         router.get(route('manage.employees.index', employee.id));
     };
@@ -160,21 +169,75 @@ export default function AddDeductionPage({ employee, deductionTypes, deductionCa
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Add Deductions" />
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-md p-4">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-2xl font-bold tracking-tight">Add Salary Deductions</h2>
-                        <p className="text-muted-foreground mt-1">
-                            Enter deductions for {employee.last_name}, {employee.first_name} {employee.middle_name}
-                        </p>
+            <div className="flex h-full flex-1 flex-col gap-6 p-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex items-center gap-4">
+                        <Button variant="outline" size="icon" asChild>
+                            <Link href={route('manage.employees.index', employee.id)}>
+                                <span className="sr-only">Back to Employee</span>
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </Link>
+                        </Button>
+                        <div>
+                            <h1 className="text-2xl font-semibold tracking-tight">Add Salary Deductions</h1>
+                            <p className="text-sm text-slate-500">
+                                Enter deductions for {employee.last_name}, {employee.first_name} {employee.middle_name}
+                            </p>
+                        </div>
                     </div>
                     <Button variant="outline" onClick={handleCancel}>
                         Back to Employee
                     </Button>
                 </div>
 
+                <Card className="rounded-md border border-slate-200 bg-white shadow-sm">
+                    <CardContent>
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex items-center gap-4">
+                                <Avatar className="h-20 w-20 rounded-full border-4 border-white bg-gradient-to-br from-sky-500 to-violet-500 text-white shadow-lg">
+                                    {employee.image_path ? (
+                                        <AvatarImage src={employee.image_path} alt={`${employee.first_name} ${employee.last_name}`} />
+                                    ) : (
+                                        <AvatarFallback>{getInitials(employee)}</AvatarFallback>
+                                    )}
+                                </Avatar>
+                                <div>
+                                    <h2 className="text-xl font-semibold text-slate-900 uppercase">
+                                        {employee.last_name}, {employee.first_name}
+                                    </h2>
+                                    <p className="text-sm text-slate-500">
+                                        {employee.position} • {employee.office?.name}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                                    {employee.employment_status?.name ?? 'Status not available'}
+                                </Badge>
+                                {(employee.latest_salary?.amount || currentSalary) && (
+                                    <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
+                                        {formatCurrency(Number(employee.latest_salary?.amount ?? currentSalary?.amount ?? 0))} / month
+                                    </Badge>
+                                )}
+                                {employee.latest_hazard_pay?.amount && (
+                                    <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700">
+                                        +{formatCurrency(Number(employee.latest_hazard_pay.amount))} Hazard
+                                    </Badge>
+                                )}
+                                {employee.latest_clothing_allowance?.amount && (
+                                    <Badge variant="outline" className="border-pink-200 bg-pink-50 text-pink-700">
+                                        +{formatCurrency(Number(employee.latest_clothing_allowance.amount))} Clothing
+                                    </Badge>
+                                )}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 <form onSubmit={onSubmit} className="space-y-6">
-                    <div className="rounded-md border p-6 shadow-sm">
+                    <div className="rounded-md border bg-white p-6 shadow-sm">
                         {/* Pay Period */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="flex flex-col gap-1">
@@ -211,7 +274,7 @@ export default function AddDeductionPage({ employee, deductionTypes, deductionCa
 
                     {/* Salary Selection */}
                     {sortedSalaries.length > 1 && (
-                        <div className="rounded-md border p-6 shadow-sm">
+                        <div className="rounded-md border bg-white p-6 shadow-sm">
                             <Label className="mb-3 block text-base font-semibold">Select Salary Basis</Label>
                             <p className="text-muted-foreground mb-4 text-sm">Select which salary record to use as reference for these deductions</p>
                             <div className="space-y-4">
@@ -288,7 +351,7 @@ export default function AddDeductionPage({ employee, deductionTypes, deductionCa
 
                     {/* Salary Reference Display (when only one salary exists) */}
                     {sortedSalaries.length <= 1 && currentSalary && (
-                        <div className="rounded-md border p-6 shadow-sm">
+                        <div className="rounded-md border bg-white p-6 shadow-sm">
                             <h3 className="mb-2 text-base font-semibold">Salary Reference</h3>
                             <div className="bg-muted/50 rounded-md p-4">
                                 <div className="flex items-center justify-between">
@@ -310,7 +373,7 @@ export default function AddDeductionPage({ employee, deductionTypes, deductionCa
                     )}
 
                     {/* Deduction Fields */}
-                    <div className="rounded-md border p-6 shadow-sm">
+                    <div className="rounded-md border bg-white p-6 shadow-sm">
                         <h3 className="mb-4 text-base font-semibold">Deduction Amounts</h3>
                         <div className="space-y-6">
                             {(deductionCategories && deductionCategories.length > 0 ? deductionCategories : []).map((cat) => {

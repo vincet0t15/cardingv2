@@ -1,5 +1,8 @@
 import { CustomComboBox } from '@/components/CustomComboBox';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
@@ -35,7 +38,6 @@ interface EditDeductionPageProps {
     deductionTypes: DeductionType[];
     deductionCategories?: DeductionCategory[];
     existingDeductions: EmployeeDeduction[];
-    takenPeriods: string[];
     preSelectSalaryId?: string | null;
 }
 
@@ -44,7 +46,6 @@ export default function EditDeductionPage({
     deductionTypes,
     deductionCategories = [],
     existingDeductions,
-    takenPeriods,
     preSelectSalaryId,
 }: EditDeductionPageProps) {
     const [salaryOption, setSalaryOption] = useState<'current' | 'previous'>('current');
@@ -106,7 +107,7 @@ export default function EditDeductionPage({
         return null;
     };
 
-    const { data, setData, processing, reset } = useForm<{
+    const { data, setData, processing } = useForm<{
         employee_id: number;
         pay_period_month: string;
         pay_period_year: string;
@@ -255,6 +256,12 @@ export default function EditDeductionPage({
         }
     };
 
+    const getInitials = (employee: Employee) => {
+        const firstName = employee.first_name?.trim() || '';
+        const lastName = employee.last_name?.trim() || '';
+        return `${(firstName[0] || '').toUpperCase()}${(lastName[0] || '').toUpperCase()}`;
+    };
+
     const handleCancel = () => {
         router.get(route('manage.employees.index', employee.id));
     };
@@ -262,19 +269,60 @@ export default function EditDeductionPage({
     return (
         <AppLayout>
             <Head title={`Edit Deductions - ${MONTHS.find((m) => m.value === data.pay_period_month)?.label} ${data.pay_period_year}`} />
-            <div className="flex h-full flex-1 flex-col gap-4 rounded-md p-4">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-2xl font-bold tracking-tight">Edit Salary Deductions</h2>
-                        <p className="text-muted-foreground mt-1">
-                            Editing deductions for {employee.last_name}, {employee.first_name} —{' '}
-                            {MONTHS.find((m) => m.value === data.pay_period_month)?.label} {data.pay_period_year}
-                        </p>
+            <div className="flex h-full flex-1 flex-col gap-6 p-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex items-center gap-4">
+                        <Button variant="outline" size="icon" onClick={handleCancel}>
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </Button>
+                        <div>
+                            <h1 className="text-2xl font-semibold tracking-tight">Edit Salary Deductions</h1>
+                            <p className="text-sm text-slate-500">
+                                Editing deductions for {employee.last_name}, {employee.first_name} —{' '}
+                                {MONTHS.find((m) => m.value === data.pay_period_month)?.label} {data.pay_period_year}
+                            </p>
+                        </div>
                     </div>
                     <Button variant="outline" onClick={handleCancel}>
                         Back to Employee
                     </Button>
                 </div>
+
+                <Card className="rounded-md border border-slate-200 bg-white shadow-sm">
+                    <CardContent>
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex items-center gap-4">
+                                <Avatar className="h-20 w-20 rounded-full border-4 border-white bg-gradient-to-br from-sky-500 to-violet-500 text-white shadow-lg">
+                                    {employee.image_path ? (
+                                        <AvatarImage src={employee.image_path} alt={`${employee.first_name} ${employee.last_name}`} />
+                                    ) : (
+                                        <AvatarFallback>{getInitials(employee)}</AvatarFallback>
+                                    )}
+                                </Avatar>
+                                <div>
+                                    <h2 className="text-xl font-semibold text-slate-900 uppercase">
+                                        {employee.last_name}, {employee.first_name}
+                                    </h2>
+                                    <p className="text-sm text-slate-500">
+                                        {employee.position} • {employee.office?.name}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                                    {employee.employment_status?.name}
+                                </Badge>
+                                {currentSalary && (
+                                    <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
+                                        {formatCurrency(Number(currentSalary.amount))} / month
+                                    </Badge>
+                                )}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 <form onSubmit={onSubmit} className="space-y-6">
                     <div className="rounded-md border p-6 shadow-sm">
