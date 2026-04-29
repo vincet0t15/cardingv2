@@ -46,13 +46,6 @@ class AuthenticatedSessionController extends Controller
         // Check if user has linked employee
         $hasEmployee = Employee::where('user_id', $user->id)->exists();
 
-        // Check if user has admin role
-        $isAdmin = DB::table('model_has_roles')
-            ->where('model_id', $user->id)
-            ->whereIn('role_id', function ($q) {
-                $q->select('id')->from('roles')->whereIn('name', ['super admin', 'admin']);
-            })->exists();
-
         // If no roles at all, reject login
         if (! $hasRoles) {
             Auth::guard('web')->logout();
@@ -62,8 +55,17 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('login', ['error' => 'no_role']);
         }
 
-        // If has roles but no employee and not admin, reject login
-        if (! $hasEmployee && ! $isAdmin) {
+        $roleNames = DB::table('roles')
+            ->join('model_has_roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('model_has_roles.model_id', $user->id)
+            ->pluck('roles.name')
+            ->map(fn($role) => strtolower(trim($role)))
+            ->toArray();
+
+        $hasOnlyEmployeeRole = count($roleNames) === 1 && in_array('employee', $roleNames, true);
+
+        // If user is purely employee and has no linked employee, reject login
+        if (! $hasEmployee && $hasOnlyEmployeeRole) {
             Auth::guard('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -72,7 +74,7 @@ class AuthenticatedSessionController extends Controller
         }
 
         // Redirect based on user type
-        if ($hasEmployee && ! $isAdmin) {
+        if ($hasEmployee && $hasOnlyEmployeeRole) {
             return redirect()->intended(route('employee.dashboard', absolute: false));
         }
 
