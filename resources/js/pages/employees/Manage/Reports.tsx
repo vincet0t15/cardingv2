@@ -504,7 +504,7 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                                                     </div>
 
                                                     {/* Deductions Table */}
-                                                    <Table>
+                                                    <Table className="rounded-none">
                                                         <TableHeader>
                                                             <TableRow className="bg-muted/50">
                                                                 <TableHead className="font-semibold">Deduction Type</TableHead>
