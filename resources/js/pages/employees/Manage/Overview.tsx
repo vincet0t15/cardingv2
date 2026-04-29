@@ -311,7 +311,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 transition-shadow hover:shadow-md dark:from-blue-900/10 dark:to-indigo-900/10">
+<Card className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-6 rounded-xl shadow-lg">
                                 <CardHeader className="flex items-center justify-between pb-2">
                                     <CardTitle className="text-sm font-medium text-blue-800">Est. Net Pay</CardTitle>
                                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-200 dark:bg-blue-900/50">
@@ -336,19 +336,19 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="grid gap-4 sm:grid-cols-2">
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Current period</p>
                                 <p className="mt-2 text-lg font-semibold text-slate-900">{currentPeriodLabel}</p>
                             </div>
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Claims count</p>
                                 <p className="mt-2 text-lg font-semibold text-emerald-700">{currentMonthClaimsCount}</p>
                             </div>
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Adjustments shown</p>
                                 <p className="mt-2 text-lg font-semibold text-violet-700">{recentAdjustments.length}</p>
                             </div>
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Years of service</p>
                                 <p className="mt-2 text-lg font-semibold text-slate-900">{yearsOfService}</p>
                             </div>
@@ -363,19 +363,19 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="grid gap-3 sm:grid-cols-2">
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Deductions all-time</p>
                                 <p className="mt-2 text-lg font-semibold text-rose-600">{formatCurrency(totalDeductionsAllTime)}</p>
                             </div>
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Claims all-time</p>
                                 <p className="mt-2 text-lg font-semibold text-emerald-600">{formatCurrency(totalClaimsAllTime)}</p>
                             </div>
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Net this month</p>
                                 <p className="mt-2 text-lg font-semibold text-slate-900">{formatCurrency(netThisMonth)}</p>
                             </div>
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Gross this month</p>
                                 <p className="mt-2 text-lg font-semibold text-slate-900">{formatCurrency(grossPay)}</p>
                             </div>
@@ -461,7 +461,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 p-4 border border-slate-200">
                                     <div className="flex items-center justify-between text-sm text-slate-500">
                                         <span>{currentPeriodLabel}</span>
                                         <span>

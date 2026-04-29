@@ -1,8 +1,6 @@
 import { CustomComboBox } from '@/components/CustomComboBox';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
+import { EmployeeSummaryCard } from '@/components/EmployeeSummaryCard';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/app-layout';
@@ -290,54 +288,7 @@ export default function EditDeductionPage({
                     </Button>
                 </div>
 
-                <Card className="rounded-md border border-slate-200 bg-white shadow-sm">
-                    <CardContent>
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                            <div className="flex items-center gap-4">
-                                <Avatar className="h-24 w-24 rounded-full border-4 border-white bg-gradient-to-br from-sky-500 to-violet-500 text-white shadow-lg">
-                                    {employee.image_path ? (
-                                        <AvatarImage src={employee.image_path} alt={`${employee.first_name} ${employee.last_name}`} />
-                                    ) : (
-                                        <AvatarFallback className="text-2xl font-bold">{getInitials(employee)}</AvatarFallback>
-                                    )}
-                                </Avatar>
-                                <div className="space-y-2">
-                                    <div className="flex flex-wrap items-center gap-3">
-                                        <h2 className="text-2xl font-bold tracking-tight text-slate-900 uppercase">
-                                            {employee.last_name}, {employee.first_name}
-                                        </h2>
-                                        <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
-                                            {employee.employment_status?.name ?? 'Status not available'}
-                                        </Badge>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
-                                        <span className="font-medium">{employee.position}</span>
-                                        <span className="text-slate-300">•</span>
-                                        <span>{employee.office?.name}</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-3">
-                                {currentSalary && (
-                                    <div className="flex items-baseline gap-2 rounded-md border border-slate-200 bg-slate-50 px-4 py-2">
-                                        <span className="text-2xl font-semibold text-slate-900">{formatCurrency(Number(currentSalary.amount))}</span>
-                                        <span className="text-sm text-slate-500">/ month</span>
-                                    </div>
-                                )}
-                                {employee.latest_hazard_pay?.amount && (
-                                    <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700">
-                                        +{formatCurrency(Number(employee.latest_hazard_pay.amount))} Hazard
-                                    </Badge>
-                                )}
-                                {employee.latest_clothing_allowance?.amount && (
-                                    <Badge variant="outline" className="border-pink-200 bg-pink-50 text-pink-700">
-                                        +{formatCurrency(Number(employee.latest_clothing_allowance.amount))} Clothing
-                                    </Badge>
-                                )}
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                <EmployeeSummaryCard employee={employee} />
 
                 <form onSubmit={onSubmit} className="space-y-6">
                     <div className="rounded-md border p-6 shadow-sm">
