@@ -177,6 +177,38 @@ export function CompensationDeductions({
         });
     };
 
+    const getHazardPaysForPeriod = (periodYear: number, periodMonth: number) => {
+        if (!employee.hazard_pays || employee.hazard_pays.length === 0) return [];
+
+        const periodStart = new Date(periodYear, periodMonth - 1, 1);
+        const periodEnd = new Date(periodYear, periodMonth, 0);
+
+        return employee.hazard_pays.filter((hp) => {
+            const startDate = new Date(hp.start_date);
+            const endDate = hp.end_date ? new Date(hp.end_date) : null;
+
+            return startDate <= periodEnd && (!endDate || endDate >= periodStart);
+        });
+    };
+
+    const computeSignedAdjustment = (adj: any) => {
+        const amt = Number(adj.amount) || 0;
+        const effect = (
+            (adj.adjustmentType && adj.adjustmentType.effect) ||
+            (typeof adj.adjustment_type === 'object' && adj.adjustment_type?.effect) ||
+            adj.effect ||
+            ''
+        )
+            .toString()
+            .toLowerCase();
+
+        if (effect.includes('neg') || effect === '-' || effect.includes('subtract')) {
+            return -amt;
+        }
+
+        return amt;
+    };
+
     const getClaimsForPeriod = (periodYear: number, periodMonth: number): Claim[] => {
         if (!allClaimsGrouped) return [];
         const key = `${periodYear}-${String(periodMonth).padStart(2, '0')}`;
@@ -268,14 +300,12 @@ export function CompensationDeductions({
                                 ? `${formatCurrency(Number(group.salary.amount))} (${new Date(group.salary.effective_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`
                                 : `${formatCurrency(salaryAmount)} (Current)`;
                             const salaryDeductions = group.deductions.reduce((sum, d) => sum + Number(d.amount), 0);
-                            const salaryGrossPay = salaryAmount + pera + (employee.is_rata_eligible ? rata : 0);
-                            const salaryNetPay = salaryGrossPay - salaryDeductions;
                             const salaryClothingAllowance = periodClothingAllowances.reduce((sum, ca) => sum + Number(ca.amount), 0);
-                            const salaryTotalClaims = periodClaims.reduce((sum, c) => sum + Number(c.amount), 0);
-                            const salaryTotalAdjustments = periodAdjustments.reduce((sum, adj) => {
-                                const amt = Number(adj.amount);
-                                return sum + (adj.adjustment_type === 'Deduction Refund' || amt < 0 ? amt : amt);
-                            }, 0);
+                            const salaryHazardPay = getHazardPaysForPeriod(periodYear, periodMonth).reduce((sum, hp) => sum + Number(hp.amount), 0);
+                            const salaryGrossPay =
+                                salaryAmount + pera + (employee.is_rata_eligible ? rata : 0) + salaryHazardPay + salaryClothingAllowance;
+                            const salaryTotalAdjustments = periodAdjustments.reduce((sum, adj) => sum + computeSignedAdjustment(adj), 0);
+                            const salaryNetPay = salaryGrossPay - salaryDeductions + salaryTotalAdjustments;
 
                             return (
                                 <div key={`${periodKey}-salary-${group.salaryId}`} className="overflow-hidden rounded-sm border shadow-sm">
@@ -371,9 +401,26 @@ export function CompensationDeductions({
                                                         <TableCell className="text-right text-slate-700">+ {formatCurrency(rata)}</TableCell>
                                                     </TableRow>
                                                 )}
+                                                <TableRow className="bg-slate-100 font-semibold">
+                                                    <TableCell className="text-xs text-slate-600">Hazard Pay</TableCell>
+                                                    <TableCell className="text-right text-slate-700">+ {formatCurrency(salaryHazardPay)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="bg-slate-100 font-semibold">
+                                                    <TableCell className="text-xs text-slate-600">Clothing Allow.</TableCell>
+                                                    <TableCell className="text-right text-slate-700">
+                                                        + {formatCurrency(salaryClothingAllowance)}
+                                                    </TableCell>
+                                                </TableRow>
                                                 <TableRow className="bg-slate-200 font-bold">
                                                     <TableCell className="text-sm text-slate-800">Gross Pay</TableCell>
                                                     <TableCell className="text-right text-slate-900">{formatCurrency(salaryGrossPay)}</TableCell>
+                                                </TableRow>
+                                                <TableRow className="bg-violet-50 font-semibold">
+                                                    <TableCell className="text-xs text-violet-800">Adjustments</TableCell>
+                                                    <TableCell className="text-right text-violet-800">
+                                                        {salaryTotalAdjustments >= 0 ? '+ ' : '- '}
+                                                        {formatCurrency(Math.abs(salaryTotalAdjustments))}
+                                                    </TableCell>
                                                 </TableRow>
                                                 <TableRow className="bg-red-50 font-semibold">
                                                     <TableCell className="text-xs text-red-600">Total Deductions</TableCell>
