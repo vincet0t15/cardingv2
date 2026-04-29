@@ -196,30 +196,37 @@ export default function AddDeductionPage({ employee, deductionTypes, deductionCa
                     <CardContent>
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div className="flex items-center gap-4">
-                                <Avatar className="h-20 w-20 rounded-full border-4 border-white bg-gradient-to-br from-sky-500 to-violet-500 text-white shadow-lg">
+                                <Avatar className="h-24 w-24 rounded-full border-4 border-white bg-gradient-to-br from-sky-500 to-violet-500 text-white shadow-lg">
                                     {employee.image_path ? (
                                         <AvatarImage src={employee.image_path} alt={`${employee.first_name} ${employee.last_name}`} />
                                     ) : (
-                                        <AvatarFallback>{getInitials(employee)}</AvatarFallback>
+                                        <AvatarFallback className="text-2xl font-bold">{getInitials(employee)}</AvatarFallback>
                                     )}
                                 </Avatar>
-                                <div>
-                                    <h2 className="text-xl font-semibold text-slate-900 uppercase">
-                                        {employee.last_name}, {employee.first_name}
-                                    </h2>
-                                    <p className="text-sm text-slate-500">
-                                        {employee.position} • {employee.office?.name}
-                                    </p>
+                                <div className="space-y-2">
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <h2 className="text-2xl font-bold tracking-tight text-slate-900 uppercase">
+                                            {employee.last_name}, {employee.first_name}
+                                        </h2>
+                                        <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                                            {employee.employment_status?.name ?? 'Status not available'}
+                                        </Badge>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                                        <span className="font-medium">{employee.position}</span>
+                                        <span className="text-slate-300">•</span>
+                                        <span>{employee.office?.name}</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
-                                    {employee.employment_status?.name ?? 'Status not available'}
-                                </Badge>
+                            <div className="flex flex-wrap items-center gap-3">
                                 {(employee.latest_salary?.amount || currentSalary) && (
-                                    <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
-                                        {formatCurrency(Number(employee.latest_salary?.amount ?? currentSalary?.amount ?? 0))} / month
-                                    </Badge>
+                                    <div className="flex items-baseline gap-2 rounded-md border border-slate-200 bg-slate-50 px-4 py-2">
+                                        <span className="text-2xl font-semibold text-slate-900">
+                                            {formatCurrency(Number(employee.latest_salary?.amount ?? currentSalary?.amount ?? 0))}
+                                        </span>
+                                        <span className="text-sm text-slate-500">/ month</span>
+                                    </div>
                                 )}
                                 {employee.latest_hazard_pay?.amount && (
                                     <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700">

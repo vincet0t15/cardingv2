@@ -219,6 +219,8 @@ class EmployeeDeductionController extends Controller
         }
 
         $employee = Employee::with([
+            'employmentStatus',
+            'office',
             'salaries' => function ($query) {
                 $query->orderBy('effective_date', 'desc');
             },
@@ -262,6 +264,8 @@ class EmployeeDeductionController extends Controller
         }
 
         $employee = Employee::with([
+            'employmentStatus',
+            'office',
             'salaries' => function ($query) {
                 $query->orderBy('effective_date', 'desc');
             },
