@@ -713,5 +713,4 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
         </div>
     );
 }
-
 export default Reports;
