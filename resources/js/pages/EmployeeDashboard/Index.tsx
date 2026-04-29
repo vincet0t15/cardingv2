@@ -533,27 +533,34 @@ export default function EmployeeDashboard({
                                         <TabsTrigger value="adjustments">Adjustments ({Object.keys(adjustments).length})</TabsTrigger>
                                         <TabsTrigger value="payslip">Payslip</TabsTrigger>
                                     </TabsList>
-                                    <Button
-                                        variant="default"
-                                        size="default"
-                                        onClick={() => {
-                                            if (activeTab === 'deductions') {
-                                                const period = Object.keys(deductions)[0];
-                                                if (period) handlePrint(period, 'deductions');
-                                            } else if (activeTab === 'claims') {
-                                                const period = Object.keys(claims)[0];
-                                                if (period) handlePrint(period, 'claims');
-                                            } else if (activeTab === 'adjustments') {
-                                                const period = Object.keys(adjustments)[0];
-                                                if (period) handlePrint(period, 'adjustments');
-                                            } else if (activeTab === 'payslip' && selectedPayslipPeriod) {
-                                                handlePrint(selectedPayslipPeriod, 'payslip');
-                                            }
-                                        }}
-                                        className="gap-2"
-                                    >
-                                        <Printer className="h-4 w-4" /> Print
-                                    </Button>
+                                    {activeTab !== 'payslip' && (
+                                        <Button
+                                            variant="default"
+                                            size="default"
+                                            onClick={() => {
+                                                if (activeTab === 'deductions') {
+                                                    const period = Object.keys(deductions)[0];
+                                                    if (period) handlePrint(period, 'deductions');
+                                                } else if (activeTab === 'claims') {
+                                                    const period = Object.keys(claims)[0];
+                                                    if (period) handlePrint(period, 'claims');
+                                                } else if (activeTab === 'adjustments') {
+                                                    const period = Object.keys(adjustments)[0];
+                                                    if (period) handlePrint(period, 'adjustments');
+                                                }
+                                            }}
+                                            className="gap-2"
+                                        >
+                                            <Printer className="h-4 w-4" />
+                                            {activeTab === 'deductions'
+                                                ? 'Print Deductions'
+                                                : activeTab === 'claims'
+                                                  ? 'Print Claims'
+                                                  : activeTab === 'adjustments'
+                                                    ? 'Print Adjustments'
+                                                    : 'Print'}
+                                        </Button>
+                                    )}
                                 </div>
                                 <TabsContent value="deductions" className="mt-4">
                                     {renderDeductions()}
