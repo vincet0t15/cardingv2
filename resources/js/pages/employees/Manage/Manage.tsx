@@ -145,13 +145,32 @@ export default function EmployeeManagePage({
         return `${(fn[0] || '').toUpperCase()}${(ln[0] || '').toUpperCase()}`;
     };
 
+    const handleGoBack = () => {
+        if (window.history.length > 1) {
+            window.history.back();
+            return;
+        }
+
+        const savedFilters = sessionStorage.getItem('employeesFilters');
+        if (savedFilters) {
+            const parsedFilters = JSON.parse(savedFilters);
+            router.get(route('employees.index'), parsedFilters, {
+                preserveState: true,
+                preserveScroll: true,
+            });
+            return;
+        }
+
+        router.get(route('employees.index'));
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${employee.last_name}, ${employee.first_name}`} />
 
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 {/* Back Button */}
-                <Button variant="outline" className="w-fit" onClick={() => router.get(route('employees.index'))}>
+                <Button variant="outline" className="w-fit" onClick={handleGoBack}>
                     <ArrowLeft className="mr-1 h-4 w-4" />
                     Back to Employees
                 </Button>
