@@ -29,15 +29,19 @@ class DashboardController extends Controller
             // Check if user has linked employee
             $userEmployee = Employee::where('user_id', $user->id)->first();
 
-            // Check if user has admin role
+            // Determine if user is strictly an employee only
+            $roleNames = $user->roles->pluck('name')->map(fn($role) => strtolower(trim($role)))->toArray();
+            $hasOnlyEmployeeRole = count($roleNames) === 1 && in_array('employee', $roleNames, true);
+
+            // Check if user has any privileged/admin role
             $isAdmin = DB::table('model_has_roles')
                 ->where('model_id', $user->id)
                 ->whereIn('role_id', function ($q) {
                     $q->select('id')->from('roles')->whereIn('name', ['super admin', 'admin']);
                 })->exists();
 
-            // If linked employee (not admin) → employee dashboard
-            if ($userEmployee && ! $isAdmin) {
+            // If linked employee and only has the employee role → employee dashboard
+            if ($userEmployee && $hasOnlyEmployeeRole) {
                 return redirect()->route('employee.dashboard');
             }
 
@@ -293,7 +297,7 @@ class DashboardController extends Controller
             ->map(function ($claim) {
                 return [
                     'id' => $claim->id,
-                    'employee_name' => $claim->employee->last_name.', '.$claim->employee->first_name,
+                    'employee_name' => $claim->employee->last_name . ', ' . $claim->employee->first_name,
                     'office' => $claim->employee->office?->name ?? 'N/A',
                     'amount' => (float) $claim->amount,
                     'claim_date' => $claim->claim_date,
@@ -318,7 +322,7 @@ class DashboardController extends Controller
             ->map(function ($item) {
                 return [
                     'employee_id' => $item->employee_id,
-                    'employee_name' => $item->employee->last_name.', '.$item->employee->first_name,
+                    'employee_name' => $item->employee->last_name . ', ' . $item->employee->first_name,
                     'office' => $item->employee->office?->name ?? 'N/A',
                     'total_amount' => (float) $item->total_amount,
                     'claim_count' => (int) $item->claim_count,
@@ -344,7 +348,7 @@ class DashboardController extends Controller
             ->map(function ($item) {
                 return [
                     'employee_id' => $item->employee_id,
-                    'employee_name' => $item->employee->last_name.', '.$item->employee->first_name,
+                    'employee_name' => $item->employee->last_name . ', ' . $item->employee->first_name,
                     'office' => $item->employee->office?->name ?? 'N/A',
                     'travel_count' => (int) $item->travel_count,
                     'total_travel_amount' => (float) $item->total_travel_amount,
@@ -370,7 +374,7 @@ class DashboardController extends Controller
             ->map(function ($item) {
                 return [
                     'employee_id' => $item->employee_id,
-                    'employee_name' => $item->employee->last_name.', '.$item->employee->first_name,
+                    'employee_name' => $item->employee->last_name . ', ' . $item->employee->first_name,
                     'office' => $item->employee->office?->name ?? 'N/A',
                     'overtime_count' => (int) $item->overtime_count,
                     'total_overtime_amount' => (float) $item->total_overtime_amount,

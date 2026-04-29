@@ -44,7 +44,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'active', 'linked'])->group(function () {
-    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('dashboard', [DashboardController::class, 'index'])->middleware('employee_only')->name('dashboard');
 
     // EMPLOYEE DASHBOARD - For linked employees
     Route::get('employee/dashboard', [EmployeeDashboardController::class, 'index'])->name('employee.dashboard');
