@@ -42,8 +42,17 @@ function getEffectiveAmount(history: { amount: number; effective_date: string }[
         }
     }
 
-    // If no record found, return the oldest one (fallback)
-    return Number(sortedHistory[sortedHistory.length - 1]?.amount ?? 0);
+    return 0;
+}
+
+function getEffectiveAmountWithFallback(
+    history: { amount: number; effective_date: string }[] | undefined,
+    periodYear: number,
+    periodMonth: number,
+    latest: { amount: number } | undefined,
+): number {
+    const amount = getEffectiveAmount(history, periodYear, periodMonth);
+    return amount !== 0 ? amount : Number(latest?.amount ?? 0);
 }
 
 // Helper function to get hazard pay for a specific period (based on start_date)

@@ -44,7 +44,17 @@ function getEffectiveAmount(history: { amount: number; effective_date: string }[
         }
     }
 
-    return Number(sortedHistory[sortedHistory.length - 1]?.amount ?? 0);
+    return 0;
+}
+
+function getEffectiveAmountWithFallback(
+    history: { amount: number; effective_date: string }[] | undefined,
+    periodYear: number,
+    periodMonth: number,
+    latest: { amount: number } | undefined,
+): number {
+    const amount = getEffectiveAmount(history, periodYear, periodMonth);
+    return amount !== 0 ? amount : Number(latest?.amount ?? 0);
 }
 
 // Helper function for date range allowances (hazard pay, clothing allowance)
@@ -88,6 +98,16 @@ function getEffectiveAmountForDateRange(
             );
         })[0];
     return Number(effectiveRecord?.amount ?? 0);
+}
+
+function getEffectiveAmountForDateRangeWithFallback(
+    history: { amount: number | string; start_date: string; end_date?: string | null }[] | undefined,
+    periodYear: number,
+    periodMonth: number,
+    latest: { amount: number | string } | undefined,
+): number {
+    const amount = getEffectiveAmountForDateRange(history, periodYear, periodMonth);
+    return amount || Number(latest?.amount ?? 0);
 }
 
 // Helper function to get a specific salary by ID
@@ -536,6 +556,12 @@ export default function EmployeePrintReport({
                                                     printType !== 'claims' &&
                                                     (() => {
                                                         const salaryGroups = groupDeductionsBySalary(deductionPeriod.items);
+                                                        const periodPera = getEffectiveAmount(employee.peras, year, month);
+                                                        const periodRata = employee.is_rata_eligible
+                                                            ? getEffectiveAmount(employee.ratas, year, month)
+                                                            : 0;
+                                                        const periodHazardPay = getEffectiveAmountForDateRange(employee.hazard_pays, year, month);
+                                                        const periodClothingAllowance = getEffectiveAmountForDateRange(clothingHistory, year, month);
                                                         return (
                                                             <div className="mb-4 space-y-4">
                                                                 {salaryGroups.map((group, idx) => {
@@ -549,7 +575,13 @@ export default function EmployeePrintReport({
                                                                     }
 
                                                                     const groupTotal = group.deductions.reduce((sum, d) => sum + Number(d.amount), 0);
-                                                                    const groupNetPay = groupSalary - groupTotal;
+                                                                    const groupGross =
+                                                                        groupSalary +
+                                                                        periodPera +
+                                                                        periodRata +
+                                                                        periodHazardPay +
+                                                                        periodClothingAllowance;
+                                                                    const groupNetPay = groupGross - groupTotal;
 
                                                                     const salaryLabel = group.salary
                                                                         ? `Salary: ${formatCurrency(Number(group.salary.amount))} (${new Date(group.salary.effective_date).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })})`
@@ -588,6 +620,46 @@ export default function EmployeePrintReport({
                                                                                             {formatCurrency(groupSalary)}
                                                                                         </td>
                                                                                     </tr>
+                                                                                    {periodPera !== 0 && (
+                                                                                        <tr className="bg-gray-100">
+                                                                                            <td className="border border-black px-2 py-1 text-[10px] font-semibold">
+                                                                                                PERA
+                                                                                            </td>
+                                                                                            <td className="border border-black px-2 py-1 text-right text-[10px] font-semibold">
+                                                                                                {formatCurrency(periodPera)}
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    )}
+                                                                                    {periodRata !== 0 && (
+                                                                                        <tr className="bg-gray-100">
+                                                                                            <td className="border border-black px-2 py-1 text-[10px] font-semibold">
+                                                                                                RATA
+                                                                                            </td>
+                                                                                            <td className="border border-black px-2 py-1 text-right text-[10px] font-semibold">
+                                                                                                {formatCurrency(periodRata)}
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    )}
+                                                                                    {periodHazardPay !== 0 && (
+                                                                                        <tr className="bg-gray-100">
+                                                                                            <td className="border border-black px-2 py-1 text-[10px] font-semibold">
+                                                                                                Hazard Pay
+                                                                                            </td>
+                                                                                            <td className="border border-black px-2 py-1 text-right text-[10px] font-semibold">
+                                                                                                {formatCurrency(periodHazardPay)}
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    )}
+                                                                                    {periodClothingAllowance !== 0 && (
+                                                                                        <tr className="bg-gray-100">
+                                                                                            <td className="border border-black px-2 py-1 text-[10px] font-semibold">
+                                                                                                Clothing Allowance
+                                                                                            </td>
+                                                                                            <td className="border border-black px-2 py-1 text-right text-[10px] font-semibold">
+                                                                                                {formatCurrency(periodClothingAllowance)}
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    )}
                                                                                     <tr className="bg-gray-100">
                                                                                         <td className="border border-black px-2 py-1 text-[10px] font-semibold">
                                                                                             Total Deductions
