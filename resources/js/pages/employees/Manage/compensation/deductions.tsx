@@ -72,20 +72,25 @@ export function CompensationDeductions({
     const goToPage = (page: number) => {
         router.get(
             route('manage.employees.index', employee.id),
-            { deduction_page: page, deduction_month: filters.deduction_month, deduction_year: filters.deduction_year },
+            {
+                tab: 'deductions',
+                deduction_page: page,
+                deduction_month: filters.deduction_month,
+                deduction_year: filters.deduction_year,
+            },
             { preserveState: true, preserveScroll: true },
         );
     };
 
     const applyFilter = (month: string | undefined, year: string | undefined) => {
-        const params: Record<string, string> = {};
+        const params: Record<string, string> = { tab: 'deductions' };
         if (month) params.deduction_month = month;
         if (year) params.deduction_year = year;
         router.get(route('manage.employees.index', employee.id), params, { preserveState: true, preserveScroll: true });
     };
 
     const clearFilters = () => {
-        router.get(route('manage.employees.index', employee.id), {}, { preserveState: true, preserveScroll: true });
+        router.get(route('manage.employees.index', employee.id), { tab: 'deductions' }, { preserveState: true, preserveScroll: true });
     };
 
     const formatCurrency = (amount: number) =>

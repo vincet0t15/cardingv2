@@ -133,7 +133,7 @@ export default function EmployeeAdjustments({ employee, adjustments, statistics 
                     </p>
                 </div>
                 <Button asChild className="bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md hover:shadow-lg">
-                    <Link href={route('adjustments.create', { employee_id: employee.id })}>
+                    <Link href={route('adjustments.create', { employee_id: employee.id, tab: 'adjustments' })}>
                         <Plus className="mr-2 h-4 w-4" />
                         New Adjustment
                     </Link>

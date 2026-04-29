@@ -11,5 +11,6 @@ interface EditProps {
 }
 
 export default function Edit({ adjustment, employees, adjustmentTypes, referenceTypes }: EditProps) {
+    // Reuse Create component for editing; explanatory text already included in Create.tsx
     return <Create adjustment={adjustment} employees={employees} adjustmentTypes={adjustmentTypes} referenceTypes={referenceTypes} />;
 }

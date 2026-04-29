@@ -10,7 +10,7 @@ import type { AdjustmentType } from '@/types/adjustmentType';
 import type { Employee } from '@/types/employee';
 import type { ReferenceType } from '@/types/referenceType';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, RefreshCcw, Save } from 'lucide-react';
+import { ArrowLeft, Save } from 'lucide-react';
 
 interface Props {
     employees?: Employee[];
@@ -47,6 +47,12 @@ export default function Create({ employees = [], adjustmentTypes = [], reference
         reason: adjustment?.reason || '',
         remarks: adjustment?.remarks || '',
     });
+
+    const returnToEmployeeManageUrl = preSelectedEmployeeId
+        ? `${route('manage.employees.index', preSelectedEmployeeId)}?tab=adjustments`
+        : adjustment && adjustment.employee_id
+          ? route('employees.show', adjustment.employee_id)
+          : `${route('manage.employees.index')}?tab=adjustments`;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -101,21 +107,12 @@ export default function Create({ employees = [], adjustmentTypes = [], reference
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={isEdit ? 'Edit Adjustment' : 'Create Adjustment'} />
-
-            <div className="flex h-full flex-1 flex-col gap-4 p-4">
+            <div className="flex h-full w-full flex-col gap-4 p-4">
                 {/* Header */}
                 <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <Button variant="outline" size="icon">
-                            <Link
-                                href={
-                                    preSelectedEmployeeId
-                                        ? route('manage.employees.index', preSelectedEmployeeId)
-                                        : adjustment
-                                          ? route('manage.employees.index', adjustment.employee_id)
-                                          : route('manage.employees.index')
-                                }
-                            >
+                        <Button variant="outline" size="icon" asChild>
+                            <Link href={returnToEmployeeManageUrl}>
                                 <ArrowLeft className="h-4 w-4" />
                             </Link>
                         </Button>
@@ -132,15 +129,12 @@ export default function Create({ employees = [], adjustmentTypes = [], reference
                     </div>
                 </div>
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                    {/* Main Form Card */}
-                    <Card className="lg:col-span-2">
+                {/* Main Form with Gradient Card */}
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    {/* Main Form Card with Gradient Background */}
+                    <Card className="w-full border border-gray-300 bg-white/90 text-gray-800 placeholder-gray-500">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <RefreshCcw className="h-5 w-5 text-teal-600" />
-                                Adjustment Details
-                            </CardTitle>
+                            <CardTitle className="flex items-center gap-2">Adjustment Details</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6">
                             {/* Employee Selection - Only show if not pre-selected and not editing */}
@@ -155,7 +149,7 @@ export default function Create({ employees = [], adjustmentTypes = [], reference
                                         value={data.employee_id || null}
                                         onSelect={(value) => setData('employee_id', value || '')}
                                     />
-                                    {errors.employee_id && <p className="text-sm text-red-500">{errors.employee_id}</p>}
+                                    {errors.employee_id && <p className="text-sm text-red-300">{errors.employee_id}</p>}
                                 </div>
                             )}
 
@@ -171,7 +165,7 @@ export default function Create({ employees = [], adjustmentTypes = [], reference
                                         value={data.adjustment_type_id || null}
                                         onSelect={(value) => setData('adjustment_type_id', value || '')}
                                     />
-                                    {errors.adjustment_type_id && <p className="text-sm text-red-500">{errors.adjustment_type_id}</p>}
+                                    {errors.adjustment_type_id && <p className="text-sm text-red-300">{errors.adjustment_type_id}</p>}
                                 </div>
 
                                 <div className="space-y-2">
@@ -185,13 +179,21 @@ export default function Create({ employees = [], adjustmentTypes = [], reference
                                         placeholder="0.00"
                                         value={data.amount}
                                         onChange={(e) => setData('amount', e.target.value)}
-                                        className={errors.amount ? 'border-red-500' : ''}
                                     />
-                                    {errors.amount && <p className="text-sm text-red-500">{errors.amount}</p>}
+                                    {errors.amount && <p className="text-sm text-red-300">{errors.amount}</p>}
                                 </div>
                             </div>
 
                             {/* Pay Period */}
+                            <div className="mb-2 text-sm text-gray-600">
+                                <strong className="text-gray-800">Pay Period</strong>: Piliin ang buwan at taon kung saan ilalagay ang adjustment sa
+                                payroll (hal. April 2026).
+                                <br />
+                                <strong className="text-gray-800">Effectivity Date</strong>: Eksaktong petsa kung kailan magiging epektibo ang
+                                adjustment (hal. 2026-04-15). Ito ang ginagamit para sa chronological ordering at kung kailan dapat i-apply ang
+                                pagbabago.
+                            </div>
+
                             <div className="grid gap-4 md:grid-cols-3">
                                 <div className="space-y-2">
                                     <Label htmlFor="pay_period_month" className="required">
@@ -203,7 +205,7 @@ export default function Create({ employees = [], adjustmentTypes = [], reference
                                         value={data.pay_period_month || null}
                                         onSelect={(value) => setData('pay_period_month', value || '')}
                                     />
-                                    {errors.pay_period_month && <p className="text-sm text-red-500">{errors.pay_period_month}</p>}
+                                    {errors.pay_period_month && <p className="text-sm text-red-300">{errors.pay_period_month}</p>}
                                 </div>
 
                                 <div className="space-y-2">
@@ -216,7 +218,7 @@ export default function Create({ employees = [], adjustmentTypes = [], reference
                                         value={data.pay_period_year || null}
                                         onSelect={(value) => setData('pay_period_year', value || '')}
                                     />
-                                    {errors.pay_period_year && <p className="text-sm text-red-500">{errors.pay_period_year}</p>}
+                                    {errors.pay_period_year && <p className="text-sm text-red-300">{errors.pay_period_year}</p>}
                                 </div>
 
                                 <div className="space-y-2">
@@ -228,9 +230,8 @@ export default function Create({ employees = [], adjustmentTypes = [], reference
                                         type="date"
                                         value={data.effectivity_date}
                                         onChange={(e) => setData('effectivity_date', e.target.value)}
-                                        className={errors.effectivity_date ? 'border-red-500' : ''}
                                     />
-                                    {errors.effectivity_date && <p className="text-sm text-red-500">{errors.effectivity_date}</p>}
+                                    {errors.effectivity_date && <p className="text-sm text-red-300">{errors.effectivity_date}</p>}
                                 </div>
                             </div>
 
@@ -268,9 +269,8 @@ export default function Create({ employees = [], adjustmentTypes = [], reference
                                     value={data.reason}
                                     onChange={(e) => setData('reason', e.target.value)}
                                     rows={4}
-                                    className={errors.reason ? 'border-red-500' : ''}
                                 />
-                                {errors.reason && <p className="text-sm text-red-500">{errors.reason}</p>}
+                                {errors.reason && <p className="text-sm text-red-300">{errors.reason}</p>}
                             </div>
 
                             {/* Remarks */}
@@ -288,16 +288,16 @@ export default function Create({ employees = [], adjustmentTypes = [], reference
                     </Card>
 
                     {/* Sidebar - Summary/Actions */}
-                    <div className="flex flex-col gap-6 lg:col-span-1">
+                    <div className="flex w-full max-w-[380px] flex-col gap-4 lg:col-span-1">
                         {/* Summary Card */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Summary</CardTitle>
+                        <Card className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-base">Summary</CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-3 text-sm">
+                            <CardContent className="space-y-2 text-sm">
                                 {data.amount && (
                                     <div className="flex justify-between">
-                                        <span className="text-slate-600">Amount:</span>
+                                        <span className="text-gray-800">Amount:</span>
                                         <span className="font-semibold">
                                             {parseFloat(data.amount || '0').toLocaleString('en-PH', { style: 'currency', currency: 'PHP' })}
                                         </span>
@@ -305,7 +305,7 @@ export default function Create({ employees = [], adjustmentTypes = [], reference
                                 )}
                                 {data.adjustment_type_id && (
                                     <div className="flex justify-between">
-                                        <span className="text-slate-600">Type:</span>
+                                        <span className="text-gray-800">Type:</span>
                                         <span className="font-semibold">
                                             {adjustmentTypeOptions.find((t) => t.value === data.adjustment_type_id)?.label}
                                         </span>
@@ -313,7 +313,7 @@ export default function Create({ employees = [], adjustmentTypes = [], reference
                                 )}
                                 {data.pay_period_month && (
                                     <div className="flex justify-between">
-                                        <span className="text-slate-600">Period:</span>
+                                        <span className="text-gray-800">Period:</span>
                                         <span className="font-semibold">
                                             {monthOptions.find((m) => m.value === data.pay_period_month)?.label} {data.pay_period_year}
                                         </span>
@@ -323,8 +323,8 @@ export default function Create({ employees = [], adjustmentTypes = [], reference
                         </Card>
 
                         {/* Actions Card */}
-                        <Card>
-                            <CardContent className="space-y-3 pt-6">
+                        <Card className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                            <CardContent className="space-y-3 pt-4">
                                 <Button type="submit" disabled={processing} className="w-full bg-gradient-to-r from-teal-600 to-cyan-600">
                                     <Save className="mr-2 h-4 w-4" />
                                     {processing ? 'Saving...' : isEdit ? 'Update Adjustment' : 'Create Adjustment'}
@@ -332,27 +332,10 @@ export default function Create({ employees = [], adjustmentTypes = [], reference
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    className="w-full"
+                                    className="w-full border-gray-300 bg-white/10 text-gray-800 hover:bg-white/20"
                                     asChild
-                                    onClick={() =>
-                                        (window.location.href = preSelectedEmployeeId
-                                            ? route('manage.employees.index', preSelectedEmployeeId)
-                                            : adjustment
-                                              ? route('employees.show', adjustment.employee_id)
-                                              : route('manage.employees.index'))
-                                    }
                                 >
-                                    <Link
-                                        href={
-                                            preSelectedEmployeeId
-                                                ? route('manage.employees.index', preSelectedEmployeeId)
-                                                : adjustment
-                                                  ? route('employees.show', adjustment.employee_id)
-                                                  : route('manage.employees.index')
-                                        }
-                                    >
-                                        Cancel
-                                    </Link>
+                                    <Link href={returnToEmployeeManageUrl}>Cancel</Link>
                                 </Button>
                             </CardContent>
                         </Card>

@@ -304,9 +304,9 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
     });
 
     // ADJUSTMENTS - Manage payroll adjustments with approval workflow
-    Route::middleware(['permission:adjustments.view'])->prefix('adjustments')->group(function () {
-        // Note: public list page removed; keep create/store and action routes
-        Route::middleware(['permission:adjustments.create'])->get('/create', [AdjustmentController::class, 'create'])->name('adjustments.create');
+Route::middleware(['permission:adjustments.view'])->prefix('adjustments')->group(function () {
+    // Note: public list page removed; keep create/store and action routes
+    Route::get('/create', [AdjustmentController::class, 'create'])->name('adjustments.create');
         Route::middleware(['permission:adjustments.create'])->post('/', [AdjustmentController::class, 'store'])->name('adjustments.store');
         Route::middleware(['permission:adjustments.edit'])->get('/{adjustment}/edit', [AdjustmentController::class, 'edit'])->name('adjustments.edit');
         Route::middleware(['permission:adjustments.edit'])->put('/{adjustment}', [AdjustmentController::class, 'update'])->name('adjustments.update');

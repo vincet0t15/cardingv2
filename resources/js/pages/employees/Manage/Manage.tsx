@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -56,7 +56,13 @@ interface EmployeeManageProps {
     allDeductions?: EmployeeDeduction[];
     allClaims?: Claim[];
     allClaimsGrouped?: Record<string, Claim[]>;
-    allClothingAllowances?: { id: number; amount: string | number; start_date: string; end_date: string | null; source_of_fund_code?: { code: string; description: string | null } | null }[];
+    allClothingAllowances?: {
+        id: number;
+        amount: string | number;
+        start_date: string;
+        end_date: string | null;
+        source_of_fund_code?: { code: string; description: string | null } | null;
+    }[];
     totalDeductionsAllTime?: number;
     totalClaimsAllTime?: number;
     // Adjustments
@@ -110,11 +116,23 @@ export default function EmployeeManagePage({
 
     const [activeTab, setActiveTab] = useState(getInitialTab());
 
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+        const validTabs = ['overview', 'compensation', 'deductions', 'claims', 'adjustments', 'reports', 'settings'];
+        if (tabParam && validTabs.includes(tabParam) && tabParam !== activeTab) {
+            setActiveTab(tabParam);
+        }
+    }, [url]);
+
     // Update URL when tab changes
     const handleTabChange = (value: string) => {
         setActiveTab(value);
         const url = new URL(window.location.href);
         url.searchParams.set('tab', value);
+        if (value !== 'compensation') {
+            url.searchParams.delete('comp_tab');
+        }
         window.history.replaceState({}, '', url.toString());
     };
     const breadcrumbs: BreadcrumbItem[] = [
@@ -135,7 +153,7 @@ export default function EmployeeManagePage({
         const fn = employee.first_name ? employee.first_name.trim() : '';
         const ln = employee.last_name ? employee.last_name.trim() : '';
         if (!fn && !ln) return 'NA';
-        return `${(fn[0]||'').toUpperCase()}${(ln[0]||'').toUpperCase()}`;
+        return `${(fn[0] || '').toUpperCase()}${(ln[0] || '').toUpperCase()}`;
     };
 
     return (
@@ -154,7 +172,11 @@ export default function EmployeeManagePage({
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
                         <Avatar className="h-24 w-24 border-4 border-white shadow-lg dark:border-gray-800">
                             {employee.image_path ? (
-                                <AvatarImage src={employee.image_path} alt={`${employee.first_name} ${employee.last_name}`} className="object-cover" />
+                                <AvatarImage
+                                    src={employee.image_path}
+                                    alt={`${employee.first_name} ${employee.last_name}`}
+                                    className="object-cover"
+                                />
                             ) : (
                                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-3xl font-bold text-white">
                                     {getInitials()}
@@ -163,16 +185,18 @@ export default function EmployeeManagePage({
                         </Avatar>
                         <div className="flex-1 space-y-3">
                             <div className="flex flex-wrap items-center gap-3">
-                                <h1 className="text-3xl font-bold tracking-tight uppercase flex items-center gap-3">
-                                        {employee.card_color ? (
-                                            <span
-                                                className="inline-block h-4 w-4 flex-shrink-0 rounded-full border border-white shadow"
-                                                style={{ backgroundColor: employee.card_color }}
-                                                aria-hidden
-                                            />
-                                        ) : null}
-                                        <span>{employee.last_name}, {employee.first_name}</span>
-                                    </h1>
+                                <h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight uppercase">
+                                    {employee.card_color ? (
+                                        <span
+                                            className="inline-block h-4 w-4 flex-shrink-0 rounded-full border border-white shadow"
+                                            style={{ backgroundColor: employee.card_color }}
+                                            aria-hidden
+                                        />
+                                    ) : null}
+                                    <span>
+                                        {employee.last_name}, {employee.first_name}
+                                    </span>
+                                </h1>
                                 <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
                                     {employee.employment_status?.name}
                                 </Badge>
@@ -202,11 +226,11 @@ export default function EmployeeManagePage({
                             {/* Quick stats badges (all-time) */}
                             <div className="mt-3 flex flex-wrap gap-2">
                                 <div className="rounded-md border border-slate-100 bg-white px-3 py-2 text-sm shadow-sm">
-                                    <div className="text-xs text-muted-foreground">Total Deductions (all-time)</div>
+                                    <div className="text-muted-foreground text-xs">Total Deductions (all-time)</div>
                                     <div className="text-lg font-semibold text-rose-600">{formatCurrency(totalDeductionsAllTime)}</div>
                                 </div>
                                 <div className="rounded-md border border-slate-100 bg-white px-3 py-2 text-sm shadow-sm">
-                                    <div className="text-xs text-muted-foreground">Total Claims (all-time)</div>
+                                    <div className="text-muted-foreground text-xs">Total Claims (all-time)</div>
                                     <div className="text-lg font-semibold text-emerald-600">{formatCurrency(totalClaimsAllTime)}</div>
                                 </div>
                             </div>
