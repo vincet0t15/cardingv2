@@ -26,7 +26,7 @@ export function ChatManager() {
     return (
         <>
             {visibleChats.map((chat, index) => (
-                <FloatingChat key={chat.user.id} chat={chat} index={index} extraRight={extraRight} />
+                <FloatingChat key={chat.chatId} chat={chat} index={index} extraRight={extraRight} />
             ))}
 
             {railVisible && (
@@ -63,18 +63,20 @@ export function ChatManager() {
 
                     {sideItems.map((chat) => (
                         <button
-                            key={chat.user.id}
+                            key={chat.chatId}
                             type="button"
-                            onClick={() => (chat.minimized ? toggleMinimize(chat.user.id) : focusChat(chat.user.id))}
+                            onClick={() => (chat.minimized ? toggleMinimize(chat.chatId) : focusChat(chat.chatId))}
                             className="relative h-12 w-12 overflow-hidden rounded-full border-2 border-white shadow-lg"
-                            title={chat.user.name}
+                            title={chat.isGroup ? (chat.conversation?.name ?? 'Group Chat') : (chat.user?.name ?? '')}
                         >
                             <span className="flex h-full w-full items-center justify-center bg-gradient-to-br from-sky-500 to-violet-600 text-sm font-bold text-white">
-                                {chat.user.name
-                                    .split(' ')
-                                    .map((part) => part[0])
-                                    .join('')
-                                    .slice(0, 2)}
+                                {chat.isGroup
+                                    ? (chat.conversation?.name ?? 'GC').slice(0, 2).toUpperCase()
+                                    : (chat.user?.name ?? '')
+                                          .split(' ')
+                                          .map((part) => part[0])
+                                          .join('')
+                                          .slice(0, 2)}
                             </span>
                         </button>
                     ))}

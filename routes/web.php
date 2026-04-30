@@ -357,10 +357,11 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
     Route::post('messenger/{conversation}/messages', [ConversationMessageController::class, 'store'])->name('messenger.messages.store');
     Route::post('messenger/{conversation}/read', [ConversationMessageController::class, 'markRead'])->name('messenger.messages.read');
     Route::post('messenger/{conversation}/messages/{message}/seen', [ConversationMessageController::class, 'markSeen'])->name('messenger.messages.seen');
-
-    // Broadcasting auth (inside web+auth middleware so session/CSRF work)
-    Broadcast::routes();
 });
+
+// Broadcasting auth — must be outside custom middleware groups so EnsureAccountIsActive
+// and EnsureUserIsLinked don't interfere with channel authorization.
+Broadcast::routes(['middleware' => ['web', 'auth']]);
 
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';

@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useChatContext } from '@/contexts/chat-context';
 import { cn } from '@/lib/utils';
 import { router, usePage } from '@inertiajs/react';
+import { echo } from '@laravel/echo-react';
 import { Edit, MessageCircle, Search, Users } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -61,8 +62,8 @@ function formatTime(dateStr: string): string {
 }
 
 export function MessengerBell() {
-    const { auth } = usePage().props as { auth: { user: UserType } };
-    const { openChat } = useChatContext();
+    const { auth } = usePage().props as unknown as { auth: { user: UserType } };
+    const { openChat, openGroupChat } = useChatContext();
     const [isOpen, setIsOpen] = useState(false);
     const [conversations, setConversations] = useState<ConversationType[]>([]);
     const [users, setUsers] = useState<UserType[]>([]);
@@ -70,11 +71,14 @@ export function MessengerBell() {
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState<'all' | 'unread' | 'groups'>('all');
     const [isLoading, setIsLoading] = useState(true);
+    const [onlineUserIds, setOnlineUserIds] = useState<number[]>([]);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const fetchRecent = async () => {
         try {
-            const res = await fetch(route('messenger.recent'));
+            const res = await fetch(route('messenger.recent'), {
+                credentials: 'include',
+            });
             if (!res.ok) return;
             const data = await res.json();
             setConversations(data.conversations);
@@ -98,6 +102,18 @@ export function MessengerBell() {
     useEffect(() => {
         if (isOpen) fetchRecent();
     }, [isOpen]);
+
+    useEffect(() => {
+        type OnlineUser = { id: number; name: string };
+        (echo() as any)
+            .join('messenger')
+            .here((members: OnlineUser[]) => setOnlineUserIds(members.map((m) => m.id)))
+            .joining((member: OnlineUser) => setOnlineUserIds((prev) => [...prev, member.id]))
+            .leaving((member: OnlineUser) => setOnlineUserIds((prev) => prev.filter((id) => id !== member.id)));
+        return () => {
+            (echo() as any).leave('messenger');
+        };
+    }, []);
 
     const getConversationName = (conv: ConversationType) => {
         if (conv.is_group) return conv.name ?? 'Group Chat';
@@ -234,7 +250,7 @@ export function MessengerBell() {
                                         key={`group-${conv.id}`}
                                         onClick={() => {
                                             setIsOpen(false);
-                                            router.visit(`/messenger/${conv.id}`);
+                                            openGroupChat(conv);
                                         }}
                                         className="hover:bg-muted/60 dark:hover:bg-muted/20 flex w-full items-center gap-3 px-4 py-2.5 text-left transition"
                                     >
@@ -304,7 +320,12 @@ export function MessengerBell() {
                                         >
                                             {getInitials(user.name)}
                                         </div>
-                                        <span className="border-background absolute right-0.5 bottom-0.5 h-3 w-3 rounded-full border-2 bg-zinc-400" />
+                                        <span
+                                            className={cn(
+                                                'border-background absolute right-0.5 bottom-0.5 h-3 w-3 rounded-full border-2',
+                                                onlineUserIds.includes(user.id) ? 'bg-green-500' : 'bg-zinc-400',
+                                            )}
+                                        />
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-baseline justify-between gap-1">

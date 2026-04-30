@@ -2,12 +2,17 @@ import { type OpenChat, useChatContext } from '@/contexts/chat-context';
 import { cn } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
-import { Minus, Send, X, Eye } from 'lucide-react';
+import { Eye, Minus, Paperclip, Send, Users, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 interface MessageType {
     id: number;
-    body: string;
+    body: string | null;
+    file_name: string | null;
+    file_path: string | null;
+    file_type: string | null;
+    file_size: number | null;
+    mime_type: string | null;
     created_at: string;
     seen_at: string | null;
     seen_by: number | null;
@@ -40,15 +45,23 @@ interface Props {
 export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
     const { auth } = usePage().props as { auth: { user: { id: number; name: string } } };
     const { closeChat, toggleMinimize, setConversation } = useChatContext();
+    const displayName = chat.isGroup ? (chat.conversation?.name ?? 'Group Chat') : (chat.user?.name ?? '');
+    const displayId = chat.isGroup ? (chat.conversation?.id ?? 0) : (chat.user?.id ?? 0);
 
     const [messages, setMessages] = useState<MessageType[]>([]);
     const [input, setInput] = useState('');
     const [sending, setSending] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(false);
     const [conversationId, setConversationId] = useState<number | null>(chat.conversation?.id ?? null);
     const [typingDots, setTypingDots] = useState(false);
+    const [typingUser, setTypingUser] = useState<{ id: number; name: string } | null>(null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const bottomRef = useRef<HTMLDivElement>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -59,12 +72,12 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
         const init = async () => {
             let convId = conversationId;
 
-            if (!convId) {
+            if (!convId && !chat.isGroup) {
                 // Create a DM conversation
                 const res = await fetch('/messenger/conversations', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
-                    body: JSON.stringify({ user_ids: [chat.user.id], is_group: false }),
+                    body: JSON.stringify({ user_ids: [chat.user!.id], is_group: false }),
                 });
                 if (!res.ok) {
                     setLoading(false);
@@ -73,11 +86,11 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                 const { id } = await res.json();
                 convId = id;
                 setConversationId(id);
-                setConversation(chat.user.id, {
+                setConversation(chat.chatId, {
                     id,
                     name: null,
                     is_group: false,
-                    participants: [chat.user],
+                    participants: [chat.user!],
                 });
             }
 
@@ -86,6 +99,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             if (res.ok) {
                 const data = await res.json();
                 setMessages(data.messages);
+                setHasMore(data.messages.length === 50);
             }
             setLoading(false);
         };
@@ -93,15 +107,54 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
         init();
         // Only run when the chat opens/conversation initializes; not on every minimized change
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [chat.user.id]);
+    }, [chat.chatId]);
 
-    // ── Step 2: scroll to bottom when opened / new messages ─────────────────
+    // ── Step 2: scroll to bottom when opened (not when prepending old messages) ──
+    const isLoadingMoreRef = useRef(false);
     useEffect(() => {
-        if (!chat.minimized) {
+        if (!chat.minimized && !isLoadingMoreRef.current) {
             bottomRef.current?.scrollIntoView({ behavior: 'instant' });
             inputRef.current?.focus();
         }
     }, [chat.minimized, messages.length]);
+
+    // ── Step 2b: load older messages when scrolled to top ───────────────────
+    const fetchOlder = async () => {
+        if (!conversationId || loadingMore || !hasMore || messages.length === 0) return;
+        const oldestId = messages[0].id;
+        const container = scrollRef.current;
+        const prevScrollHeight = container?.scrollHeight ?? 0;
+
+        isLoadingMoreRef.current = true;
+        setLoadingMore(true);
+        const res = await fetch(`/messenger/${conversationId}/messages?before=${oldestId}`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.messages.length > 0) {
+                setMessages((prev) => [...data.messages, ...prev]);
+                setHasMore(data.messages.length === 50);
+                // Restore scroll position so view doesn't jump
+                requestAnimationFrame(() => {
+                    if (container) {
+                        container.scrollTop = container.scrollHeight - prevScrollHeight;
+                    }
+                    isLoadingMoreRef.current = false;
+                });
+            } else {
+                setHasMore(false);
+                isLoadingMoreRef.current = false;
+            }
+        } else {
+            isLoadingMoreRef.current = false;
+        }
+        setLoadingMore(false);
+    };
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        if (e.currentTarget.scrollTop === 0) {
+            fetchOlder();
+        }
+    };
 
     // ── Step 3: WebSocket subscription ──────────────────────────────────────
     useEffect(() => {
@@ -120,8 +173,9 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             }
         });
 
-        ch.listenForWhisper('typing', (event: { userId: number }) => {
+        ch.listenForWhisper('typing', (event: { userId: number; name: string }) => {
             if (event.userId === auth.user.id) return;
+            setTypingUser({ id: event.userId, name: event.name });
             setTypingDots(true);
             if (typingTimer.current) clearTimeout(typingTimer.current);
             typingTimer.current = setTimeout(() => setTypingDots(false), 3000);
@@ -135,25 +189,30 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
     // ── Send message ─────────────────────────────────────────────────────────
     const sendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim() || !conversationId || sending) return;
+        if ((!input.trim() && !selectedFile) || !conversationId || sending) return;
 
         setSending(true);
         const socketId = (echo() as any).socketId?.() ?? null;
 
+        const formData = new FormData();
+        if (input.trim()) formData.append('body', input.trim());
+        if (selectedFile) formData.append('file', selectedFile);
+
         const res = await fetch(`/messenger/${conversationId}/messages`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': csrfToken(),
                 ...(socketId ? { 'X-Socket-ID': socketId } : {}),
             },
-            body: JSON.stringify({ body: input.trim() }),
+            body: formData,
         });
 
         if (res.ok) {
             const json = await res.json();
             setMessages((prev) => [...prev, json.message]);
             setInput('');
+            setSelectedFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
         setSending(false);
     };
@@ -187,18 +246,18 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
         >
             {/* ── Header ── */}
             <button
-                onClick={() => toggleMinimize(chat.user.id)}
-                className={cn('flex h-12 shrink-0 cursor-pointer items-center gap-2 px-3 select-none', avatarColor(chat.user.id))}
+                onClick={() => toggleMinimize(chat.chatId)}
+                className={cn('flex h-12 shrink-0 cursor-pointer items-center gap-2 px-3 select-none', avatarColor(displayId))}
             >
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 text-xs font-bold text-white">
-                    {getInitials(chat.user.name)}
+                    {chat.isGroup ? <Users className="h-4 w-4" /> : getInitials(displayName)}
                 </div>
-                <span className="flex-1 truncate text-sm font-semibold text-white">{chat.user.name}</span>
+                <span className="flex-1 truncate text-sm font-semibold text-white">{displayName}</span>
                 <span
                     role="button"
                     onClick={(e) => {
                         e.stopPropagation();
-                        toggleMinimize(chat.user.id);
+                        toggleMinimize(chat.chatId);
                     }}
                     className="flex h-6 w-6 items-center justify-center rounded-full text-white hover:bg-white/20"
                 >
@@ -208,7 +267,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                     role="button"
                     onClick={(e) => {
                         e.stopPropagation();
-                        closeChat(chat.user.id);
+                        closeChat(chat.chatId);
                     }}
                     className="flex h-6 w-6 items-center justify-center rounded-full text-white hover:bg-white/20"
                 >
@@ -220,104 +279,168 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             {!chat.minimized && (
                 <>
                     {/* Messages */}
-                    <div className="flex-1 space-y-1 overflow-y-auto bg-white px-3 py-2 dark:bg-zinc-900">
+                    <div ref={scrollRef} onScroll={handleScroll} className="flex-1 space-y-1 overflow-y-auto bg-white px-3 py-2 dark:bg-zinc-900">
                         {loading ? (
                             <div className="flex h-full items-center justify-center">
                                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
                             </div>
-                        ) : messages.length === 0 ? (
-                            <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
-                                <div
-                                    className={cn(
-                                        'flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold text-white',
-                                        avatarColor(chat.user.id),
-                                    )}
-                                >
-                                    {getInitials(chat.user.name)}
-                                </div>
-                                <p className="mt-2 text-sm font-semibold">{chat.user.name}</p>
-                                <p className="text-xs text-zinc-400">Start a conversation</p>
-                            </div>
                         ) : (
-                            messages.map((msg, i) => {
-                                const isMe = msg.user.id === auth.user.id;
-                                const prevMsg = messages[i - 1];
-                                const showAvatar = !isMe && prevMsg?.user.id !== msg.user.id;
-                                return (
-                                    <div key={msg.id} className={cn('flex items-end gap-1.5', isMe ? 'justify-end' : 'justify-start')}>
-                                        {!isMe && (
-                                            <div
-                                                className={cn(
-                                                    'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white',
-                                                    showAvatar ? avatarColor(msg.user.id) : 'invisible',
-                                                )}
-                                            >
-                                                {getInitials(msg.user.name)}
-                                            </div>
-                                        )}
+                            <>
+                                {loadingMore && (
+                                    <div className="flex justify-center py-2">
+                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                                    </div>
+                                )}
+                                {messages.length === 0 ? (
+                                    <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
                                         <div
                                             className={cn(
-                                                'max-w-[200px] rounded-2xl px-3 py-1.5 text-sm leading-snug break-words',
-                                                isMe
-                                                    ? 'rounded-br-sm bg-blue-600 text-white'
-                                                    : 'rounded-bl-sm bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100',
+                                                'flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold text-white',
+                                                avatarColor(displayId),
                                             )}
                                         >
-                                            {msg.body}
-                                            <div className="mt-0.5 text-[10px]">
-                                                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </div>
-                                            {isMe && msg.seen_at && i === messages.length - 1 && (
-                                                <div className="mt-0.5 text-[10px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
-                                                    <Eye className="h-3 w-3" />
-                                                    Seen {new Date(msg.seen_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {chat.isGroup ? <Users className="h-8 w-8" /> : getInitials(displayName)}
+                                        </div>
+                                        <p className="mt-2 text-sm font-semibold">{displayName}</p>
+                                        <p className="text-xs text-zinc-400">{chat.isGroup ? 'No messages yet' : 'Start a conversation'}</p>
+                                    </div>
+                                ) : (
+                                    messages.map((msg, i) => {
+                                        const isMe = msg.user.id === auth.user.id;
+                                        const prevMsg = messages[i - 1];
+                                        const showAvatar = !isMe && prevMsg?.user.id !== msg.user.id;
+                                        return (
+                                            <div key={msg.id} className={cn('flex items-end gap-1.5', isMe ? 'justify-end' : 'justify-start')}>
+                                                {!isMe && (
+                                                    <div
+                                                        className={cn(
+                                                            'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white',
+                                                            showAvatar ? avatarColor(msg.user.id) : 'invisible',
+                                                        )}
+                                                    >
+                                                        {getInitials(msg.user.name)}
+                                                    </div>
+                                                )}
+                                                <div
+                                                    className={cn(
+                                                        'max-w-[200px] rounded-2xl px-3 py-1.5 text-sm leading-snug break-words',
+                                                        isMe
+                                                            ? 'rounded-br-sm bg-blue-600 text-white'
+                                                            : 'rounded-bl-sm bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100',
+                                                    )}
+                                                >
+                                                    {msg.file_path && msg.mime_type?.startsWith('image/') && (
+                                                        <a href={`/storage/${msg.file_path}`} target="_blank" rel="noreferrer">
+                                                            <img
+                                                                src={`/storage/${msg.file_path}`}
+                                                                alt={msg.file_name ?? 'image'}
+                                                                className="mb-1 max-w-full rounded-lg object-cover"
+                                                            />
+                                                        </a>
+                                                    )}
+                                                    {msg.file_path && !msg.mime_type?.startsWith('image/') && (
+                                                        <a
+                                                            href={`/storage/${msg.file_path}`}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className={cn(
+                                                                'mb-1 flex items-center gap-1.5 underline',
+                                                                isMe ? 'text-blue-100' : 'text-blue-600 dark:text-blue-400',
+                                                            )}
+                                                        >
+                                                            <Paperclip className="h-3 w-3 shrink-0" />
+                                                            <span className="truncate text-xs">{msg.file_name}</span>
+                                                        </a>
+                                                    )}
+                                                    {msg.body && <span>{msg.body}</span>}
+                                                    <div className="mt-0.5 text-[10px] opacity-70">
+                                                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </div>
+                                                    {isMe && msg.seen_at && i === messages.length - 1 && (
+                                                        <div className="mt-0.5 flex items-center gap-1 text-[10px] text-zinc-500 dark:text-zinc-400">
+                                                            <Eye className="h-3 w-3" />
+                                                            Seen{' '}
+                                                            {new Date(msg.seen_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                    )}
                                                 </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                                {typingDots && (
+                                    <div className="flex items-end gap-1.5">
+                                        <div
+                                            className={cn(
+                                                'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white',
+                                                avatarColor(typingUser?.id ?? displayId),
                                             )}
+                                        >
+                                            {getInitials(typingUser?.name ?? displayName)}
+                                        </div>
+                                        <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm bg-zinc-100 px-3 py-2 dark:bg-zinc-800">
+                                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:0ms]" />
+                                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:150ms]" />
+                                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:300ms]" />
                                         </div>
                                     </div>
-                                );
-                            })
+                                )}
+                                <div ref={bottomRef} />
+                            </>
                         )}
-                        {typingDots && (
-                            <div className="flex items-end gap-1.5">
-                                <div
-                                    className={cn(
-                                        'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white',
-                                        avatarColor(chat.user.id),
-                                    )}
-                                >
-                                    {getInitials(chat.user.name)}
-                                </div>
-                                <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm bg-zinc-100 px-3 py-2 dark:bg-zinc-800">
-                                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:0ms]" />
-                                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:150ms]" />
-                                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:300ms]" />
-                                </div>
-                            </div>
-                        )}
-                        <div ref={bottomRef} />
                     </div>
 
                     {/* Input */}
-                    <form
-                        onSubmit={sendMessage}
-                        className="flex items-center gap-2 border-t bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-                    >
-                        <input
-                            ref={inputRef}
-                            value={input}
-                            onChange={handleTyping}
-                            placeholder="Aa"
-                            className="flex-1 rounded-full bg-zinc-100 px-3 py-1.5 text-sm outline-none placeholder:text-zinc-400 dark:bg-zinc-800 dark:text-zinc-100"
-                            disabled={sending}
-                        />
-                        <button
-                            type="submit"
-                            disabled={!input.trim() || sending}
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white transition hover:bg-blue-700 disabled:opacity-40"
-                        >
-                            <Send className="h-3.5 w-3.5" />
-                        </button>
+                    <form onSubmit={sendMessage} className="flex flex-col border-t bg-white dark:border-zinc-700 dark:bg-zinc-900">
+                        {selectedFile && (
+                            <div className="flex items-center gap-2 border-b px-3 py-1.5 dark:border-zinc-700">
+                                {selectedFile.type.startsWith('image/') ? (
+                                    <img src={URL.createObjectURL(selectedFile)} alt="preview" className="h-8 w-8 rounded object-cover" />
+                                ) : (
+                                    <Paperclip className="h-4 w-4 shrink-0 text-zinc-400" />
+                                )}
+                                <span className="flex-1 truncate text-xs text-zinc-600 dark:text-zinc-300">{selectedFile.name}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedFile(null);
+                                        if (fileInputRef.current) fileInputRef.current.value = '';
+                                    }}
+                                    className="text-zinc-400 hover:text-red-500"
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                        )}
+                        <div className="flex items-center gap-2 px-3 py-2">
+                            <input
+                                ref={inputRef}
+                                value={input}
+                                onChange={handleTyping}
+                                placeholder="Aa"
+                                className="flex-1 rounded-full bg-zinc-100 px-3 py-1.5 text-sm outline-none placeholder:text-zinc-400 dark:bg-zinc-800 dark:text-zinc-100"
+                                disabled={sending}
+                            />
+                            <label className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800">
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*,.pdf,.doc,.docx,.txt"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        if (e.target.files?.[0]) setSelectedFile(e.target.files[0]);
+                                    }}
+                                />
+                                <Paperclip className="h-3.5 w-3.5" />
+                            </label>
+                            <button
+                                type="submit"
+                                disabled={(!input.trim() && !selectedFile) || sending}
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white transition hover:bg-blue-700 disabled:opacity-40"
+                            >
+                                <Send className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
                     </form>
                 </>
             )}

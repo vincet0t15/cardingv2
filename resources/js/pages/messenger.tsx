@@ -2,8 +2,13 @@ import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { Head, router, usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
-import { Edit, Loader2, MessageCircle, Search, Send, Users, X } from 'lucide-react';
+import { Edit, Loader2, MessageCircle, Paperclip, PictureInPicture2, PictureInPicture2Icon, Search, Send, Users, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+const StorageUrl = (path: string | null): string => {
+    if (!path) return '';
+    return new URL(`/storage/${path}`, window.location.origin).toString();
+};
 
 type UserType = { id: number; name: string; username: string };
 type MessageType = {
@@ -12,7 +17,14 @@ type MessageType = {
     created_at: string;
     seen_at: string | null;
     seen_by: number | null;
+    file_name: string | null;
+    file_path: string | null;
+    file_type: string | null;
+    file_size: number | null;
+    mime_type: string | null;
     user: Pick<UserType, 'id' | 'name'>;
+    is_image: boolean;
+    is_pdf: boolean;
 };
 type ConversationType = {
     id: number;
@@ -105,6 +117,7 @@ export default function Messenger({ conversations, users, activeConversation, me
 
     const [messages, setMessages] = useState<MessageType[]>(initialMessages);
     const [input, setInput] = useState('');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [sending, setSending] = useState(false);
     const [onlineUserIds, setOnlineUserIds] = useState<number[]>([]);
     const [typingUsers, setTypingUsers] = useState<Record<number, string>>({});
@@ -137,7 +150,7 @@ export default function Messenger({ conversations, users, activeConversation, me
             const response = await fetch(`/messenger/${activeConversation.id}/messages?before=${firstMessage.id}`);
             const data = await response.json();
             if (data.messages.length < 50) setHasMore(false);
-            setMessages(prev => [...data.messages, ...prev]);
+            setMessages((prev) => [...data.messages, ...prev]);
         } catch (error) {
             console.error('Failed to load older messages:', error);
         } finally {
@@ -257,26 +270,33 @@ export default function Messenger({ conversations, users, activeConversation, me
 
     const sendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim() || !activeConversation || sending) return;
+        if ((!input.trim() && !selectedFile) || !activeConversation || sending) return;
 
         setSending(true);
         const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
         const socketId = (echo() as any).socketId?.() ?? null;
 
+        const formData = new FormData();
+        if (input.trim()) formData.append('body', input.trim());
+
+        if (selectedFile) {
+            formData.append('file', selectedFile);
+        }
+
         const response = await fetch(`/messenger/${activeConversation.id}/messages`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': token ?? '',
                 ...(socketId ? { 'X-Socket-ID': socketId } : {}),
             },
-            body: JSON.stringify({ body: input.trim() }),
+            body: formData,
         });
 
         if (response.ok) {
             const json = await response.json();
             setMessages((prev) => [...prev, json.message]);
             setInput('');
+            setSelectedFile(null);
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
             router.reload({ only: ['conversations'] });
         }
@@ -668,19 +688,67 @@ export default function Messenger({ conversations, users, activeConversation, me
                                                         )}
                                                     >
                                                         <p className="whitespace-pre-wrap">{message.body}</p>
-                                                        <div
-                                                            className={cn(
-                                                                'mt-1 text-[10px] tabular-nums',
-                                                                isMine ? 'text-blue-100' : 'text-muted-foreground',
-                                                            )}
-                                                        >
-                                                            <p>{formatTime(message.created_at)}</p>
-                                                            {isMine && message.seen_at && i === messages.length - 1 && (
-                                                                <p className="flex items-center gap-1 text-[10px] text-white">
-                                                                    Seen {formatTime(message.seen_at)}
-                                                                </p>
-                                                            )}
-                                                        </div>
+                                                        {message.file_name && (
+                                                            <div className="mt-2 max-w-xs">
+                                                                {message.is_image ? (
+                                                                    <>
+                                                                        <a
+                                                                            href={StorageUrl(message.file_path)}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="border-muted hover:border-primary/50 block rounded border"
+                                                                        >
+                                                                            <img
+                                                                                src={StorageUrl(message.file_path)}
+                                                                                alt={message.file_name}
+                                                                                className="block h-auto max-h-48 w-full rounded object-cover"
+                                                                            />
+                                                                        </a>
+                                                                        <p className="text-muted-foreground mt-1 truncate text-center text-xs">
+                                                                            {message.file_name}
+                                                                        </p>
+                                                                    </>
+                                                                ) : message.is_pdf ? (
+                                                                    <>
+                                                                        <a
+                                                                            href={StorageUrl(message.file_path)}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="bg-muted/50 flex items-center gap-2 rounded-md px-3 py-2"
+                                                                        >
+                                                                            <PictureInPicture2Icon className="text-muted-foreground h-5 w-5" />
+                                                                            <div>
+                                                                                <p className="truncate text-sm font-medium">{message.file_name}</p>
+                                                                                <p className="text-muted-foreground truncate text-xs">
+                                                                                    {(message.file_size ?? 0) / 1024 / 1024 > 1
+                                                                                        ? `${((message.file_size ?? 0) / 1024 / 1024).toFixed(2)} MB`
+                                                                                        : `${((message.file_size ?? 0) / 1024).toFixed(0)} KB`}
+                                                                                </p>
+                                                                            </div>
+                                                                        </a>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <a
+                                                                            href={StorageUrl(message.file_path)}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="bg-muted/50 flex items-center gap-2 rounded-md px-3 py-2"
+                                                                        >
+                                                                            <Paperclip className="text-muted-foreground h-5 w-5" />
+                                                                            <div>
+                                                                                <p className="truncate text-sm font-medium">{message.file_name}</p>
+                                                                                <p className="text-muted-foreground truncate text-xs">
+                                                                                    {(message.file_size ?? 0) / 1024 / 1024 > 1
+                                                                                        ? `${((message.file_size ?? 0) / 1024 / 1024).toFixed(2)} MB`
+                                                                                        : `${((message.file_size ?? 0) / 1024).toFixed(0)} KB`}
+                                                                                </p>
+                                                                            </div>
+                                                                        </a>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -715,29 +783,76 @@ export default function Messenger({ conversations, users, activeConversation, me
 
                         {/* Message input */}
                         <div className="border-sidebar-border/50 border-t px-4 py-3">
-                            <form onSubmit={sendMessage} className="flex items-center gap-2">
-                                <input
-                                    ref={inputRef}
-                                    value={input}
-                                    onChange={handleTyping}
-                                    placeholder="Aa"
-                                    disabled={sending}
-                                    autoComplete="off"
-                                    className="bg-muted/60 focus:bg-muted flex-1 rounded-full px-4 py-2.5 text-sm transition outline-none dark:bg-slate-800/60 dark:focus:bg-slate-800"
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && !e.shiftKey) {
-                                            e.preventDefault();
-                                            sendMessage(e as unknown as React.FormEvent);
-                                        }
-                                    }}
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={!input.trim() || sending}
-                                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0b7ff5] text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-600 hover:shadow-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    <Send className="h-4 w-4" />
-                                </button>
+                            <form onSubmit={sendMessage} className="flex w-full flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        ref={inputRef}
+                                        value={input}
+                                        onChange={handleTyping}
+                                        placeholder="Aa"
+                                        disabled={sending}
+                                        autoComplete="off"
+                                        className="bg-muted/60 focus:bg-muted flex-1 rounded-full px-4 py-2.5 text-sm transition outline-none dark:bg-slate-800/60 dark:focus:bg-slate-800"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                if (input.trim() || selectedFile) {
+                                                    sendMessage(e as unknown as React.FormEvent);
+                                                }
+                                            }
+                                        }}
+                                    />
+                                    <label
+                                        htmlFor="file-input"
+                                        className="hover:text-muted-foreground/80 bg-muted/60 hover:bg-muted/80 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition-colors"
+                                    >
+                                        <input
+                                            id="file-input"
+                                            type="file"
+                                            accept="image/*,.pdf,.doc,.docx,.txt"
+                                            onChange={(e) => {
+                                                if (e.target.files && e.target.files[0]) {
+                                                    setSelectedFile(e.target.files[0]);
+                                                }
+                                            }}
+                                            className="hidden"
+                                        />
+                                        <Paperclip className="h-4 w-4" />
+                                    </label>
+                                    <button
+                                        type="submit"
+                                        disabled={(!input.trim() && !selectedFile) || sending}
+                                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0b7ff5] text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-600 hover:shadow-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <Send className="h-4 w-4" />
+                                    </button>
+                                </div>
+                                {selectedFile && (
+                                    <div className="bg-muted/50 flex items-center gap-2 rounded-md px-3 py-2">
+                                        <div className="flex-shrink-0">
+                                            {selectedFile.type && selectedFile.type.startsWith('image/') ? (
+                                                <img src={URL.createObjectURL(selectedFile)} alt="Preview" className="h-8 w-8 rounded object-cover" />
+                                            ) : selectedFile.type === 'application/pdf' ? (
+                                                <PictureInPicture2 className="text-muted-foreground h-8 w-8" />
+                                            ) : (
+                                                <Paperclip className="text-muted-foreground h-8 w-8" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="truncate text-sm font-medium">{selectedFile.name}</p>
+                                            <p className="text-muted-foreground truncate text-xs">
+                                                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedFile(null)}
+                                            className="text-muted-foreground/50 ml-2 cursor-pointer hover:text-red-500"
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </div>
+                                )}
                             </form>
                         </div>
                     </div>
