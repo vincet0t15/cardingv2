@@ -30,6 +30,16 @@ class ConversationMessageSent implements ShouldBroadcastNow
                     'id' => $this->message->user->id,
                     'name' => $this->message->user->name,
                 ],
+                'file_name' => $this->message->file_name,
+                'file_path' => $this->message->file_path,
+                'file_type' => $this->message->file_type,
+                'file_size' => $this->message->file_size,
+                'mime_type' => $this->message->mime_type,
+                'is_image' => !empty($this->message->mime_type) && str_starts_with($this->message->mime_type, 'image/'),
+                'is_pdf' => !empty($this->message->mime_type) && $this->message->mime_type === 'application/pdf',
+                'reply_to_id' => $this->message->reply_to_id,
+                'seen_at' => $this->message->seen_at,
+                'seen_by' => $this->message->seen_by,
             ],
         ];
     }

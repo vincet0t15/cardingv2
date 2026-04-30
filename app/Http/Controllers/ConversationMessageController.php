@@ -84,6 +84,8 @@ class ConversationMessageController extends Controller
                     'file_type' => $message->file_type,
                     'file_size' => $message->file_size,
                     'mime_type' => $message->mime_type,
+                    'is_image' => !empty($message->mime_type) && str_starts_with($message->mime_type, 'image/'),
+                    'is_pdf' => !empty($message->mime_type) && $message->mime_type === 'application/pdf',
                     'created_at' => $message->created_at->toISOString(),
                     'seen_at' => $message->seen_at?->toISOString(),
                     'seen_by' => $message->seen_by,

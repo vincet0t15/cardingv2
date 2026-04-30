@@ -37,7 +37,30 @@ class ConversationController extends Controller
             ->take(50)
             ->get()
             ->reverse()
-            ->values();
+            ->values()
+            ->map(function ($m) {
+                return [
+                    'id' => $m->id,
+                    'body' => $m->body,
+                    'reply_to_id' => $m->reply_to_id,
+                    'reply_to' => $m->replyTo ? [
+                        'id' => $m->replyTo->id,
+                        'body' => $m->replyTo->body,
+                        'user' => $m->replyTo->user ? ['id' => $m->replyTo->user->id, 'name' => $m->replyTo->user->name] : null,
+                    ] : null,
+                    'file_name' => $m->file_name,
+                    'file_path' => $m->file_path,
+                    'file_type' => $m->file_type,
+                    'file_size' => $m->file_size,
+                    'mime_type' => $m->mime_type,
+                    'is_image' => !empty($m->mime_type) && str_starts_with($m->mime_type, 'image/'),
+                    'is_pdf' => !empty($m->mime_type) && $m->mime_type === 'application/pdf',
+                    'created_at' => $m->created_at->toISOString(),
+                    'seen_at' => $m->seen_at?->toISOString(),
+                    'seen_by' => $m->seen_by,
+                    'user' => ['id' => $m->user->id, 'name' => $m->user->name],
+                ];
+            });
 
         $conversation->participants()->updateExistingPivot(Auth::id(), [
             'last_read_at' => now(),
@@ -241,35 +264,62 @@ class ConversationController extends Controller
             403
         );
 
-        $before = $request->query('before');
+        try {
+            $before = $request->query('before');
 
-        if (!$before) {
-            $conversation->participants()->updateExistingPivot(Auth::id(), [
-                'last_read_at' => now(),
-            ]);
-
-            $conversation->messages()
-                ->where('user_id', '!=', Auth::id())
-                ->whereNull('seen_at')
-                ->update([
-                    'seen_at' => now(),
-                    'seen_by' => Auth::id(),
+            if (!$before) {
+                $conversation->participants()->updateExistingPivot(Auth::id(), [
+                    'last_read_at' => now(),
                 ]);
+
+                $conversation->messages()
+                    ->where('user_id', '!=', Auth::id())
+                    ->whereNull('seen_at')
+                    ->update([
+                        'seen_at' => now(),
+                        'seen_by' => Auth::id(),
+                    ]);
+            }
+
+            $query = $conversation->messages()
+                ->with('user:id,name')
+                ->with('seenBy:id,name')
+                ->with('replyTo:id,body,user_id')
+                ->with('replyTo.user:id,name');
+
+            if ($before) {
+                $query->where('id', '<', $before);
+            }
+
+            $messages = $query->latest()->take(50)->get()->reverse()->values();
+
+            return response()->json([
+                'messages' => $messages->map(fn($m) => [
+                    'id' => $m->id,
+                    'body' => $m->body,
+                    'reply_to_id' => $m->reply_to_id,
+                    'reply_to' => $m->replyTo ? [
+                        'id' => $m->replyTo->id,
+                        'body' => $m->replyTo->body,
+                        'user' => $m->replyTo->user ? ['id' => $m->replyTo->user->id, 'name' => $m->replyTo->user->name] : null,
+                    ] : null,
+                    'file_name' => $m->file_name,
+                    'file_path' => $m->file_path,
+                    'file_type' => $m->file_type,
+                    'file_size' => $m->file_size,
+                    'mime_type' => $m->mime_type,
+                    'is_image' => !empty($m->mime_type) && str_starts_with($m->mime_type, 'image/'),
+                    'is_pdf' => !empty($m->mime_type) && $m->mime_type === 'application/pdf',
+                    'created_at' => $m->created_at->toISOString(),
+                    'seen_at' => $m->seen_at?->toISOString(),
+                    'seen_by' => $m->seen_by,
+                    'user' => ['id' => $m->user->id, 'name' => $m->user->name],
+                ]),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('getMessages failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        $query = $conversation->messages()
-            ->with('user:id,name')
-            ->with('seenBy:id,name')
-            ->with('replyTo:id,body,user_id')
-            ->with('replyTo.user:id,name');
-
-        if ($before) {
-            $query->where('id', '<', $before);
-        }
-
-        $messages = $query->latest()->take(50)->get()->reverse()->values();
-
-        return response()->json(['messages' => $messages]);
     }
 
     public function recent()
