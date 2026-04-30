@@ -390,11 +390,11 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                                         {message.reply_to && (
                                             <div
                                                 className={cn(
-                                                    'relative rounded-2xl px-3 pt-2 pb-5 text-[11px] leading-tight opacity-80',
+                                                    'rounded-2xl px-3 py-1.5 text-[11px] leading-tight opacity-80 transition-all',
                                                     isMine ? 'mr-2 bg-white/20' : 'ml-2 bg-muted',
                                                 )}
                                             >
-                                                <p className="max-w-[150px] truncate italic">
+                                                <p className="max-w-[150px] truncate text-zinc-500 italic">
                                                     {message.reply_to.body ?? '📎 Attachment'}
                                                 </p>
                                             </div>
@@ -483,6 +483,11 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                                                     )}
                                                 </div>
                                             )}
+                                        </div>
+
+                                        <div className={cn('mt-0.5 flex gap-1.5 text-[10px] opacity-50', isMine ? 'mr-2' : 'ml-2')}>
+                                            <span>{formatTime(message.created_at)}</span>
+                                            {isMine && message.seen_at && <span className="font-medium text-blue-500">Seen</span>}
                                         </div>
                                     </div>
 
