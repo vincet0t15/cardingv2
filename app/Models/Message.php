@@ -11,15 +11,23 @@ class Message extends Model
         'conversation_id',
         'user_id',
         'body',
+        'seen_at',
+        'seen_by',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
+        'seen_at' => 'datetime',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function seenBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'seen_by');
     }
 
     public function conversation(): BelongsTo

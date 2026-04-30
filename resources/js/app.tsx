@@ -12,13 +12,15 @@ declare global {
 }
 
 if (typeof window !== 'undefined') {
+    const isHttps = window.location.protocol === 'https:';
+
     configureEcho({
         broadcaster: 'reverb',
         key: import.meta.env.VITE_REVERB_APP_KEY,
-        wsHost: import.meta.env.VITE_REVERB_HOST,
-        wsPort: Number(import.meta.env.VITE_REVERB_PORT ?? 80),
-        wssPort: Number(import.meta.env.VITE_REVERB_PORT ?? 443),
-        forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
+        wsHost: import.meta.env.VITE_REVERB_HOST || window.location.hostname,
+        wsPort: Number(import.meta.env.VITE_REVERB_PORT ?? 6001),
+        wssPort: Number(import.meta.env.VITE_REVERB_PORT ?? 6001),
+        forceTLS: isHttps,
         enabledTransports: ['ws', 'wss'],
         authorizer: (channel: { name: string }) => ({
             authorize: (socketId: string, callback: (error: Error | null, data: { auth: string } | null) => void) => {

@@ -125,17 +125,26 @@ class ConversationController extends Controller
             403
         );
 
+        $conversation->participants()->updateExistingPivot(auth()->id(), [
+            'last_read_at' => now(),
+        ]);
+
+        $conversation->messages()
+            ->where('user_id', '!=', auth()->id())
+            ->whereNull('seen_at')
+            ->update([
+                'seen_at' => now(),
+                'seen_by' => auth()->id(),
+            ]);
+
         $messages = $conversation->messages()
             ->with('user:id,name')
+            ->with('seenBy:id,name')
             ->latest()
             ->take(50)
             ->get()
             ->reverse()
             ->values();
-
-        $conversation->participants()->updateExistingPivot(auth()->id(), [
-            'last_read_at' => now(),
-        ]);
 
         return response()->json(['messages' => $messages]);
     }

@@ -9,6 +9,8 @@ interface MessageType {
     id: number;
     body: string;
     created_at: string;
+    seen_at: string | null;
+    seen_by: number | null;
     user: { id: number; name: string };
 }
 
@@ -109,6 +111,13 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
 
         ch.listen('ConversationMessageSent', (event: { message: MessageType }) => {
             setMessages((prev) => (prev.some((m) => m.id === event.message.id) ? prev : [...prev, event.message]));
+            // Mark message as seen if chat is open
+            if (event.message.user.id !== auth.user.id && conversationId) {
+                fetch(`/messenger/${conversationId}/messages/${event.message.id}/seen`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrfToken() },
+                });
+            }
         });
 
         ch.listenForWhisper('typing', (event: { userId: number }) => {
@@ -255,6 +264,11 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                                             )}
                                         >
                                             {msg.body}
+                                            {isMe && msg.seen_at && i === messages.length - 1 && (
+                                                <div className="mt-0.5 text-[10px] text-blue-200">
+                                                    Seen {new Date(msg.seen_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 );

@@ -10,6 +10,8 @@ type MessageType = {
     id: number;
     body: string;
     created_at: string;
+    seen_at: string | null;
+    seen_by: number | null;
     user: Pick<UserType, 'id' | 'name'>;
 };
 type ConversationType = {
@@ -43,8 +45,13 @@ function formatTime(dateStr: string): string {
     const date = new Date(dateStr);
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = date.toDateString() === yesterday.toDateString();
+
     if (isToday) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    if (isYesterday) return `Yesterday at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function formatDateSeparator(dateStr: string): string {
@@ -56,7 +63,7 @@ function formatDateSeparator(dateStr: string): string {
     if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
     return date.toLocaleDateString([], {
         weekday: 'long',
-        month: 'short',
+        month: 'long',
         day: 'numeric',
         year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
     });
@@ -149,6 +156,14 @@ export default function Messenger({ conversations, users, activeConversation, me
 
         ch.listen('ConversationMessageSent', (event: { message: MessageType }) => {
             setMessages((prev) => (prev.some((m) => m.id === event.message.id) ? prev : [...prev, event.message]));
+            // Mark message as seen if conversation is open
+            if (activeConversation && event.message.user.id !== auth.user.id) {
+                const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+                fetch(`/messenger/${activeConversation.id}/messages/${event.message.id}/seen`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': token ?? '' },
+                });
+            }
         });
 
         ch.listenForWhisper('typing', (event: { userId: number; name: string }) => {
@@ -593,14 +608,17 @@ export default function Messenger({ conversations, users, activeConversation, me
                                                     >
                                                         <p className="whitespace-pre-wrap">{message.body}</p>
                                                         {isLastInGroup && (
-                                                            <p
+                                                            <div
                                                                 className={cn(
                                                                     'mt-1 text-[10px] tabular-nums',
                                                                     isMine ? 'text-blue-100' : 'text-muted-foreground',
                                                                 )}
                                                             >
-                                                                {formatTime(message.created_at)}
-                                                            </p>
+                                                                <p>{formatTime(message.created_at)}</p>
+                                                                {isMine && message.seen_at && i === messages.length - 1 && (
+                                                                    <p className="text-[10px]">Seen {formatTime(message.seen_at)}</p>
+                                                                )}
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>

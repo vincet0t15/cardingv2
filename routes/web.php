@@ -356,6 +356,7 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
     Route::get('messenger/{conversation}/messages', [ConversationController::class, 'getMessages'])->name('messenger.messages.index');
     Route::post('messenger/{conversation}/messages', [ConversationMessageController::class, 'store'])->name('messenger.messages.store');
     Route::post('messenger/{conversation}/read', [ConversationMessageController::class, 'markRead'])->name('messenger.messages.read');
+    Route::post('messenger/{conversation}/messages/{message}/seen', [ConversationMessageController::class, 'markSeen'])->name('messenger.messages.seen');
 
     // Broadcasting auth (inside web+auth middleware so session/CSRF work)
     Broadcast::routes();

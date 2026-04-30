@@ -43,6 +43,8 @@ class ConversationMessageController extends Controller
                 'id' => $message->id,
                 'body' => $message->body,
                 'created_at' => $message->created_at->toISOString(),
+                'seen_at' => $message->seen_at?->toISOString(),
+                'seen_by' => $message->seen_by,
                 'user' => [
                     'id' => $message->user->id,
                     'name' => $message->user->name,
@@ -61,6 +63,25 @@ class ConversationMessageController extends Controller
         $conversation->participants()->updateExistingPivot(auth()->id(), [
             'last_read_at' => now(),
         ]);
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function markSeen(Conversation $conversation, Message $message)
+    {
+        abort_unless(
+            $conversation->participants()->where('user_id', auth()->id())->exists(),
+            403
+        );
+
+        abort_unless($message->conversation_id === $conversation->id, 403);
+
+        if (!$message->seen_at && $message->user_id !== auth()->id()) {
+            $message->update([
+                'seen_at' => now(),
+                'seen_by' => auth()->id(),
+            ]);
+        }
 
         return response()->json(['ok' => true]);
     }
