@@ -25,6 +25,7 @@ class Message extends Model
         'seen_by',
         'conversation_id',
         'user_id',
+        'reply_to_id',
     ];
 
     /**
@@ -57,6 +58,11 @@ class Message extends Model
     public function seenBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'seen_by');
+    }
+
+    public function replyTo(): BelongsTo
+    {
+        return $this->belongsTo(Message::class, 'reply_to_id');
     }
 
     /**

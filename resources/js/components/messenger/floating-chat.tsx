@@ -8,6 +8,8 @@ import { useEffect, useRef, useState } from 'react';
 interface MessageType {
     id: number;
     body: string | null;
+    reply_to_id: number | null;
+    reply_to: { id: number; body: string | null; user: { id: number; name: string } } | null;
     file_name: string | null;
     file_path: string | null;
     file_type: string | null;
@@ -58,6 +60,8 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
     const [typingDots, setTypingDots] = useState(false);
     const [typingUser, setTypingUser] = useState<{ id: number; name: string } | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [replyingTo, setReplyingTo] = useState<MessageType | null>(null);
+    const [hoveredMsgId, setHoveredMsgId] = useState<number | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -173,6 +177,10 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             }
         });
 
+        ch.listen('ConversationMessageDeleted', (event: { message_id: number }) => {
+            setMessages((prev) => prev.filter((m) => m.id !== event.message_id));
+        });
+
         ch.listenForWhisper('typing', (event: { userId: number; name: string }) => {
             if (event.userId === auth.user.id) return;
             setTypingUser({ id: event.userId, name: event.name });
@@ -197,6 +205,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
         const formData = new FormData();
         if (input.trim()) formData.append('body', input.trim());
         if (selectedFile) formData.append('file', selectedFile);
+        if (replyingTo) formData.append('reply_to_id', String(replyingTo.id));
 
         const res = await fetch(`/messenger/${conversationId}/messages`, {
             method: 'POST',
@@ -212,9 +221,21 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             setMessages((prev) => [...prev, json.message]);
             setInput('');
             setSelectedFile(null);
+            setReplyingTo(null);
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
         setSending(false);
+    };
+
+    // ── Delete message ───────────────────────────────────────────────────────
+    const deleteMessage = async (msgId: number) => {
+        if (!conversationId) return;
+        // Optimistically remove
+        setMessages((prev) => prev.filter((m) => m.id !== msgId));
+        await fetch(`/messenger/${conversationId}/messages/${msgId}`, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': csrfToken() },
+        });
     };
 
     const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -310,7 +331,12 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                                         const prevMsg = messages[i - 1];
                                         const showAvatar = !isMe && prevMsg?.user.id !== msg.user.id;
                                         return (
-                                            <div key={msg.id} className={cn('flex items-end gap-1.5', isMe ? 'justify-end' : 'justify-start')}>
+                                            <div
+                                                key={msg.id}
+                                                className={cn('group relative flex items-end gap-1.5', isMe ? 'justify-end' : 'justify-start')}
+                                                onMouseEnter={() => setHoveredMsgId(msg.id)}
+                                                onMouseLeave={() => setHoveredMsgId(null)}
+                                            >
                                                 {!isMe && (
                                                     <div
                                                         className={cn(
@@ -321,49 +347,109 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                                                         {getInitials(msg.user.name)}
                                                     </div>
                                                 )}
-                                                <div
-                                                    className={cn(
-                                                        'max-w-[200px] rounded-2xl px-3 py-1.5 text-sm leading-snug break-words',
-                                                        isMe
-                                                            ? 'rounded-br-sm bg-blue-600 text-white'
-                                                            : 'rounded-bl-sm bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100',
-                                                    )}
-                                                >
-                                                    {msg.file_path && msg.mime_type?.startsWith('image/') && (
-                                                        <a href={`/storage/${msg.file_path}`} target="_blank" rel="noreferrer">
-                                                            <img
-                                                                src={`/storage/${msg.file_path}`}
-                                                                alt={msg.file_name ?? 'image'}
-                                                                className="mb-1 max-w-full rounded-lg object-cover"
-                                                            />
-                                                        </a>
-                                                    )}
-                                                    {msg.file_path && !msg.mime_type?.startsWith('image/') && (
-                                                        <a
-                                                            href={`/storage/${msg.file_path}`}
-                                                            target="_blank"
-                                                            rel="noreferrer"
+
+                                                {/* Hover actions — left of own bubble */}
+                                                {isMe && hoveredMsgId === msg.id && (
+                                                    <div className="mb-0.5 flex items-center gap-0.5">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setReplyingTo(msg);
+                                                                inputRef.current?.focus();
+                                                            }}
+                                                            className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
+                                                            title="Reply"
+                                                        >
+                                                            <CornerUpLeft className="h-3.5 w-3.5" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => deleteMessage(msg.id)}
+                                                            className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30"
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                <div className={cn('flex max-w-[200px] flex-col', isMe && 'items-end')}>
+                                                    {/* Reply quote */}
+                                                    {msg.reply_to && (
+                                                        <div
                                                             className={cn(
-                                                                'mb-1 flex items-center gap-1.5 underline',
-                                                                isMe ? 'text-blue-100' : 'text-blue-600 dark:text-blue-400',
+                                                                'mb-0.5 flex items-center gap-1 rounded-xl px-2 py-1 text-[11px]',
+                                                                isMe
+                                                                    ? 'bg-blue-500/20 text-blue-200'
+                                                                    : 'bg-zinc-200/70 text-zinc-500 dark:bg-zinc-700/60 dark:text-zinc-400',
                                                             )}
                                                         >
-                                                            <Paperclip className="h-3 w-3 shrink-0" />
-                                                            <span className="truncate text-xs">{msg.file_name}</span>
-                                                        </a>
-                                                    )}
-                                                    {msg.body && <span>{msg.body}</span>}
-                                                    <div className="mt-0.5 text-[10px] opacity-70">
-                                                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    </div>
-                                                    {isMe && msg.seen_at && i === messages.length - 1 && (
-                                                        <div className="mt-0.5 flex items-center gap-1 text-[10px] text-zinc-500 dark:text-zinc-400">
-                                                            <Eye className="h-3 w-3" />
-                                                            Seen{' '}
-                                                            {new Date(msg.seen_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            <CornerUpLeft className="h-3 w-3 shrink-0 opacity-60" />
+                                                            <span className="font-semibold">{msg.reply_to.user.name}:</span>
+                                                            <span className="truncate opacity-80">{msg.reply_to.body ?? '📎'}</span>
                                                         </div>
                                                     )}
+                                                    <div
+                                                        className={cn(
+                                                            'rounded-2xl px-3 py-1.5 text-sm leading-snug break-words',
+                                                            isMe
+                                                                ? 'rounded-br-sm bg-blue-600 text-white'
+                                                                : 'rounded-bl-sm bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100',
+                                                        )}
+                                                    >
+                                                        {msg.file_path && msg.mime_type?.startsWith('image/') && (
+                                                            <a href={`/storage/${msg.file_path}`} target="_blank" rel="noreferrer">
+                                                                <img
+                                                                    src={`/storage/${msg.file_path}`}
+                                                                    alt={msg.file_name ?? 'image'}
+                                                                    className="mb-1 max-w-full rounded-lg object-cover"
+                                                                />
+                                                            </a>
+                                                        )}
+                                                        {msg.file_path && !msg.mime_type?.startsWith('image/') && (
+                                                            <a
+                                                                href={`/storage/${msg.file_path}`}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className={cn(
+                                                                    'mb-1 flex items-center gap-1.5 underline',
+                                                                    isMe ? 'text-blue-100' : 'text-blue-600 dark:text-blue-400',
+                                                                )}
+                                                            >
+                                                                <Paperclip className="h-3 w-3 shrink-0" />
+                                                                <span className="truncate text-xs">{msg.file_name}</span>
+                                                            </a>
+                                                        )}
+                                                        {msg.body && <span>{msg.body}</span>}
+                                                        <div className="mt-0.5 text-[10px] opacity-70">
+                                                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                        {isMe && msg.seen_at && i === messages.length - 1 && (
+                                                            <div className="mt-0.5 flex items-center gap-1 text-[10px] text-zinc-500 dark:text-zinc-400">
+                                                                <Eye className="h-3 w-3" />
+                                                                Seen{' '}
+                                                                {new Date(msg.seen_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
+
+                                                {/* Hover actions — right of others' bubbles */}
+                                                {!isMe && hoveredMsgId === msg.id && (
+                                                    <div className="mb-0.5 flex items-center gap-0.5">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setReplyingTo(msg);
+                                                                inputRef.current?.focus();
+                                                            }}
+                                                            className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
+                                                            title="Reply"
+                                                        >
+                                                            <CornerUpLeft className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })
@@ -392,6 +478,21 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
 
                     {/* Input */}
                     <form onSubmit={sendMessage} className="flex flex-col border-t bg-white dark:border-zinc-700 dark:bg-zinc-900">
+                        {/* Reply bar */}
+                        {replyingTo && (
+                            <div className="flex items-center gap-2 border-b bg-zinc-50 px-3 py-1.5 dark:border-zinc-700 dark:bg-zinc-800/60">
+                                <CornerUpLeft className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                                        {replyingTo.user.id === auth.user.id ? 'Yourself' : replyingTo.user.name}
+                                    </p>
+                                    <p className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">{replyingTo.body ?? '📎 Attachment'}</p>
+                                </div>
+                                <button type="button" onClick={() => setReplyingTo(null)} className="shrink-0 text-zinc-400 hover:text-zinc-600">
+                                    <X className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                        )}
                         {selectedFile && (
                             <div className="flex items-center gap-2 border-b px-3 py-1.5 dark:border-zinc-700">
                                 {selectedFile.type.startsWith('image/') ? (
@@ -420,6 +521,12 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                                 placeholder="Aa"
                                 className="flex-1 rounded-full bg-zinc-100 px-3 py-1.5 text-sm outline-none placeholder:text-zinc-400 dark:bg-zinc-800 dark:text-zinc-100"
                                 disabled={sending}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        if (input.trim() || selectedFile || replyingTo) sendMessage(e as unknown as React.FormEvent);
+                                    }
+                                }}
                             />
                             <label className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800">
                                 <input
@@ -435,7 +542,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                             </label>
                             <button
                                 type="submit"
-                                disabled={(!input.trim() && !selectedFile) || sending}
+                                disabled={(!input.trim() && !selectedFile && !replyingTo) || sending}
                                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white transition hover:bg-blue-700 disabled:opacity-40"
                             >
                                 <Send className="h-3.5 w-3.5" />

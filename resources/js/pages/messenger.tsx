@@ -2,7 +2,20 @@ import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { Head, router, usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
-import { Edit, Loader2, MessageCircle, Paperclip, PictureInPicture2, PictureInPicture2Icon, Search, Send, Users, X } from 'lucide-react';
+import {
+    CornerUpLeft,
+    Edit,
+    Loader2,
+    MessageCircle,
+    Paperclip,
+    PictureInPicture2,
+    PictureInPicture2Icon,
+    Search,
+    Send,
+    Trash2,
+    Users,
+    X,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const StorageUrl = (path: string | null): string => {
@@ -14,6 +27,8 @@ type UserType = { id: number; name: string; username: string };
 type MessageType = {
     id: number;
     body: string;
+    reply_to_id: number | null;
+    reply_to: { id: number; body: string | null; user: Pick<UserType, 'id' | 'name'> } | null;
     created_at: string;
     seen_at: string | null;
     seen_by: number | null;
@@ -130,6 +145,8 @@ export default function Messenger({ conversations, users, activeConversation, me
 
     const [loadingOlder, setLoadingOlder] = useState(false);
     const [hasMore, setHasMore] = useState(true);
+    const [replyingTo, setReplyingTo] = useState<MessageType | null>(null);
+    const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const restoreScroll = useRef<{ h: number; t: number } | null>(null);
 
@@ -278,6 +295,7 @@ export default function Messenger({ conversations, users, activeConversation, me
 
         const formData = new FormData();
         if (input.trim()) formData.append('body', input.trim());
+        if (replyingTo) formData.append('reply_to_id', String(replyingTo.id));
 
         if (selectedFile) {
             formData.append('file', selectedFile);
@@ -297,6 +315,7 @@ export default function Messenger({ conversations, users, activeConversation, me
             setMessages((prev) => [...prev, json.message]);
             setInput('');
             setSelectedFile(null);
+            setReplyingTo(null);
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
             router.reload({ only: ['conversations'] });
         }
@@ -635,11 +654,13 @@ export default function Messenger({ conversations, users, activeConversation, me
                                             )}
                                             <div
                                                 className={cn(
-                                                    'flex w-full items-end gap-1.5',
+                                                    'group flex w-full items-end gap-1.5',
                                                     isMine ? 'justify-end' : 'justify-start',
                                                     !isLastInGroup && 'mb-0',
                                                     isLastInGroup && 'mb-1',
                                                 )}
+                                                onMouseEnter={() => setHoveredMessageId(message.id)}
+                                                onMouseLeave={() => setHoveredMessageId(null)}
                                             >
                                                 {!isMine && (
                                                     <div className={cn('mb-0.5 shrink-0', !showAvatar && 'opacity-0')}>
@@ -654,6 +675,29 @@ export default function Messenger({ conversations, users, activeConversation, me
                                                     </div>
                                                 )}
 
+                                                {/* Hover actions — shown on the outer side of the bubble */}
+                                                {isMine && hoveredMessageId === message.id && (
+                                                    <div className="mb-1 flex items-center gap-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setReplyingTo(message)}
+                                                            className="text-muted-foreground hover:text-foreground rounded-full p-1 transition"
+                                                            title="Reply"
+                                                        >
+                                                            <CornerUpLeft className="h-4 w-4" />
+                                                        </button>
+                                                        {isMine && (
+                                                            <button
+                                                                type="button"
+                                                                className="rounded-full p-1 text-zinc-400 transition hover:text-red-500"
+                                                                title="Remove"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
+
                                                 <div
                                                     className={cn(
                                                         'flex max-w-[min(100%,20rem)] flex-col lg:max-w-sm xl:max-w-md',
@@ -664,6 +708,19 @@ export default function Messenger({ conversations, users, activeConversation, me
                                                         <span className={cn('mb-0.5 px-3 text-xs font-medium', nameColor(message.user.name))}>
                                                             {message.user.name}
                                                         </span>
+                                                    )}
+                                                    {/* Reply-to quote */}
+                                                    {message.reply_to && (
+                                                        <div
+                                                            className={cn(
+                                                                'mb-0.5 flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs',
+                                                                isMine ? 'bg-blue-500/30 text-blue-100' : 'bg-muted text-muted-foreground',
+                                                            )}
+                                                        >
+                                                            <CornerUpLeft className="h-3 w-3 shrink-0 opacity-60" />
+                                                            <span className="font-semibold">{message.reply_to.user.name}</span>
+                                                            <span className="truncate opacity-80">{message.reply_to.body ?? '📎 Attachment'}</span>
+                                                        </div>
                                                     )}
                                                     <div
                                                         className={cn(
@@ -751,6 +808,20 @@ export default function Messenger({ conversations, users, activeConversation, me
                                                         )}
                                                     </div>
                                                 </div>
+
+                                                {/* Hover actions — right side for others' messages */}
+                                                {!isMine && hoveredMessageId === message.id && (
+                                                    <div className="mb-1 flex items-center gap-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setReplyingTo(message)}
+                                                            className="text-muted-foreground hover:text-foreground rounded-full p-1 transition"
+                                                            title="Reply"
+                                                        >
+                                                            <CornerUpLeft className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     );
@@ -783,6 +854,25 @@ export default function Messenger({ conversations, users, activeConversation, me
 
                         {/* Message input */}
                         <div className="border-sidebar-border/50 border-t px-4 py-3">
+                            {/* Reply bar */}
+                            {replyingTo && (
+                                <div className="bg-muted/60 mb-2 flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
+                                    <CornerUpLeft className="text-muted-foreground h-4 w-4 shrink-0" />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                            Replying to {replyingTo.user.id === auth.user.id ? 'yourself' : replyingTo.user.name}
+                                        </p>
+                                        <p className="text-muted-foreground truncate text-xs">{replyingTo.body ?? '📎 Attachment'}</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setReplyingTo(null)}
+                                        className="text-muted-foreground hover:text-foreground shrink-0"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            )}
                             <form onSubmit={sendMessage} className="flex w-full flex-col gap-2">
                                 <div className="flex items-center gap-2">
                                     <input
@@ -796,7 +886,7 @@ export default function Messenger({ conversations, users, activeConversation, me
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter' && !e.shiftKey) {
                                                 e.preventDefault();
-                                                if (input.trim() || selectedFile) {
+                                                if (input.trim() || selectedFile || replyingTo) {
                                                     sendMessage(e as unknown as React.FormEvent);
                                                 }
                                             }

@@ -31,6 +31,8 @@ class ConversationController extends Controller
 
         $messages = $conversation->messages()
             ->with('user:id,name')
+            ->with('replyTo:id,body,user_id')
+            ->with('replyTo.user:id,name')
             ->latest()
             ->take(50)
             ->get()
@@ -152,7 +154,11 @@ class ConversationController extends Controller
                 ]);
         }
 
-        $query = $conversation->messages()->with('user:id,name')->with('seenBy:id,name');
+        $query = $conversation->messages()
+            ->with('user:id,name')
+            ->with('seenBy:id,name')
+            ->with('replyTo:id,body,user_id')
+            ->with('replyTo.user:id,name');
 
         if ($before) {
             $query->where('id', '<', $before);

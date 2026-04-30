@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ConversationMessageDeleted;
 use App\Events\ConversationMessageSent;
 use App\Models\Conversation;
+use App\Models\Message;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -20,11 +22,13 @@ class ConversationMessageController extends Controller
         $request->validate([
             'body' => ['required_without:file', 'nullable', 'string', 'max:5000'],
             'file' => ['required_without:body', 'nullable', 'file', 'max:10240'], // 10MB max
+            'reply_to_id' => ['nullable', 'integer', 'exists:messages,id'],
         ]);
 
         $data = [
             'user_id' => auth()->id(),
             'body' => $request->input('body'),
+            'reply_to_id' => $request->input('reply_to_id'),
         ];
 
         // Handle file upload
@@ -45,7 +49,7 @@ class ConversationMessageController extends Controller
 
         $message = $conversation->messages()->create($data);
 
-        $message->load('user:id,name');
+        $message->load('user:id,name', 'replyTo.user:id,name');
 
         $conversation->touch();
 
@@ -63,6 +67,12 @@ class ConversationMessageController extends Controller
             'message' => [
                 'id' => $message->id,
                 'body' => $message->body,
+                'reply_to_id' => $message->reply_to_id,
+                'reply_to' => $message->replyTo ? [
+                    'id' => $message->replyTo->id,
+                    'body' => $message->replyTo->body,
+                    'user' => ['id' => $message->replyTo->user->id, 'name' => $message->replyTo->user->name],
+                ] : null,
                 'file_name' => $message->file_name,
                 'file_path' => $message->file_path,
                 'file_type' => $message->file_type,
@@ -107,6 +117,31 @@ class ConversationMessageController extends Controller
                 'seen_at' => now(),
                 'seen_by' => auth()->id(),
             ]);
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function destroy(Conversation $conversation, Message $message)
+    {
+        abort_unless(
+            $conversation->participants()->where('user_id', auth()->id())->exists(),
+            403
+        );
+        abort_unless($message->conversation_id === $conversation->id, 403);
+        abort_unless($message->user_id === auth()->id(), 403);
+
+        // Delete uploaded file if present
+        if ($message->file_path) {
+            Storage::disk('public')->delete($message->file_path);
+        }
+
+        $message->delete();
+
+        try {
+            broadcast(new ConversationMessageDeleted($conversation->id, $message->id))->toOthers();
+        } catch (\Throwable $e) {
+            report($e);
         }
 
         return response()->json(['ok' => true]);

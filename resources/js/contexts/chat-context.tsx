@@ -25,6 +25,7 @@ interface ChatContextType {
     openChats: OpenChat[];
     openChat: (user: ChatUser, conversation?: ChatConversation | null) => void;
     openGroupChat: (conversation: ChatConversation) => void;
+    openChatForIncoming: (conversation: ChatConversation, currentUserId: number) => void;
     closeChat: (chatId: string) => void;
     closeAllChats: () => void;
     toggleMinimize: (chatId: string) => void;
@@ -61,6 +62,32 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         });
     }, []);
 
+    const openChatForIncoming = useCallback((conversation: ChatConversation, currentUserId: number) => {
+        let chatId: string;
+        let isGroup: boolean;
+        let user: ChatUser | null = null;
+
+        if (conversation.is_group) {
+            chatId = `group-${conversation.id}`;
+            isGroup = true;
+        } else {
+            const otherUser = conversation.participants.find((p) => p.id !== currentUserId);
+            if (!otherUser) return;
+            chatId = `user-${otherUser.id}`;
+            isGroup = false;
+            user = otherUser;
+        }
+
+        setOpenChats((prev) => {
+            // Already open (active or minimized in rail) — don't change anything
+            if (prev.some((c) => c.chatId === chatId)) return prev;
+            // Cap at 3 active windows; beyond that, minimise (goes to side rail)
+            const activeCount = prev.filter((c) => !c.minimized).length;
+            const minimized = activeCount >= 3;
+            return [...prev, { chatId, isGroup, user, conversation, minimized }];
+        });
+    }, []);
+
     const closeChat = useCallback((chatId: string) => {
         setOpenChats((prev) => prev.filter((c) => c.chatId !== chatId));
     }, []);
@@ -92,6 +119,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                 openChats,
                 openChat,
                 openGroupChat,
+                openChatForIncoming,
                 closeChat,
                 closeAllChats,
                 toggleMinimize,

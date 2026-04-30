@@ -3,6 +3,7 @@ import { useChatContext } from '@/contexts/chat-context';
 import { X } from 'lucide-react';
 import { useState } from 'react';
 import { FloatingChat } from './floating-chat';
+import { GlobalMessageListener } from './global-message-listener';
 
 const WINDOW_WIDTH = 320;
 const GAP = 12;
@@ -13,7 +14,7 @@ export function ChatManager() {
     const { openChats, closeAllChats, focusChat, toggleMinimize } = useChatContext();
     const [showPopover, setShowPopover] = useState(false);
 
-    if (openChats.length === 0) return null;
+    if (openChats.length === 0) return <GlobalMessageListener />;
 
     const activeChats = openChats.filter((chat) => !chat.minimized);
     const minimizedChats = openChats.filter((chat) => chat.minimized);
@@ -25,6 +26,7 @@ export function ChatManager() {
 
     return (
         <>
+            <GlobalMessageListener />
             {visibleChats.map((chat, index) => (
                 <FloatingChat key={chat.chatId} chat={chat} index={index} extraRight={extraRight} />
             ))}
