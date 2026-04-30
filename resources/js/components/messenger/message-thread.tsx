@@ -1,0 +1,614 @@
+import { cn } from '@/lib/utils';
+import { router } from '@inertiajs/react';
+import { echo } from '@laravel/echo-react';
+import { CornerUpLeft, Loader2, Paperclip, PictureInPicture2, PictureInPicture2Icon, Send, Trash2, Users, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ConversationType, MessageType, UserType } from './message-types';
+
+const STORAGE_URL = (path: string | null): string => {
+    if (!path) return '';
+    return new URL(`/storage/${path}`, window.location.origin).toString();
+};
+
+function getInitials(name: string) {
+    return name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+}
+
+function formatTime(dateStr: string): string {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (isToday) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (date.toDateString() === yesterday.toDateString())
+        return `Yesterday at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDateSeparator(dateStr: string): string {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (date.toDateString() === now.toDateString()) return 'Today';
+    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return date.toLocaleDateString([], {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+    });
+}
+
+function isDifferentDay(a: string, b: string): boolean {
+    return new Date(a).toDateString() !== new Date(b).toDateString();
+}
+
+const AVATAR_COLORS = ['bg-sky-500', 'bg-violet-500', 'bg-emerald-500', 'bg-rose-500', 'bg-amber-500', 'bg-cyan-500', 'bg-fuchsia-500'];
+
+function avatarColor(id: number) {
+    return AVATAR_COLORS[id % AVATAR_COLORS.length];
+}
+
+const NAME_COLORS = [
+    'text-sky-700 dark:text-sky-300',
+    'text-indigo-700 dark:text-indigo-300',
+    'text-violet-700 dark:text-violet-300',
+    'text-fuchsia-700 dark:text-fuchsia-300',
+    'text-rose-700 dark:text-rose-300',
+    'text-amber-800 dark:text-amber-300',
+    'text-emerald-700 dark:text-emerald-300',
+    'text-cyan-700 dark:text-cyan-300',
+    'text-blue-700 dark:text-blue-300',
+    'text-purple-700 dark:text-purple-300',
+] as const;
+
+function nameColor(name: string) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+    }
+    return NAME_COLORS[hash % NAME_COLORS.length];
+}
+
+function csrfToken() {
+    return document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
+}
+
+interface Props {
+    activeConversation: ConversationType;
+    initialMessages: MessageType[];
+    auth: UserType;
+    onlineUserIds: number[];
+}
+
+export function MessageThread({ activeConversation, initialMessages, auth, onlineUserIds }: Props) {
+    const [messages, setMessages] = useState<MessageType[]>(initialMessages);
+    const [input, setInput] = useState('');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [sending, setSending] = useState(false);
+    const [loadingOlder, setLoadingOlder] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
+    const [replyingTo, setReplyingTo] = useState<MessageType | null>(null);
+    const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
+    const [typingUsers, setTypingUsers] = useState<Record<number, string>>({});
+
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
+    const restoreScroll = useRef<{ h: number; t: number } | null>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const typingTimers = useRef<{ [key: number]: number }>({});
+    const inputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const otherParticipant = useMemo(
+        () => activeConversation.participants.find((p) => p.id !== auth.id) ?? null,
+        [activeConversation.participants, auth.id],
+    );
+
+    const typingNames = useMemo(() => Object.values(typingUsers), [typingUsers]);
+
+    const loadOlderMessages = useCallback(async () => {
+        if (loadingOlder || !hasMore || messages.length === 0) return;
+        const container = messagesContainerRef.current;
+        if (container) {
+            restoreScroll.current = { h: container.scrollHeight, t: container.scrollTop };
+        }
+        setLoadingOlder(true);
+        try {
+            const firstMessage = messages[0];
+            const response = await fetch(`/messenger/${activeConversation.id}/messages?before=${firstMessage.id}`);
+            const data = await response.json();
+            if (data.messages.length < 50) setHasMore(false);
+            setMessages((prev) => [...data.messages, ...prev]);
+        } catch (error) {
+            console.error('Failed to load older messages:', error);
+        } finally {
+            setLoadingOlder(false);
+        }
+    }, [activeConversation.id, hasMore, loadingOlder, messages]);
+
+    useEffect(() => {
+        setMessages(initialMessages);
+        setHasMore(true);
+        setLoadingOlder(false);
+        restoreScroll.current = null;
+    }, [activeConversation.id, initialMessages]);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+        inputRef.current?.focus();
+    }, [activeConversation.id]);
+
+    useEffect(() => {
+        if (!loadingOlder && restoreScroll.current && messagesContainerRef.current) {
+            requestAnimationFrame(() => {
+                if (messagesContainerRef.current && restoreScroll.current) {
+                    const { h, t } = restoreScroll.current;
+                    const newHeight = messagesContainerRef.current.scrollHeight;
+                    messagesContainerRef.current.scrollTop = newHeight - h + t;
+                    restoreScroll.current = null;
+                }
+            });
+        }
+    }, [loadingOlder]);
+
+    useEffect(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+        const handleScroll = () => {
+            if (container.scrollTop < 50 && !loadingOlder && hasMore) {
+                loadOlderMessages();
+            }
+        };
+        container.addEventListener('scroll', handleScroll);
+        return () => container.removeEventListener('scroll', handleScroll);
+    }, [loadOlderMessages, loadingOlder, hasMore]);
+
+    useEffect(() => {
+        const channel = (echo() as any).private(`conversation.${activeConversation.id}`);
+
+        channel.listen('ConversationMessageSent', (event: { message: MessageType }) => {
+            setMessages((prev) => (prev.some((m) => m.id === event.message.id) ? prev : [...prev, event.message]));
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            if (event.message.user.id !== auth.id) {
+                fetch(`/messenger/${activeConversation.id}/messages/${event.message.id}/seen`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrfToken() },
+                });
+            }
+        });
+
+        channel.listen('ConversationMessageDeleted', (event: { message_id: number }) => {
+            setMessages((prev) => prev.filter((m) => m.id !== event.message_id));
+        });
+
+        channel.listenForWhisper('typing', (event: { userId: number; name: string }) => {
+            if (event.userId === auth.id) return;
+            setTypingUsers((prev) => ({ ...prev, [event.userId]: event.name }));
+            window.clearTimeout(typingTimers.current[event.userId]);
+            typingTimers.current[event.userId] = window.setTimeout(() => {
+                setTypingUsers((prev) => {
+                    const next = { ...prev };
+                    delete next[event.userId];
+                    return next;
+                });
+            }, 3000);
+        });
+
+        return () => {
+            (echo() as any).leave(`conversation.${activeConversation.id}`);
+        };
+    }, [activeConversation.id, auth.id]);
+
+    useEffect(() => {
+        fetch(`/messenger/${activeConversation.id}/read`, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrfToken() },
+        });
+    }, [activeConversation.id]);
+
+    const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setInput(e.target.value);
+        (echo() as any).private(`conversation.${activeConversation.id}`).whisper('typing', {
+            userId: auth.id,
+            name: auth.name,
+        });
+    };
+
+    const sendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if ((!input.trim() && !selectedFile && !replyingTo) || sending) return;
+
+        setSending(true);
+        const socketId = (echo() as any).socketId?.() ?? null;
+        const formData = new FormData();
+        if (input.trim()) formData.append('body', input.trim());
+        if (replyingTo) formData.append('reply_to_id', String(replyingTo.id));
+        if (selectedFile) formData.append('file', selectedFile);
+
+        const response = await fetch(`/messenger/${activeConversation.id}/messages`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken(),
+                ...(socketId ? { 'X-Socket-ID': socketId } : {}),
+            },
+            body: formData,
+        });
+
+        if (response.ok) {
+            const json = await response.json();
+            setMessages((prev) => [...prev, json.message]);
+            setInput('');
+            setSelectedFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            setReplyingTo(null);
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            router.reload({ only: ['conversations'] });
+        }
+
+        setSending(false);
+    };
+
+    const deleteMessage = async (messageId: number) => {
+        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+        await fetch(`/messenger/${activeConversation.id}/messages/${messageId}`, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': csrfToken() },
+        });
+    };
+
+    const otherIsOnline = otherParticipant ? onlineUserIds.includes(otherParticipant.id) : false;
+
+    return (
+        <div className="flex flex-1 flex-col overflow-hidden">
+            <div className="border-sidebar-border/50 flex items-center gap-3 border-b px-4 py-2.5">
+                <div className="relative shrink-0">
+                    <div
+                        className={cn(
+                            'flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white',
+                            avatarColor(otherParticipant?.id ?? activeConversation.id),
+                        )}
+                    >
+                        {activeConversation.is_group ? (
+                            <Users className="h-4 w-4" />
+                        ) : (
+                            getInitials(otherParticipant ? otherParticipant.name : getConversationName(activeConversation, auth))
+                        )}
+                    </div>
+                    {otherParticipant && otherIsOnline && (
+                        <span className="border-background absolute right-0.5 bottom-0.5 h-2.5 w-2.5 rounded-full border-2 bg-green-500" />
+                    )}
+                </div>
+                <div>
+                    <p className="text-sm leading-tight font-semibold">{getConversationName(activeConversation, auth)}</p>
+                    <p className="text-muted-foreground text-xs">
+                        {otherIsOnline ? 'Active now' : activeConversation.is_group ? `${activeConversation.participants.length} members` : 'Offline'}
+                    </p>
+                </div>
+            </div>
+
+            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-3">
+                <div className="flex w-full flex-col gap-0.5">
+                    {loadingOlder && (
+                        <div className="flex justify-center py-2">
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                        </div>
+                    )}
+                    {!hasMore && messages.length > 0 && <div className="text-muted-foreground py-2 text-center text-xs">No more messages</div>}
+                    {messages.length === 0 && <div className="text-muted-foreground py-8 text-center text-sm">No messages yet. Say hi!</div>}
+                    {messages.map((message, i) => {
+                        const isMine = message.user.id === auth.id;
+                        const prev = messages[i - 1];
+                        const next = messages[i + 1];
+                        const isFirstInGroup = prev?.user.id !== message.user.id;
+                        const isLastInGroup = next?.user.id !== message.user.id;
+                        const showAvatar = !isMine && isLastInGroup;
+                        const showName = !isMine && isFirstInGroup && activeConversation.is_group;
+                        const showDateSep = !prev || isDifferentDay(prev.created_at, message.created_at);
+
+                        return (
+                            <div key={message.id}>
+                                {showDateSep && (
+                                    <div className="my-3 flex items-center justify-center">
+                                        <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-xs">
+                                            {formatDateSeparator(message.created_at)}
+                                        </span>
+                                    </div>
+                                )}
+                                <div
+                                    className={cn(
+                                        'group flex w-full items-end gap-1.5',
+                                        isMine ? 'justify-end' : 'justify-start',
+                                        !isLastInGroup && 'mb-0',
+                                        isLastInGroup && 'mb-1',
+                                    )}
+                                    onMouseEnter={() => setHoveredMessageId(message.id)}
+                                    onMouseLeave={() => setHoveredMessageId(null)}
+                                >
+                                    {!isMine && (
+                                        <div className={cn('mb-0.5 shrink-0', !showAvatar && 'opacity-0')}>
+                                            <div
+                                                className={cn(
+                                                    'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold text-white',
+                                                    avatarColor(message.user.id),
+                                                )}
+                                            >
+                                                {getInitials(message.user.name)}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {isMine && hoveredMessageId === message.id && (
+                                        <div className="mb-1 flex items-center gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setReplyingTo(message);
+                                                    inputRef.current?.focus();
+                                                }}
+                                                className="text-muted-foreground hover:text-foreground rounded-full p-1 transition"
+                                                title="Reply"
+                                            >
+                                                <CornerUpLeft className="h-4 w-4" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => deleteMessage(message.id)}
+                                                className="rounded-full p-1 text-zinc-400 transition hover:text-red-500"
+                                                title="Remove"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <div className={cn('flex max-w-[min(100%,20rem)] flex-col lg:max-w-sm xl:max-w-md', isMine && 'items-end')}>
+                                        {showName && (
+                                            <span className={cn('mb-0.5 px-3 text-xs font-medium', nameColor(message.user.name))}>
+                                                {message.user.name}
+                                            </span>
+                                        )}
+                                        {message.reply_to && (
+                                            <div
+                                                className={cn(
+                                                    'mb-0.5 flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs',
+                                                    isMine ? 'bg-white/20 text-white' : 'bg-muted text-foreground',
+                                                )}
+                                            >
+                                                <CornerUpLeft className="h-3 w-3 shrink-0" />
+                                                <span className="font-semibold">{message.reply_to.user.name}</span>
+                                                <span className="truncate">{message.reply_to.body ?? '📎 Attachment'}</span>
+                                            </div>
+                                        )}
+                                        <div
+                                            className={cn(
+                                                'px-3.5 py-2 text-sm leading-relaxed break-words',
+                                                isMine
+                                                    ? 'bg-[#0b7ff5] text-white shadow-md shadow-blue-600/25'
+                                                    : 'bg-card text-foreground shadow-sm ring-1 shadow-black/[0.06] ring-black/[0.04] dark:shadow-black/40 dark:ring-white/[0.07]',
+                                                isFirstInGroup && isLastInGroup && 'rounded-2xl',
+                                                isFirstInGroup &&
+                                                    !isLastInGroup &&
+                                                    (isMine
+                                                        ? 'rounded-t-2xl rounded-br-sm rounded-bl-2xl'
+                                                        : 'rounded-t-2xl rounded-br-2xl rounded-bl-sm'),
+                                                !isFirstInGroup &&
+                                                    isLastInGroup &&
+                                                    (isMine
+                                                        ? 'rounded-tl-2xl rounded-tr-sm rounded-b-2xl'
+                                                        : 'rounded-tl-sm rounded-tr-2xl rounded-b-2xl'),
+                                                !isFirstInGroup &&
+                                                    !isLastInGroup &&
+                                                    (isMine ? 'rounded-l-2xl rounded-r-sm' : 'rounded-l-sm rounded-r-2xl'),
+                                            )}
+                                        >
+                                            <p className="whitespace-pre-wrap">{message.body}</p>
+                                            {message.file_name && (
+                                                <div className="mt-2 max-w-xs">
+                                                    {message.is_image ? (
+                                                        <>
+                                                            <a
+                                                                href={STORAGE_URL(message.file_path)}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="border-muted hover:border-primary/50 block rounded border"
+                                                            >
+                                                                <img
+                                                                    src={STORAGE_URL(message.file_path)}
+                                                                    alt={message.file_name}
+                                                                    className="block h-auto max-h-48 w-full rounded object-cover"
+                                                                />
+                                                            </a>
+                                                            <p className="text-muted-foreground mt-1 truncate text-center text-xs">
+                                                                {message.file_name}
+                                                            </p>
+                                                        </>
+                                                    ) : message.is_pdf ? (
+                                                        <>
+                                                            <a
+                                                                href={STORAGE_URL(message.file_path)}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="bg-muted/50 flex items-center gap-2 rounded-md px-3 py-2"
+                                                            >
+                                                                <PictureInPicture2Icon className="text-muted-foreground h-5 w-5" />
+                                                                <div>
+                                                                    <p className="truncate text-sm font-medium">{message.file_name}</p>
+                                                                    <p className="text-muted-foreground truncate text-xs">
+                                                                        {(message.file_size ?? 0) / 1024 / 1024 > 1
+                                                                            ? `${((message.file_size ?? 0) / 1024 / 1024).toFixed(2)} MB`
+                                                                            : `${((message.file_size ?? 0) / 1024).toFixed(0)} KB`}
+                                                                    </p>
+                                                                </div>
+                                                            </a>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <a
+                                                                href={STORAGE_URL(message.file_path)}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="bg-muted/50 flex items-center gap-2 rounded-md px-3 py-2"
+                                                            >
+                                                                <Paperclip className="text-muted-foreground h-5 w-5" />
+                                                                <div>
+                                                                    <p className="truncate text-sm font-medium">{message.file_name}</p>
+                                                                    <p className="text-muted-foreground truncate text-xs">
+                                                                        {(message.file_size ?? 0) / 1024 / 1024 > 1
+                                                                            ? `${((message.file_size ?? 0) / 1024 / 1024).toFixed(2)} MB`
+                                                                            : `${((message.file_size ?? 0) / 1024).toFixed(0)} KB`}
+                                                                    </p>
+                                                                </div>
+                                                            </a>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {!isMine && hoveredMessageId === message.id && (
+                                        <div className="mb-1 flex items-center gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setReplyingTo(message);
+                                                    inputRef.current?.focus();
+                                                }}
+                                                className="text-muted-foreground hover:text-foreground rounded-full p-1 transition"
+                                                title="Reply"
+                                            >
+                                                <CornerUpLeft className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {typingNames.length > 0 && (
+                        <div className="flex items-end gap-1.5">
+                            <div
+                                className={cn(
+                                    'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold text-white',
+                                    avatarColor(Object.keys(typingUsers).map(Number)[0] ?? 0),
+                                )}
+                            >
+                                {getInitials(typingNames[0])}
+                            </div>
+                            <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-2.5 dark:bg-slate-800">
+                                <div className="flex gap-1">
+                                    <span className="bg-muted-foreground h-2 w-2 animate-bounce rounded-full [animation-delay:0ms]" />
+                                    <span className="bg-muted-foreground h-2 w-2 animate-bounce rounded-full [animation-delay:150ms]" />
+                                    <span className="bg-muted-foreground h-2 w-2 animate-bounce rounded-full [animation-delay:300ms]" />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div ref={messagesEndRef} />
+                </div>
+            </div>
+
+            <div className="border-sidebar-border/50 border-t px-4 py-3">
+                {replyingTo && (
+                    <div className="bg-muted/60 mb-2 flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
+                        <CornerUpLeft className="text-muted-foreground h-4 w-4 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                Replying to {replyingTo.user.id === auth.id ? 'yourself' : replyingTo.user.name}
+                            </p>
+                            <p className="text-muted-foreground truncate text-xs">{replyingTo.body ?? '📎 Attachment'}</p>
+                        </div>
+                        <button type="button" onClick={() => setReplyingTo(null)} className="text-muted-foreground hover:text-foreground shrink-0">
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+                )}
+                <form onSubmit={sendMessage} className="flex w-full flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                        <input
+                            ref={inputRef}
+                            value={input}
+                            onChange={handleTyping}
+                            placeholder="Aa"
+                            disabled={sending}
+                            autoComplete="off"
+                            className="bg-muted/60 focus:bg-muted flex-1 rounded-full px-4 py-2.5 text-sm transition outline-none dark:bg-slate-800/60 dark:focus:bg-slate-800"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    if (input.trim() || selectedFile || replyingTo) {
+                                        sendMessage(e as unknown as React.FormEvent);
+                                    }
+                                }
+                            }}
+                        />
+                        <label
+                            htmlFor="file-input"
+                            className="hover:text-muted-foreground/80 bg-muted/60 hover:bg-muted/80 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition-colors"
+                        >
+                            <input
+                                ref={fileInputRef}
+                                id="file-input"
+                                type="file"
+                                accept="image/*,.pdf,.doc,.docx,.txt"
+                                onChange={(e) => {
+                                    if (e.target.files && e.target.files[0]) {
+                                        setSelectedFile(e.target.files[0]);
+                                    }
+                                }}
+                                className="hidden"
+                            />
+                            <Paperclip className="h-4 w-4" />
+                        </label>
+                        <button
+                            type="submit"
+                            disabled={(!input.trim() && !selectedFile) || sending}
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0b7ff5] text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-600 hover:shadow-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            <Send className="h-4 w-4" />
+                        </button>
+                    </div>
+                    {selectedFile && (
+                        <div className="bg-muted/50 flex items-center gap-2 rounded-md px-3 py-2">
+                            <div className="flex-shrink-0">
+                                {selectedFile.type && selectedFile.type.startsWith('image/') ? (
+                                    <img src={URL.createObjectURL(selectedFile)} alt="Preview" className="h-8 w-8 rounded object-cover" />
+                                ) : selectedFile.type === 'application/pdf' ? (
+                                    <PictureInPicture2 className="text-muted-foreground h-8 w-8" />
+                                ) : (
+                                    <Paperclip className="text-muted-foreground h-8 w-8" />
+                                )}
+                            </div>
+                            <div className="flex-1">
+                                <p className="truncate text-sm font-medium">{selectedFile.name}</p>
+                                <p className="text-muted-foreground truncate text-xs">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedFile(null)}
+                                className="text-muted-foreground/50 ml-2 cursor-pointer hover:text-red-500"
+                            >
+                                <X className="h-3 w-3" />
+                            </button>
+                        </div>
+                    )}
+                </form>
+            </div>
+        </div>
+    );
+}
+
+function getConversationName(conversation: ConversationType, auth: UserType) {
+    if (conversation.is_group) return conversation.name ?? 'Group Chat';
+    return conversation.participants.find((p) => p.id !== auth.id)?.name ?? 'Unknown';
+}

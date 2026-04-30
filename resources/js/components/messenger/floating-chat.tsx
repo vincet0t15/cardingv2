@@ -1,10 +1,10 @@
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { type OpenChat, useChatContext } from '@/contexts/chat-context';
 import { cn } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
-import { CornerUpLeft, Eye, Minus, Paperclip, Send, Trash2, Users, X } from 'lucide-react';
+import { CornerUpLeft, Minus, MoreHorizontal, Paperclip, Send, Trash2, Users, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-
 interface MessageType {
     id: number;
     body: string | null;
@@ -333,14 +333,15 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                                         return (
                                             <div
                                                 key={msg.id}
-                                                className={cn('group relative flex items-end gap-1.5', isMe ? 'justify-end' : 'justify-start')}
+                                                className={cn('group relative flex items-start gap-2', isMe ? 'flex-row-reverse' : 'flex-row')}
                                                 onMouseEnter={() => setHoveredMsgId(msg.id)}
                                                 onMouseLeave={() => setHoveredMsgId(null)}
                                             >
+                                                {/* Avatar Section */}
                                                 {!isMe && (
                                                     <div
                                                         className={cn(
-                                                            'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white',
+                                                            'mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white',
                                                             showAvatar ? avatarColor(msg.user.id) : 'invisible',
                                                         )}
                                                     >
@@ -348,108 +349,88 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                                                     </div>
                                                 )}
 
-                                                {/* Hover actions — left of own bubble */}
-                                                {isMe && hoveredMsgId === msg.id && (
-                                                    <div className="mb-0.5 flex items-center gap-0.5">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setReplyingTo(msg);
-                                                                inputRef.current?.focus();
-                                                            }}
-                                                            className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
-                                                            title="Reply"
-                                                        >
-                                                            <CornerUpLeft className="h-3.5 w-3.5" />
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => deleteMessage(msg.id)}
-                                                            className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30"
-                                                            title="Delete"
-                                                        >
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </button>
-                                                    </div>
-                                                )}
-
-                                                <div className={cn('flex max-w-[200px] flex-col', isMe && 'items-end')}>
-                                                    {/* Reply quote */}
+                                                {/* Message Content Stack */}
+                                                <div className={cn('flex max-w-[80%] flex-col', isMe ? 'items-end' : 'items-start')}>
+                                                    {/* Reply Quote Wrapper */}
                                                     {msg.reply_to && (
                                                         <div
                                                             className={cn(
-                                                                'mb-0.5 flex items-center gap-1 rounded-xl px-2 py-1 text-[11px]',
-                                                                isMe
-                                                                    ? 'bg-white/20 text-white'
-                                                                    : 'bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200',
+                                                                'relative rounded-2xl px-3 pt-2 pb-5 text-[11px] leading-tight opacity-80 transition-all',
+                                                                isMe ? 'mr-2 bg-zinc-100' : 'ml-2 bg-zinc-100',
                                                             )}
                                                         >
-                                                            <CornerUpLeft className="h-3 w-3 shrink-0" />
-                                                            <span className="font-semibold">{msg.reply_to.user.name}:</span>
-                                                            <span className="truncate">{msg.reply_to.body ?? '📎'}</span>
+                                                            <p className="max-w-[150px] truncate text-zinc-500 italic">
+                                                                {msg.reply_to.body ?? '📎 Attachment'}
+                                                            </p>
                                                         </div>
                                                     )}
+
+                                                    {/* Main Bubble */}
                                                     <div
                                                         className={cn(
-                                                            'rounded-2xl px-3 py-1.5 text-sm leading-snug break-words',
+                                                            'relative z-10 -mt-4 rounded-[18px] px-4 py-2 text-[13px] shadow-sm transition-all',
                                                             isMe
-                                                                ? 'rounded-br-sm bg-blue-600 text-white'
-                                                                : 'rounded-bl-sm bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100',
+                                                                ? 'rounded-br-none bg-[#5b3df5] text-white'
+                                                                : 'rounded-bl-none border border-zinc-100 bg-white text-zinc-800',
                                                         )}
                                                     >
-                                                        {msg.file_path && msg.mime_type?.startsWith('image/') && (
-                                                            <a href={`/storage/${msg.file_path}`} target="_blank" rel="noreferrer">
-                                                                <img
-                                                                    src={`/storage/${msg.file_path}`}
-                                                                    alt={msg.file_name ?? 'image'}
-                                                                    className="mb-1 max-w-full rounded-lg object-cover"
-                                                                />
-                                                            </a>
-                                                        )}
-                                                        {msg.file_path && !msg.mime_type?.startsWith('image/') && (
-                                                            <a
-                                                                href={`/storage/${msg.file_path}`}
-                                                                target="_blank"
-                                                                rel="noreferrer"
-                                                                className={cn(
-                                                                    'mb-1 flex items-center gap-1.5 underline',
-                                                                    isMe ? 'text-blue-100' : 'text-blue-600 dark:text-blue-400',
-                                                                )}
-                                                            >
-                                                                <Paperclip className="h-3 w-3 shrink-0" />
-                                                                <span className="truncate text-xs">{msg.file_name}</span>
-                                                            </a>
-                                                        )}
                                                         {msg.body && <span>{msg.body}</span>}
-                                                        <div className="mt-0.5 text-[10px] opacity-70">
+                                                    </div>
+
+                                                    {/* Metadata (Time & Seen) */}
+                                                    <div className={cn('mt-1 flex gap-1.5 text-[10px] opacity-50', isMe ? 'mr-1' : 'ml-1')}>
+                                                        <span>
                                                             {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        </div>
-                                                        {isMe && msg.seen_at && i === messages.length - 1 && (
-                                                            <div className="mt-0.5 flex items-center gap-1 text-[10px] text-zinc-500 dark:text-zinc-400">
-                                                                <Eye className="h-3 w-3" />
-                                                                Seen{' '}
-                                                                {new Date(msg.seen_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                            </div>
-                                                        )}
+                                                        </span>
+                                                        {isMe && msg.seen_at && <span className="font-medium text-[#5b3df5]">Seen</span>}
                                                     </div>
                                                 </div>
 
-                                                {/* Hover actions — right of others' bubbles */}
-                                                {!isMe && hoveredMsgId === msg.id && (
-                                                    <div className="mb-0.5 flex items-center gap-0.5">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setReplyingTo(msg);
-                                                                inputRef.current?.focus();
-                                                            }}
-                                                            className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
-                                                            title="Reply"
+                                                {/* 3-Dot Dropdown Menu — Tabing tabi ng bubble */}
+                                                <div
+                                                    className={cn(
+                                                        'mt-2 transition-opacity duration-200',
+                                                        hoveredMsgId === msg.id ? 'opacity-100' : 'opacity-0',
+                                                    )}
+                                                >
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <button className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100">
+                                                                <MoreHorizontal className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </DropdownMenuTrigger>
+
+                                                        {/* Binawasan ang width (w-28) at padding (p-1) */}
+                                                        <DropdownMenuContent
+                                                            align={isMe ? 'end' : 'start'}
+                                                            className="w-28 min-w-[110px] border-zinc-100 p-1 shadow-md"
                                                         >
-                                                            <CornerUpLeft className="h-3.5 w-3.5" />
-                                                        </button>
-                                                    </div>
-                                                )}
+                                                            <DropdownMenuItem
+                                                                onClick={() => {
+                                                                    setReplyingTo(msg);
+                                                                    inputRef.current?.focus();
+                                                                }}
+                                                                className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
+                                                            >
+                                                                <CornerUpLeft className="h-3 w-3 opacity-70" />
+                                                                <span>Reply</span>
+                                                            </DropdownMenuItem>
+
+                                                            {isMe && (
+                                                                <>
+                                                                    <DropdownMenuSeparator className="my-1 bg-zinc-100" />
+                                                                    <DropdownMenuItem
+                                                                        onClick={() => deleteMessage(msg.id)}
+                                                                        className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] text-red-500 focus:bg-red-50 focus:text-red-600"
+                                                                    >
+                                                                        <Trash2 className="h-3 w-3 opacity-70" />
+                                                                        <span>Delete</span>
+                                                                    </DropdownMenuItem>
+                                                                </>
+                                                            )}
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
                                             </div>
                                         );
                                     })
