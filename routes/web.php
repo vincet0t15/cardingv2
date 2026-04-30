@@ -360,6 +360,8 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
     Route::post('messenger/{conversation}/read', [ConversationMessageController::class, 'markRead'])->name('messenger.messages.read');
     Route::post('messenger/{conversation}/messages/{message}/seen', [ConversationMessageController::class, 'markSeen'])->name('messenger.messages.seen');
     Route::delete('messenger/{conversation}/messages/{message}', [ConversationMessageController::class, 'destroy'])->name('messenger.messages.destroy');
+    Route::post('messenger/{conversation}/leave', [ConversationController::class, 'leave'])->name('messenger.conversations.leave');
+    Route::get('messenger/{conversation}/members', [ConversationController::class, 'members'])->name('messenger.conversations.members');
 });
 
 // Broadcasting auth — must be outside custom middleware groups so EnsureAccountIsActive

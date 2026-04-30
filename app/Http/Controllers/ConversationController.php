@@ -391,4 +391,44 @@ class ConversationController extends Controller
             ], 500);
         }
     }
+
+    public function leave(Conversation $conversation)
+    {
+        abort_unless($conversation->is_group, 400);
+        abort_unless(
+            $conversation->participants()->where('user_id', Auth::id())->exists(),
+            403
+        );
+
+        $participantCount = $conversation->participants()->count();
+        if ($participantCount <= 2) {
+            return response()->json(['error' => 'Cannot leave a group with less than 3 members. Delete the chat instead.'], 400);
+        }
+
+        $conversation->participants()->detach(Auth::id());
+
+        return response()->json(['success' => true]);
+    }
+
+    public function members(Conversation $conversation)
+    {
+        abort_unless(
+            $conversation->is_group && $conversation->participants()->where('user_id', Auth::id())->exists(),
+            403
+        );
+
+        $participants = $conversation->participants()
+            ->select('users.id', 'users.name', 'users.username')
+            ->get()
+            ->map(fn($u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'username' => $u->username,
+            ]);
+
+        return response()->json([
+            'members' => $participants,
+            'creator_id' => $conversation->created_by,
+        ]);
+    }
 }

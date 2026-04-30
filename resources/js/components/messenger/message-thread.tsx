@@ -1,4 +1,5 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { GroupMembersDialog } from './group-members-dialog';
 import { cn } from '@/lib/utils';
 import { router } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
@@ -100,6 +101,7 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
     const [replyingTo, setReplyingTo] = useState<MessageType | null>(null);
     const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
     const [typingUsers, setTypingUsers] = useState<Record<number, string>>({});
+    const [showMembers, setShowMembers] = useState(false);
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const restoreScroll = useRef<{ h: number; t: number } | null>(null);
@@ -268,7 +270,8 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
     const otherIsOnline = otherParticipant ? onlineUserIds.includes(otherParticipant.id) : false;
 
     return (
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <>
+            <div className="flex flex-1 flex-col overflow-hidden">
             <div className="border-sidebar-border/50 flex items-center gap-3 border-b px-4 py-2.5">
                 <div className="relative shrink-0">
                     <div
@@ -293,6 +296,14 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                         {otherIsOnline ? 'Active now' : activeConversation.is_group ? `${activeConversation.participants.length} members` : 'Offline'}
                     </p>
                 </div>
+                {activeConversation.is_group && (
+                    <button
+                        onClick={() => setShowMembers(true)}
+                        className="ml-auto flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
+                    >
+                        <Users className="h-4 w-4" />
+                    </button>
+                )}
             </div>
 
             <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-3">
@@ -633,6 +644,17 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                 </form>
             </div>
         </div>
+
+            {activeConversation.is_group && (
+                <GroupMembersDialog
+                    open={showMembers}
+                    onOpenChange={setShowMembers}
+                    conversationId={activeConversation.id}
+                    authUserId={auth.id}
+                    onLeaveSuccess={() => router.visit('/messenger')}
+                />
+            )}
+        </>
     );
 }
 

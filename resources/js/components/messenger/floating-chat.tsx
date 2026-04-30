@@ -1,4 +1,5 @@
 import { ChatMessage } from './chat-message';
+import { GroupMembersDialog } from './group-members-dialog';
 import { type OpenChat, useChatContext } from '@/contexts/chat-context';
 import { cn } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
@@ -64,6 +65,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
     const [typingUser, setTypingUser] = useState<{ id: number; name: string } | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [replyingTo, setReplyingTo] = useState<MessageType | null>(null);
+    const [showMembers, setShowMembers] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -272,16 +274,17 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
     const rightOffset = BASE_RIGHT + extraRight + index * (WINDOW_WIDTH + GAP);
 
     return (
-        <div
-            className="fixed z-50 flex flex-col overflow-hidden rounded-t-xl border border-zinc-200 shadow-2xl dark:border-zinc-700"
-            style={{
-                width: WINDOW_WIDTH,
-                bottom: 0,
-                right: rightOffset,
-                height: chat.minimized ? 48 : 450,
-                transition: 'height 0.2s ease',
-            }}
-        >
+        <>
+            <div
+                className="fixed z-50 flex flex-col overflow-hidden rounded-t-xl border border-zinc-200 shadow-2xl dark:border-zinc-700"
+                style={{
+                    width: WINDOW_WIDTH,
+                    bottom: 0,
+                    right: rightOffset,
+                    height: chat.minimized ? 48 : 450,
+                    transition: 'height 0.2s ease',
+                }}
+            >
             {/* ── Header ── */}
             <button
                 onClick={() => toggleMinimize(chat.chatId)}
@@ -291,6 +294,18 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                     {chat.isGroup ? <Users className="h-4 w-4" /> : getInitials(displayName)}
                 </div>
                 <span className="flex-1 truncate text-sm font-semibold text-white">{displayName}</span>
+                {chat.isGroup && (
+                    <span
+                        role="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowMembers(true);
+                        }}
+                        className="flex h-6 w-6 items-center justify-center rounded-full text-white hover:bg-white/20"
+                    >
+                        <Users className="h-3.5 w-3.5" />
+                    </span>
+                )}
                 <span
                     role="button"
                     onClick={(e) => {
@@ -461,5 +476,16 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                 </>
             )}
         </div>
+
+            {chat.isGroup && conversationId && (
+                <GroupMembersDialog
+                    open={showMembers}
+                    onOpenChange={setShowMembers}
+                    conversationId={conversationId}
+                    authUserId={auth.user.id}
+                    onLeaveSuccess={() => closeChat(chat.chatId)}
+                />
+            )}
+        </>
     );
 }
