@@ -24,6 +24,7 @@ interface ChatContextType {
     openChat: (user: ChatUser, conversation?: ChatConversation | null) => void;
     closeChat: (userId: number) => void;
     toggleMinimize: (userId: number) => void;
+    focusChat: (userId: number) => void;
     setConversation: (userId: number, conversation: ChatConversation) => void;
 }
 
@@ -34,12 +35,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
     const openChat = useCallback((user: ChatUser, conversation: ChatConversation | null = null) => {
         setOpenChats((prev) => {
-            const exists = prev.find((c) => c.user.id === user.id);
-            if (exists) {
-                // Already open — just unminimize
-                return prev.map((c) => (c.user.id === user.id ? { ...c, minimized: false } : c));
+            const index = prev.findIndex((c) => c.user.id === user.id);
+            if (index !== -1) {
+                const target = { ...prev[index], minimized: false, conversation: conversation ?? prev[index].conversation };
+                return [target, ...prev.filter((c) => c.user.id !== user.id)];
             }
-            return [...prev, { user, conversation, minimized: false }];
+            return [{ user, conversation, minimized: false }, ...prev];
         });
     }, []);
 
@@ -51,11 +52,33 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         setOpenChats((prev) => prev.map((c) => (c.user.id === userId ? { ...c, minimized: !c.minimized } : c)));
     }, []);
 
+    const focusChat = useCallback((userId: number) => {
+        setOpenChats((prev) => {
+            const index = prev.findIndex((c) => c.user.id === userId);
+            if (index === -1) return prev;
+            const target = { ...prev[index], minimized: false };
+            return [target, ...prev.filter((c) => c.user.id !== userId)];
+        });
+    }, []);
+
     const setConversation = useCallback((userId: number, conversation: ChatConversation) => {
         setOpenChats((prev) => prev.map((c) => (c.user.id === userId ? { ...c, conversation } : c)));
     }, []);
 
-    return <ChatContext.Provider value={{ openChats, openChat, closeChat, toggleMinimize, setConversation }}>{children}</ChatContext.Provider>;
+    return (
+        <ChatContext.Provider
+            value={{
+                openChats,
+                openChat,
+                closeChat,
+                toggleMinimize,
+                focusChat,
+                setConversation,
+            }}
+        >
+            {children}
+        </ChatContext.Provider>
+    );
 }
 
 export function useChatContext() {
