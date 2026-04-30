@@ -33,10 +33,31 @@ interface ChatContextType {
     setConversation: (chatId: string, conversation: ChatConversation) => void;
 }
 
+const STORAGE_KEY = 'open_chats';
+
+function loadFromStorage(): OpenChat[] {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        return JSON.parse(raw) as OpenChat[];
+    } catch {
+        return [];
+    }
+}
+
 const ChatContext = createContext<ChatContextType | null>(null);
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
-    const [openChats, setOpenChats] = useState<OpenChat[]>([]);
+    const [openChats, setOpenChats] = useState<OpenChat[]>(() => loadFromStorage());
+
+    // Persist to localStorage on every change
+    useEffect(() => {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(openChats));
+        } catch {
+            // storage full or unavailable — ignore
+        }
+    }, [openChats]);
 
     const openChat = useCallback((user: ChatUser, conversation: ChatConversation | null = null) => {
         const chatId = `user-${user.id}`;
