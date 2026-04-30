@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Supplier;
 use App\Models\SupplierTransaction;
 use App\Traits\HandlesDeletionRequests;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -15,15 +16,93 @@ class SupplierTransactionController extends Controller
     /**
      * Display the supplier's transactions.
      */
-    public function show(Supplier $supplier): Response
+    public function show(Request $request, Supplier $supplier): Response
     {
-        $transactions = SupplierTransaction::where('supplier_id', $supplier->id)
+        $query = SupplierTransaction::where('supplier_id', $supplier->id);
+        $search = $request->input('search');
+        $year = $request->input('year');
+        $month = $request->input('month');
+
+        if ($search) {
+            $query->where(function ($query) use ($search) {
+                $query->where('pr_no', 'like', "%{$search}%")
+                    ->orWhere('po_no', 'like', "%{$search}%")
+                    ->orWhere('sale_invoice_no', 'like', "%{$search}%")
+                    ->orWhere('or_no', 'like', "%{$search}%")
+                    ->orWhere('dr_no', 'like', "%{$search}%")
+                    ->orWhere('particulars', 'like', "%{$search}%")
+                    ->orWhere('earmark', 'like', "%{$search}%");
+            });
+        }
+
+        if ($year) {
+            $query->whereYear('pr_date', $year);
+        }
+
+        if ($month) {
+            $query->whereMonth('pr_date', $month);
+        }
+
+        $transactions = $query->orderBy('pr_date', 'desc')->paginate(15);
+
+        $yearOptions = SupplierTransaction::where('supplier_id', $supplier->id)
+            ->whereNotNull('pr_date')
             ->orderBy('pr_date', 'desc')
-            ->paginate(15);
+            ->pluck('pr_date')
+            ->map(fn($date) => Carbon::parse($date)->year)
+            ->unique()
+            ->sortDesc()
+            ->values()
+            ->all();
 
         return Inertia::render('suppliers/show', [
             'supplier' => $supplier,
             'transactions' => $transactions,
+            'search' => $search,
+            'year' => $year,
+            'month' => $month,
+            'years' => $yearOptions,
+        ]);
+    }
+
+    /**
+     * Display the supplier's transaction report.
+     */
+    public function report(Request $request, Supplier $supplier): Response
+    {
+        $query = SupplierTransaction::where('supplier_id', $supplier->id);
+        $search = $request->input('search');
+        $year = $request->input('year');
+        $month = $request->input('month');
+
+        if ($search) {
+            $query->where(function ($query) use ($search) {
+                $query->where('pr_no', 'like', "%{$search}%")
+                    ->orWhere('po_no', 'like', "%{$search}%")
+                    ->orWhere('sale_invoice_no', 'like', "%{$search}%")
+                    ->orWhere('or_no', 'like', "%{$search}%")
+                    ->orWhere('dr_no', 'like', "%{$search}%")
+                    ->orWhere('particulars', 'like', "%{$search}%")
+                    ->orWhere('earmark', 'like', "%{$search}%");
+            });
+        }
+
+        if ($year) {
+            $query->whereYear('pr_date', $year);
+        }
+
+        if ($month) {
+            $query->whereMonth('pr_date', $month);
+        }
+
+        $transactions = $query->orderBy('pr_date', 'desc')->get();
+
+        return Inertia::render('suppliers/transaction-report', [
+            'supplier' => $supplier,
+            'transactions' => $transactions,
+            'search' => $search,
+            'year' => $year,
+            'month' => $month,
         ]);
     }
 

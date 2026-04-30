@@ -1,3 +1,4 @@
+import { CustomComboBox } from '@/components/CustomComboBox';
 import PaginationData from '@/components/paginationData';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,10 @@ type PaginatedTransactions = PaginatedDataResponse<SupplierTransaction>;
 interface Props {
     supplier: Supplier;
     transactions: PaginatedTransactions;
+    search?: string | null;
+    year?: string | null;
+    month?: string | null;
+    years: number[];
 }
 
 const formatDate = (d: string | null) => (d ? format(new Date(d), 'MMM dd, yyyy') : '—');
@@ -151,11 +156,29 @@ function TransactionCard({
     );
 }
 
-export default function SupplierShow({ supplier, transactions }: Props) {
+const MONTHS = [
+    { value: 'all', label: 'All months' },
+    { value: '1', label: 'January' },
+    { value: '2', label: 'February' },
+    { value: '3', label: 'March' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'May' },
+    { value: '6', label: 'June' },
+    { value: '7', label: 'July' },
+    { value: '8', label: 'August' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' },
+];
+
+export default function SupplierShow({ supplier, transactions, search: initialSearch, year: initialYear, month: initialMonth, years }: Props) {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<SupplierTransaction | null>(null);
     const [deletingTransaction, setDeletingTransaction] = useState<SupplierTransaction | null>(null);
-    const [search, setSearch] = useState('');
+    const [search, setSearch] = useState(initialSearch || '');
+    const [selectedYear, setSelectedYear] = useState(initialYear ?? 'all');
+    const [selectedMonth, setSelectedMonth] = useState(initialMonth ?? 'all');
 
     const breadcrumbs = [
         { title: 'Suppliers', href: '/suppliers' },
@@ -163,7 +186,15 @@ export default function SupplierShow({ supplier, transactions }: Props) {
     ];
 
     const handleSearch = () => {
-        router.get(route('suppliers.transactions.show', supplier.id), { search: search || undefined }, { preserveState: true, preserveScroll: true });
+        router.get(
+            route('suppliers.transactions.show', supplier.id),
+            {
+                search: search || undefined,
+                year: selectedYear !== 'all' ? selectedYear : undefined,
+                month: selectedMonth !== 'all' ? selectedMonth : undefined,
+            },
+            { preserveState: true, preserveScroll: true },
+        );
     };
 
     return (
@@ -193,14 +224,33 @@ export default function SupplierShow({ supplier, transactions }: Props) {
                             </div>
                         </div>
                     </div>
-                    <Button onClick={() => setIsCreateOpen(true)}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Transaction
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() =>
+                                router.get(
+                                    route('suppliers.transactions.report', supplier.id),
+                                    {
+                                        search: search || undefined,
+                                        year: selectedYear !== 'all' ? selectedYear : undefined,
+                                        month: selectedMonth !== 'all' ? selectedMonth : undefined,
+                                    },
+                                    { preserveState: true, preserveScroll: true },
+                                )
+                            }
+                        >
+                            <FileText className="mr-2 h-4 w-4" />
+                            Report
+                        </Button>
+                        <Button onClick={() => setIsCreateOpen(true)}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Transaction
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Search */}
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-end gap-2">
                     <div className="relative max-w-sm flex-1">
                         <SearchIcon className="text-muted-foreground absolute top-2.5 left-2.5 h-4 w-4" />
                         <Input
@@ -210,6 +260,22 @@ export default function SupplierShow({ supplier, transactions }: Props) {
                             onChange={(e) => setSearch(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                             className="pl-8"
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <CustomComboBox
+                            items={[{ value: 'all', label: 'All years' }, ...years.map((year) => ({ value: String(year), label: String(year) }))]}
+                            placeholder="All years"
+                            value={selectedYear}
+                            onSelect={(value) => setSelectedYear(value ?? 'all')}
+                            showClear
+                        />
+                        <CustomComboBox
+                            items={MONTHS}
+                            placeholder="All months"
+                            value={selectedMonth}
+                            onSelect={(value) => setSelectedMonth(value ?? 'all')}
+                            showClear
                         />
                     </div>
                     <Button variant="outline" onClick={handleSearch}>
