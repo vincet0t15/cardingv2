@@ -35,7 +35,7 @@ export function ChatManager() {
                         <PopoverTrigger asChild>
                             <button
                                 type="button"
-                                className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-900 text-white shadow-lg transition hover:bg-zinc-700"
+                                className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-900 shadow-lg transition hover:bg-zinc-200"
                                 title="More chats"
                             >
                                 <span className="text-2xl leading-none">…</span>
