@@ -80,7 +80,7 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete 
                 {msg.reply_to && (
                     <div
                         className={cn(
-                            'relative rounded-2xl px-3 pt-2 pb-5 text-[11px] leading-tight opacity-80 transition-all',
+                            'rounded-2xl px-3 py-1.5 text-[11px] leading-tight opacity-80 transition-all',
                             isMe ? 'mr-2 bg-zinc-100' : 'ml-2 bg-zinc-100',
                         )}
                     >
@@ -94,7 +94,7 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete 
                 <div className={cn('relative flex items-end gap-1', isMe ? 'flex-row-reverse' : 'flex-row')}>
                     <div
                         className={cn(
-                            'relative z-10 rounded-[18px] px-4 py-2 text-[13px] shadow-sm transition-all',
+                            'rounded-[18px] px-4 py-2 text-[13px] shadow-sm',
                             isMe
                                 ? 'rounded-br-none bg-[#5b3df5] text-white'
                                 : 'rounded-bl-none border border-zinc-100 bg-white text-zinc-800',
@@ -103,7 +103,7 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete 
                         {msg.body && <span>{msg.body}</span>}
                     </div>
 
-                    {/* Dropdown — aligned to bubble top */}
+                    {/* Dropdown */}
                     <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                             <button
@@ -143,7 +143,7 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete 
                     </DropdownMenu>
                 </div>
 
-                <div className={cn('mt-1 flex gap-1.5 text-[10px] opacity-50', isMe ? 'mr-1' : 'ml-1')}>
+                <div className={cn('mt-0.5 flex gap-1.5 text-[10px] opacity-50', isMe ? 'mr-2' : 'ml-2')}>
                     <span>{formattedTime}</span>
                     {isMe && msg.seen_at && <span className="font-medium text-[#5b3df5]">Seen</span>}
                 </div>
