@@ -362,6 +362,7 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
     Route::delete('messenger/{conversation}/messages/{message}', [ConversationMessageController::class, 'destroy'])->name('messenger.messages.destroy');
     Route::post('messenger/{conversation}/leave', [ConversationController::class, 'leave'])->name('messenger.conversations.leave');
     Route::get('messenger/{conversation}/members', [ConversationController::class, 'members'])->name('messenger.conversations.members');
+    Route::get('messenger/users/{userId}/online', [ConversationController::class, 'isOnline'])->name('messenger.users.online');
 });
 
 // Broadcasting auth — must be outside custom middleware groups so EnsureAccountIsActive

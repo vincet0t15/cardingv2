@@ -1,7 +1,8 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { CornerUpLeft, Download, FileText, MoreHorizontal, Paperclip, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { Check, CheckCheck, CornerUpLeft, Download, FileText, MoreHorizontal, Paperclip, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ImageLightbox } from './image-lightbox';
 
 const AVATAR_COLORS = ['bg-sky-500', 'bg-violet-500', 'bg-emerald-500', 'bg-rose-500', 'bg-amber-500', 'bg-cyan-500', 'bg-fuchsia-500'];
 
@@ -29,15 +30,21 @@ function formatFileSize(bytes: number | null): string {
     return `${(bytes / 1024).toFixed(0)} KB`;
 }
 
-function downloadFile(url: string, fileName: string) {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+async function downloadFile(url: string, fileName: string) {
+    try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+    } catch {
+        window.open(url, '_blank');
+    }
 }
 
 interface MessageType {
@@ -63,14 +70,38 @@ interface ChatMessageProps {
     showAvatar: boolean;
     onReply: (msg: MessageType) => void;
     onDelete: (msgId: number) => void;
+    conversationId: number | null;
 }
 
-export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete }: ChatMessageProps) {
+function ReadReceipt({ msg, isMe }: { msg: MessageType; isMe: boolean }) {
+    if (!isMe) return null;
+    const allSeen = !!msg.seen_at;
+    return (
+        <span className="ml-1 inline-flex shrink-0">
+            {allSeen ? (
+                <CheckCheck className="h-3.5 w-3.5 text-[#5b3df5]" />
+            ) : (
+                <Check className="h-3.5 w-3.5 opacity-50" />
+            )}
+        </span>
+    );
+}
+
+export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete, conversationId }: ChatMessageProps) {
     const [deleting, setDeleting] = useState(false);
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [downloading, setDownloading] = useState(false);
 
     const handleDelete = () => {
         setDeleting(true);
         setTimeout(() => onDelete(msg.id), 200);
+    };
+
+    const handleDownload = async () => {
+        if (!msg.file_path || !msg.file_name || downloading) return;
+        setDownloading(true);
+        await downloadFile(storageUrl(msg.file_path), msg.file_name);
+        setDownloading(false);
     };
 
     const formattedTime = new Date(msg.created_at).toLocaleTimeString([], {
@@ -81,129 +112,142 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete 
     const isImage = msg.mime_type ? msg.mime_type.startsWith('image/') : false;
 
     return (
-        <div
-            className={cn(
-                'group relative flex items-start gap-2',
-                isMe ? 'flex-row-reverse' : 'flex-row',
-                'animate-in fade-in-0 slide-in-from-bottom-2 duration-200',
-                deleting && 'animate-out fade-out-0 zoom-out-95 duration-200',
-            )}
-        >
-            {!isMe && (
-                <div
-                    className={cn(
-                        'mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white',
-                        showAvatar ? avatarColor(msg.user.id) : 'invisible',
-                    )}
-                >
-                    {getInitials(msg.user.name)}
-                </div>
-            )}
-
-            <div className={cn('relative flex max-w-[80%] flex-col', isMe ? 'items-end' : 'items-start')}>
-                {msg.reply_to && (
+        <>
+            <div
+                className={cn(
+                    'group relative flex items-start gap-2',
+                    isMe ? 'flex-row-reverse' : 'flex-row',
+                    'animate-in fade-in-0 slide-in-from-bottom-2 duration-200',
+                    deleting && 'animate-out fade-out-0 zoom-out-95 duration-200',
+                )}
+            >
+                {!isMe && (
                     <div
                         className={cn(
-                            'rounded-2xl px-3 py-1.5 text-[11px] leading-tight opacity-80 transition-all',
-                            isMe ? 'mr-2 bg-zinc-100' : 'ml-2 bg-zinc-100',
+                            'mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white',
+                            showAvatar ? avatarColor(msg.user.id) : 'invisible',
                         )}
                     >
-                        <p className="max-w-[150px] truncate text-zinc-500 italic">
-                            {msg.reply_to.body ?? '📎 Attachment'}
-                        </p>
+                        {getInitials(msg.user.name)}
                     </div>
                 )}
 
-                {/* Bubble + aligned dropdown */}
-                <div className={cn('relative flex items-end gap-1', isMe ? 'flex-row-reverse' : 'flex-row')}>
-                    <div
-                        className={cn(
-                            'max-w-[220px] rounded-[18px] px-4 py-2 text-[13px] shadow-sm',
-                            isMe
-                                ? 'rounded-br-none bg-[#5b3df5] text-white'
-                                : 'rounded-bl-none border border-zinc-100 bg-white text-zinc-800',
-                        )}
-                    >
-                        {msg.file_path && isImage ? (
-                            <a href={storageUrl(msg.file_path)} target="_blank" rel="noopener noreferrer">
-                                <img
-                                    src={storageUrl(msg.file_path)}
-                                    alt={msg.file_name ?? 'Image'}
-                                    className="block max-h-32 w-auto rounded-lg object-cover"
-                                />
-                            </a>
-                        ) : msg.file_path ? (
-                            <a
-                                href={storageUrl(msg.file_path)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-                                download={msg.file_name ?? undefined}
-                            >
-                                <FileText className="h-4 w-4 shrink-0 opacity-70" />
-                                <div className="min-w-0 max-w-[160px]">
-                                    <p className="truncate text-xs font-medium">{msg.file_name}</p>
-                                    <p className="truncate text-[10px] opacity-60">{formatFileSize(msg.file_size)}</p>
-                                </div>
-                            </a>
-                        ) : null}
-                        {msg.body && <span>{msg.body}</span>}
-                    </div>
-
-                    {/* Dropdown */}
-                    <DropdownMenu modal={false}>
-                        <DropdownMenuTrigger asChild>
-                            <button
-                                className={cn(
-                                    'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-opacity duration-200 hover:bg-zinc-100',
-                                    'group-hover:opacity-100 opacity-0',
-                                )}
-                            >
-                                <MoreHorizontal className="h-3.5 w-3.5" />
-                            </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                            align={isMe ? 'end' : 'start'}
-                            sideOffset={4}
-                            className="w-28 min-w-[110px] border-zinc-100 p-1 shadow-md"
+                <div className={cn('relative flex max-w-[80%] flex-col', isMe ? 'items-end' : 'items-start')}>
+                    {msg.reply_to && (
+                        <div
+                            className={cn(
+                                'rounded-2xl px-3 py-1.5 text-[11px] leading-tight opacity-80 transition-all',
+                                isMe ? 'mr-2 bg-zinc-100' : 'ml-2 bg-zinc-100',
+                            )}
                         >
-                            {msg.file_path && (
+                            <p className="max-w-[150px] truncate text-zinc-500 italic">
+                                {msg.reply_to.body ?? '📎 Attachment'}
+                            </p>
+                        </div>
+                    )}
+
+                    <div className={cn('relative flex items-end gap-1', isMe ? 'flex-row-reverse' : 'flex-row')}>
+                        <div
+                            className={cn(
+                                'max-w-[220px] rounded-[18px] px-4 py-2 text-[13px] shadow-sm',
+                                isMe
+                                    ? 'rounded-br-none bg-[#5b3df5] text-white'
+                                    : 'rounded-bl-none border border-zinc-100 bg-white text-zinc-800',
+                            )}
+                        >
+                            {msg.file_path && isImage ? (
+                                <button
+                                    onClick={() => setLightboxOpen(true)}
+                                    className="block p-0"
+                                >
+                                    <img
+                                        src={storageUrl(msg.file_path)}
+                                        alt={msg.file_name ?? 'Image'}
+                                        className="block max-h-32 w-auto rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                    />
+                                </button>
+                            ) : msg.file_path ? (
+                                <button
+                                    onClick={handleDownload}
+                                    disabled={downloading}
+                                    className="flex w-full items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity text-left"
+                                >
+                                    <FileText className="h-4 w-4 shrink-0 opacity-70" />
+                                    <div className="min-w-0 max-w-[160px]">
+                                        <p className="truncate text-xs font-medium">{msg.file_name}</p>
+                                        <p className="truncate text-[10px] opacity-60">{formatFileSize(msg.file_size)}</p>
+                                    </div>
+                                    {downloading && (
+                                        <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                                    )}
+                                </button>
+                            ) : null}
+                            {msg.body && <span>{msg.body}</span>}
+                        </div>
+
+                        <DropdownMenu modal={false}>
+                            <DropdownMenuTrigger asChild>
+                                <button
+                                    className={cn(
+                                        'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-opacity duration-200 hover:bg-zinc-100',
+                                        'group-hover:opacity-100 opacity-0',
+                                    )}
+                                >
+                                    <MoreHorizontal className="h-3.5 w-3.5" />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                align={isMe ? 'end' : 'start'}
+                                sideOffset={4}
+                                className="w-28 min-w-[110px] border-zinc-100 p-1 shadow-md"
+                            >
+                                {msg.file_path && (
+                                    <DropdownMenuItem
+                                        onClick={handleDownload}
+                                        className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
+                                    >
+                                        <Download className="h-3 w-3 opacity-70" />
+                                        <span>Download</span>
+                                    </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
-                                    onClick={() => downloadFile(storageUrl(msg.file_path), msg.file_name ?? 'file')}
+                                    onClick={() => onReply(msg)}
                                     className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
                                 >
-                                    <Download className="h-3 w-3 opacity-70" />
-                                    <span>Download</span>
+                                    <CornerUpLeft className="h-3 w-3 opacity-70" />
+                                    <span>Reply</span>
                                 </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem
-                                onClick={() => onReply(msg)}
-                                className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
-                            >
-                                <CornerUpLeft className="h-3 w-3 opacity-70" />
-                                <span>Reply</span>
-                            </DropdownMenuItem>
-                            {isMe && (
-                                <>
-                                    <DropdownMenuSeparator className="my-1 bg-zinc-100" />
-                                    <DropdownMenuItem
-                                        onClick={handleDelete}
-                                        className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] text-red-500 focus:bg-red-50 focus:text-red-600"
-                                    >
-                                        <Trash2 className="h-3 w-3 opacity-70" />
-                                        <span>Delete</span>
-                                    </DropdownMenuItem>
-                                </>
-                            )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
+                                {isMe && (
+                                    <>
+                                        <DropdownMenuSeparator className="my-1 bg-zinc-100" />
+                                        <DropdownMenuItem
+                                            onClick={handleDelete}
+                                            className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] text-red-500 focus:bg-red-50 focus:text-red-600"
+                                        >
+                                            <Trash2 className="h-3 w-3 opacity-70" />
+                                            <span>Delete</span>
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
 
-                <div className={cn('mt-0.5 flex gap-1.5 text-[10px] opacity-50', isMe ? 'mr-2' : 'ml-2')}>
-                    <span>{formattedTime}</span>
-                    {isMe && msg.seen_at && <span className="font-medium text-[#5b3df5]">Seen</span>}
+                    <div className={cn('mt-0.5 flex items-center gap-1 text-[10px] opacity-50', isMe ? 'mr-2' : 'ml-2')}>
+                        <span>{formattedTime}</span>
+                        <ReadReceipt msg={msg} isMe={isMe} />
+                    </div>
                 </div>
             </div>
-        </div>
+
+            {msg.file_path && isImage && (
+                <ImageLightbox
+                    src={storageUrl(msg.file_path)}
+                    alt={msg.file_name ?? 'Image'}
+                    open={lightboxOpen}
+                    onClose={() => setLightboxOpen(false)}
+                />
+            )}
+        </>
     );
 }

@@ -431,4 +431,16 @@ class ConversationController extends Controller
             'creator_id' => $conversation->created_by,
         ]);
     }
+
+    public function isOnline($userId)
+    {
+        $user = \App\Models\User::find($userId);
+        if (!$user) {
+            return response()->json(['online' => false]);
+        }
+
+        $online = $user->last_seen && $user->last_seen->diffInMinutes(now()) <= 5;
+
+        return response()->json(['online' => $online]);
+    }
 }

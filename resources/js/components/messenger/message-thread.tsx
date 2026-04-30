@@ -1,9 +1,10 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { GroupMembersDialog } from './group-members-dialog';
+import { ImageLightbox } from './image-lightbox';
 import { cn } from '@/lib/utils';
 import { router } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
-import { CornerUpLeft, Loader2, MoreHorizontal, Paperclip, PictureInPicture2, PictureInPicture2Icon, Send, Trash2, Users, X } from 'lucide-react';
+import { Check, CheckCheck, CornerUpLeft, Download, Loader2, MoreHorizontal, Paperclip, PictureInPicture2Icon, Send, Trash2, Upload, Users, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConversationType, MessageType, UserType } from './message-types';
 
@@ -11,6 +12,23 @@ const STORAGE_URL = (path: string | null): string => {
     if (!path) return '';
     return new URL(`/storage/${path}`, window.location.origin).toString();
 };
+
+async function downloadFile(url: string, fileName: string) {
+    try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+    } catch {
+        window.open(url, '_blank');
+    }
+}
 
 function getInitials(name: string) {
     return name
@@ -84,6 +102,12 @@ function csrfToken() {
     return document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
 }
 
+function formatFileSize(bytes: number | null): string {
+    if (!bytes) return '';
+    if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+    return `${(bytes / 1024).toFixed(0)} KB`;
+}
+
 interface Props {
     activeConversation: ConversationType;
     initialMessages: MessageType[];
@@ -102,6 +126,11 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
     const [hoveredMessageId, setHoveredMessageId] = useState<number | null>(null);
     const [typingUsers, setTypingUsers] = useState<Record<number, string>>({});
     const [showMembers, setShowMembers] = useState(false);
+    const [isDragOver, setIsDragOver] = useState(false);
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [lightboxSrc, setLightboxSrc] = useState('');
+    const [lightboxAlt, setLightboxAlt] = useState('');
+    const [downloadingFile, setDownloadingFile] = useState<number | null>(null);
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const restoreScroll = useRef<{ h: number; t: number } | null>(null);
@@ -267,6 +296,40 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
         });
     };
 
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragOver(true);
+    }, []);
+
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragOver(false);
+    }, []);
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragOver(false);
+        const files = e.dataTransfer.files;
+        if (files && files.length > 0) {
+            setSelectedFile(files[0]);
+        }
+    }, []);
+
+    const openLightbox = (src: string, alt: string) => {
+        setLightboxSrc(src);
+        setLightboxAlt(alt);
+        setLightboxOpen(true);
+    };
+
+    const handleDownload = async (messageId: number, url: string, fileName: string) => {
+        setDownloadingFile(messageId);
+        await downloadFile(url, fileName);
+        setDownloadingFile(null);
+    };
+
     const otherIsOnline = otherParticipant ? onlineUserIds.includes(otherParticipant.id) : false;
 
     return (
@@ -306,7 +369,22 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                 )}
             </div>
 
-            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-3">
+            <div
+                ref={messagesContainerRef}
+                className={cn('flex-1 overflow-y-auto px-4 py-3', isDragOver && 'ring-2 ring-blue-500 ring-inset rounded-lg')}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+            >
+                {isDragOver && (
+                    <div className="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center bg-blue-500/10 backdrop-blur-[1px]">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/20">
+                            <Upload className="h-8 w-8 text-blue-500" />
+                        </div>
+                        <p className="mt-3 text-sm font-medium text-blue-600">Drop file to attach</p>
+                    </div>
+                )}
+
                 <div className="flex w-full flex-col gap-0.5">
                     {loadingOlder && (
                         <div className="flex justify-center py-2">
@@ -369,6 +447,15 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                                                     </button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end" className="w-28 min-w-[110px] p-1 shadow-md">
+                                                    {message.file_path && (
+                                                        <DropdownMenuItem
+                                                            onClick={() => handleDownload(message.id, STORAGE_URL(message.file_path), message.file_name!)}
+                                                            className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
+                                                        >
+                                                            <Download className="h-3 w-3 opacity-70" />
+                                                            <span>Download</span>
+                                                        </DropdownMenuItem>
+                                                    )}
                                                     <DropdownMenuItem
                                                         onClick={() => {
                                                             setReplyingTo(message);
@@ -437,68 +524,66 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                                                 <div className="mt-2 max-w-xs">
                                                     {message.is_image ? (
                                                         <>
-                                                            <a
-                                                                href={STORAGE_URL(message.file_path)}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="border-muted hover:border-primary/50 block rounded border"
+                                                            <button
+                                                                onClick={() => openLightbox(STORAGE_URL(message.file_path), message.file_name!)}
+                                                                className="border-muted hover:border-primary/50 block rounded border p-0 cursor-pointer"
                                                             >
                                                                 <img
                                                                     src={STORAGE_URL(message.file_path)}
                                                                     alt={message.file_name}
                                                                     className="block h-auto max-h-48 w-full rounded object-cover"
                                                                 />
-                                                            </a>
+                                                            </button>
                                                             <p className="text-muted-foreground mt-1 truncate text-center text-xs">
                                                                 {message.file_name}
                                                             </p>
                                                         </>
                                                     ) : message.is_pdf ? (
-                                                        <>
-                                                            <a
-                                                                href={STORAGE_URL(message.file_path)}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="bg-muted/50 flex items-center gap-2 rounded-md px-3 py-2"
-                                                            >
-                                                                <PictureInPicture2Icon className="text-muted-foreground h-5 w-5 shrink-0" />
-                                                                <div className="min-w-0">
-                                                                    <p className="truncate text-sm font-medium">{message.file_name}</p>
-                                                                    <p className="text-muted-foreground truncate text-xs">
-                                                                        {(message.file_size ?? 0) / 1024 / 1024 > 1
-                                                                            ? `${((message.file_size ?? 0) / 1024 / 1024).toFixed(2)} MB`
-                                                                            : `${((message.file_size ?? 0) / 1024).toFixed(0)} KB`}
-                                                                    </p>
-                                                                </div>
-                                                            </a>
-                                                        </>
+                                                        <button
+                                                            onClick={() => handleDownload(message.id, STORAGE_URL(message.file_path), message.file_name!)}
+                                                            className="bg-muted/50 flex w-full items-center gap-2 rounded-md px-3 py-2 cursor-pointer hover:opacity-80 transition-opacity text-left"
+                                                            disabled={downloadingFile === message.id}
+                                                        >
+                                                            <PictureInPicture2Icon className="text-muted-foreground h-5 w-5 shrink-0" />
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="truncate text-sm font-medium">{message.file_name}</p>
+                                                                <p className="text-muted-foreground truncate text-xs">{formatFileSize(message.file_size)}</p>
+                                                            </div>
+                                                            {downloadingFile === message.id && (
+                                                                <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                                                            )}
+                                                        </button>
                                                     ) : (
-                                                        <>
-                                                            <a
-                                                                href={STORAGE_URL(message.file_path)}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="bg-muted/50 flex items-center gap-2 rounded-md px-3 py-2"
-                                                            >
-                                                                <Paperclip className="text-muted-foreground h-5 w-5 shrink-0" />
-                                                                <div className="min-w-0">
-                                                                    <p className="truncate text-sm font-medium">{message.file_name}</p>
-                                                                    <p className="text-muted-foreground truncate text-xs">
-                                                                        {(message.file_size ?? 0) / 1024 / 1024 > 1
-                                                                            ? `${((message.file_size ?? 0) / 1024 / 1024).toFixed(2)} MB`
-                                                                            : `${((message.file_size ?? 0) / 1024).toFixed(0)} KB`}
-                                                                    </p>
-                                                                </div>
-                                                            </a>
-                                                        </>
+                                                        <button
+                                                            onClick={() => handleDownload(message.id, STORAGE_URL(message.file_path), message.file_name!)}
+                                                            className="bg-muted/50 flex w-full items-center gap-2 rounded-md px-3 py-2 cursor-pointer hover:opacity-80 transition-opacity text-left"
+                                                            disabled={downloadingFile === message.id}
+                                                        >
+                                                            <Paperclip className="text-muted-foreground h-5 w-5 shrink-0" />
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="truncate text-sm font-medium">{message.file_name}</p>
+                                                                <p className="text-muted-foreground truncate text-xs">{formatFileSize(message.file_size)}</p>
+                                                            </div>
+                                                            {downloadingFile === message.id && (
+                                                                <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                                                            )}
+                                                        </button>
                                                     )}
                                                 </div>
                                             )}
                                         </div>
 
-                                        <div className={cn('mt-0.5 flex gap-1.5 text-[10px] opacity-50', isMine ? 'mr-2' : 'ml-2')}>
+                                        <div className={cn('mt-0.5 flex items-center gap-1 text-[10px] opacity-50', isMine ? 'mr-2' : 'ml-2')}>
                                             <span>{formatTime(message.created_at)}</span>
-                                            {isMine && message.seen_at && <span className="font-medium text-blue-500">Seen</span>}
+                                            {isMine && (
+                                                <span className="ml-0.5 inline-flex">
+                                                    {message.seen_at ? (
+                                                        <CheckCheck className="h-3.5 w-3.5 text-blue-500" />
+                                                    ) : (
+                                                        <Check className="h-3.5 w-3.5 opacity-50" />
+                                                    )}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
 
@@ -514,6 +599,15 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                                                     </button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="start" className="w-28 min-w-[110px] p-1 shadow-md">
+                                                    {message.file_path && (
+                                                        <DropdownMenuItem
+                                                            onClick={() => handleDownload(message.id, STORAGE_URL(message.file_path), message.file_name!)}
+                                                            className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
+                                                        >
+                                                            <Download className="h-3 w-3 opacity-70" />
+                                                            <span>Download</span>
+                                                        </DropdownMenuItem>
+                                                    )}
                                                     <DropdownMenuItem
                                                         onClick={() => {
                                                             setReplyingTo(message);
@@ -611,7 +705,7 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                         </label>
                         <button
                             type="submit"
-                            disabled={(!input.trim() && !selectedFile) || sending}
+                            disabled={(!input.trim() && !selectedFile && !replyingTo) || sending}
                             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0b7ff5] text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-600 hover:shadow-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             <Send className="h-4 w-4" />
@@ -623,7 +717,7 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                                 {selectedFile.type && selectedFile.type.startsWith('image/') ? (
                                     <img src={URL.createObjectURL(selectedFile)} alt="Preview" className="h-8 w-8 rounded object-cover" />
                                 ) : selectedFile.type === 'application/pdf' ? (
-                                    <PictureInPicture2 className="text-muted-foreground h-8 w-8" />
+                                    <PictureInPicture2Icon className="text-muted-foreground h-8 w-8" />
                                 ) : (
                                     <Paperclip className="text-muted-foreground h-8 w-8" />
                                 )}
@@ -652,6 +746,15 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                     conversationId={activeConversation.id}
                     authUserId={auth.id}
                     onLeaveSuccess={() => router.visit('/messenger')}
+                />
+            )}
+
+            {lightboxOpen && (
+                <ImageLightbox
+                    src={lightboxSrc}
+                    alt={lightboxAlt}
+                    open={lightboxOpen}
+                    onClose={() => setLightboxOpen(false)}
                 />
             )}
         </>
