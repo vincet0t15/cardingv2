@@ -131,6 +131,109 @@ class ConversationController extends Controller
             ->get();
     }
 
+    public function paginatedUsers(Request $request)
+    {
+        $page = (int) $request->query('page', 1);
+        $perPage = 15;
+
+        $users = User::where('id', '!=', Auth::id())
+            ->where('is_active', true)
+            ->select('id', 'name', 'username')
+            ->orderBy('name')
+            ->skip(($page - 1) * $perPage)
+            ->take($perPage + 1)
+            ->get();
+
+        $hasMore = $users->count() > $perPage;
+        if ($hasMore) {
+            $users = $users->take($perPage);
+        }
+
+        return response()->json([
+            'users' => $users->map(fn($u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'username' => $u->username,
+            ])->values(),
+            'has_more' => $hasMore,
+        ]);
+    }
+
+    public function paginatedConversations(Request $request)
+    {
+        $page = (int) $request->query('page', 1);
+        $perPage = 15;
+
+        $conversations = auth()->user()->conversations()
+            ->with([
+                'participants:id,name,username',
+                'latestMessage.user:id,name',
+            ])
+            ->orderByDesc('updated_at')
+            ->skip(($page - 1) * $perPage)
+            ->take($perPage + 1)
+            ->get();
+
+        $hasMore = $conversations->count() > $perPage;
+        if ($hasMore) {
+            $conversations = $conversations->take($perPage);
+        }
+
+        $userId = Auth::id();
+        $data = [];
+
+        foreach ($conversations as $conversation) {
+            $userInConv = DB::table('conversation_user')
+                ->where('conversation_id', $conversation->id)
+                ->where('user_id', $userId)
+                ->first();
+
+            $lastReadAt = $userInConv?->last_read_at;
+
+            $query = DB::table('messages')
+                ->where('conversation_id', $conversation->id)
+                ->where('user_id', '!=', $userId);
+
+            if ($lastReadAt) {
+                $query->where('created_at', '>', $lastReadAt);
+            }
+
+            $unreadCount = $query->count();
+
+            $convData = [
+                'id' => $conversation->id,
+                'name' => $conversation->name,
+                'is_group' => (bool) $conversation->is_group,
+                'participants' => $conversation->participants->map(fn($p) => [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'username' => $p->username,
+                ])->values()->toArray(),
+                'unread_count' => $unreadCount,
+                'updated_at' => $conversation->updated_at,
+            ];
+
+            if ($conversation->latestMessage) {
+                $convData['latest_message'] = [
+                    'id' => $conversation->latestMessage->id,
+                    'body' => $conversation->latestMessage->body,
+                    'created_at' => $conversation->latestMessage->created_at,
+                    'user' => [
+                        'id' => $conversation->latestMessage->user->id,
+                        'name' => $conversation->latestMessage->user->name,
+                    ],
+                ];
+            }
+
+            $data[] = $convData;
+        }
+
+        return response()->json([
+            'conversations' => $data,
+            'has_more' => $hasMore,
+        ]);
+    }
+
     public function getMessages(Request $request, Conversation $conversation)
     {
         abort_unless(

@@ -5,8 +5,8 @@ import { useChatContext } from '@/contexts/chat-context';
 import { cn } from '@/lib/utils';
 import { router, usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
-import { Edit, MessageCircle, Search, Users } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Edit, Loader2, MessageCircle, Search, Users } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface UserType {
     id: number;
@@ -72,7 +72,13 @@ export function MessengerBell() {
     const [filter, setFilter] = useState<'all' | 'unread' | 'groups'>('all');
     const [isLoading, setIsLoading] = useState(true);
     const [onlineUserIds, setOnlineUserIds] = useState<number[]>([]);
+    const [usersPage, setUsersPage] = useState(1);
+    const [convPage, setConvPage] = useState(1);
+    const [usersHasMore, setUsersHasMore] = useState(true);
+    const [convHasMore, setConvHasMore] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const listRef = useRef<HTMLDivElement>(null);
 
     const fetchRecent = async () => {
         try {
@@ -100,8 +106,92 @@ export function MessengerBell() {
     }, []);
 
     useEffect(() => {
-        if (isOpen) fetchRecent();
+        if (isOpen) {
+            setConversations([]);
+            setUsers([]);
+            setUsersPage(1);
+            setConvPage(1);
+            setUsersHasMore(true);
+            setConvHasMore(true);
+            fetchInitialPages();
+        }
     }, [isOpen]);
+
+    const fetchInitialPages = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const [convRes, userRes] = await Promise.all([
+                fetch('/messenger/conversations?page=1'),
+                fetch('/messenger/users?page=1'),
+            ]);
+            if (convRes.ok) {
+                const data = await convRes.json();
+                setConversations(data.conversations);
+                setConvHasMore(data.has_more);
+                setConvPage(data.has_more ? 2 : 1);
+            }
+            if (userRes.ok) {
+                const data = await userRes.json();
+                setUsers(data.users);
+                setUsersHasMore(data.has_more);
+                setUsersPage(data.has_more ? 2 : 1);
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    const fetchMore = useCallback(async () => {
+        if (loadingMore || (!usersHasMore && !convHasMore)) return;
+        setLoadingMore(true);
+        try {
+            if (usersHasMore) {
+                const res = await fetch(`/messenger/users?page=${usersPage}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setUsers((prev) => {
+                        const existing = new Set(prev.map((u) => u.id));
+                        const newUsers = data.users.filter((u: UserType) => !existing.has(u.id));
+                        return [...prev, ...newUsers];
+                    });
+                    setUsersHasMore(data.has_more);
+                    if (data.has_more) setUsersPage(usersPage + 1);
+                }
+            }
+            if (convHasMore) {
+                const res = await fetch(`/messenger/conversations?page=${convPage}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setConversations((prev) => {
+                        const existing = new Set(prev.map((c) => c.id));
+                        const newConvs = data.conversations.filter((c: ConversationType) => !existing.has(c.id));
+                        return [...prev, ...newConvs];
+                    });
+                    setConvHasMore(data.has_more);
+                    if (data.has_more) setConvPage(convPage + 1);
+                }
+            }
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [loadingMore, usersHasMore, convHasMore, usersPage, convPage]);
+
+    // IntersectionObserver for infinite scroll
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && !isLoading && isOpen) {
+                    fetchMore();
+                }
+            },
+            { root: listRef.current, threshold: 0.1 },
+        );
+
+        const sentinel = document.getElementById('bell-list-sentinel');
+        if (sentinel) observer.observe(sentinel);
+
+        return () => observer.disconnect();
+    }, [fetchMore, isLoading, isOpen]);
 
     useEffect(() => {
         type OnlineUser = { id: number; name: string };
@@ -228,7 +318,7 @@ export function MessengerBell() {
                 </div>
 
                 {/* List */}
-                <div className="max-h-[420px] overflow-y-auto pb-1">
+                <div ref={listRef} className="max-h-[420px] overflow-y-auto pb-1">
                     {isLoading ? (
                         <div className="flex items-center justify-center py-10">
                             <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
@@ -241,35 +331,97 @@ export function MessengerBell() {
                             </p>
                         </div>
                     ) : (
-                        filteredList.map((item) => {
-                            if (item.kind === 'group') {
-                                const { conv } = item;
-                                const unread = conv.unread_count;
+                        <>
+                            {filteredList.map((item) => {
+                                if (item.kind === 'group') {
+                                    const { conv } = item;
+                                    const unread = conv.unread_count;
+                                    return (
+                                        <button
+                                            key={`group-${conv.id}`}
+                                            onClick={() => {
+                                                setIsOpen(false);
+                                                openGroupChat(conv);
+                                            }}
+                                            className="hover:bg-muted/60 dark:hover:bg-muted/20 flex w-full items-center gap-3 px-4 py-2.5 text-left transition"
+                                        >
+                                            <div className="relative shrink-0">
+                                                <div
+                                                    className={cn(
+                                                        'flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-white',
+                                                        avatarColor(conv.id),
+                                                    )}
+                                                >
+                                                    <Users className="h-5 w-5" />
+                                                </div>
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-baseline justify-between gap-1">
+                                                    <span className={cn('truncate text-sm', unread > 0 ? 'font-bold' : 'font-semibold')}>
+                                                        {conv.name ?? 'Group Chat'}
+                                                    </span>
+                                                    {conv.latest_message && (
+                                                        <span
+                                                            className={cn(
+                                                                'shrink-0 text-[11px]',
+                                                                unread > 0 ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-muted-foreground',
+                                                            )}
+                                                        >
+                                                            {formatTime(conv.latest_message.created_at)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <p
+                                                        className={cn(
+                                                            'truncate text-xs',
+                                                            unread > 0 ? 'text-foreground font-semibold' : 'text-muted-foreground',
+                                                        )}
+                                                    >
+                                                        {conv.latest_message
+                                                            ? `${conv.latest_message.user.id === auth.user.id ? 'You: ' : `${conv.latest_message.user.name}: `}${conv.latest_message.body}`
+                                                            : 'No messages yet'}
+                                                    </p>
+                                                    {unread > 0 && (
+                                                        <span className="ml-auto flex h-4 min-w-[1rem] shrink-0 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white dark:bg-blue-500">
+                                                            {unread > 99 ? '99+' : unread}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </button>
+                                    );
+                                }
+
+                                // DM row
+                                const { user, conv } = item;
+                                const unread = conv?.unread_count ?? 0;
                                 return (
                                     <button
-                                        key={`group-${conv.id}`}
-                                        onClick={() => {
-                                            setIsOpen(false);
-                                            openGroupChat(conv);
-                                        }}
+                                        key={`user-${user.id}`}
+                                        onClick={() => openDm(user, conv)}
                                         className="hover:bg-muted/60 dark:hover:bg-muted/20 flex w-full items-center gap-3 px-4 py-2.5 text-left transition"
                                     >
                                         <div className="relative shrink-0">
                                             <div
                                                 className={cn(
                                                     'flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-white',
-                                                    avatarColor(conv.id),
+                                                    avatarColor(user.id),
                                                 )}
                                             >
-                                                <Users className="h-5 w-5" />
+                                                {getInitials(user.name)}
                                             </div>
+                                            <span
+                                                className={cn(
+                                                    'border-background absolute right-0.5 bottom-0.5 h-3 w-3 rounded-full border-2',
+                                                    onlineUserIds.includes(user.id) ? 'bg-green-500' : 'bg-zinc-400',
+                                                )}
+                                            />
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-baseline justify-between gap-1">
-                                                <span className={cn('truncate text-sm', unread > 0 ? 'font-bold' : 'font-semibold')}>
-                                                    {conv.name ?? 'Group Chat'}
-                                                </span>
-                                                {conv.latest_message && (
+                                                <span className={cn('truncate text-sm', unread > 0 ? 'font-bold' : 'font-semibold')}>{user.name}</span>
+                                                {conv?.latest_message && (
                                                     <span
                                                         className={cn(
                                                             'shrink-0 text-[11px]',
@@ -287,9 +439,9 @@ export function MessengerBell() {
                                                         unread > 0 ? 'text-foreground font-semibold' : 'text-muted-foreground',
                                                     )}
                                                 >
-                                                    {conv.latest_message
-                                                        ? `${conv.latest_message.user.id === auth.user.id ? 'You: ' : `${conv.latest_message.user.name}: `}${conv.latest_message.body}`
-                                                        : 'No messages yet'}
+                                                    {conv?.latest_message
+                                                        ? `${conv.latest_message.user.id === auth.user.id ? 'You: ' : ''}${conv.latest_message.body}`
+                                                        : 'Say hi!'}
                                                 </p>
                                                 {unread > 0 && (
                                                     <span className="ml-auto flex h-4 min-w-[1rem] shrink-0 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white dark:bg-blue-500">
@@ -300,68 +452,16 @@ export function MessengerBell() {
                                         </div>
                                     </button>
                                 );
-                            }
+                            })}
 
-                            // DM row
-                            const { user, conv } = item;
-                            const unread = conv?.unread_count ?? 0;
-                            return (
-                                <button
-                                    key={`user-${user.id}`}
-                                    onClick={() => openDm(user, conv)}
-                                    className="hover:bg-muted/60 dark:hover:bg-muted/20 flex w-full items-center gap-3 px-4 py-2.5 text-left transition"
-                                >
-                                    <div className="relative shrink-0">
-                                        <div
-                                            className={cn(
-                                                'flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-white',
-                                                avatarColor(user.id),
-                                            )}
-                                        >
-                                            {getInitials(user.name)}
-                                        </div>
-                                        <span
-                                            className={cn(
-                                                'border-background absolute right-0.5 bottom-0.5 h-3 w-3 rounded-full border-2',
-                                                onlineUserIds.includes(user.id) ? 'bg-green-500' : 'bg-zinc-400',
-                                            )}
-                                        />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-baseline justify-between gap-1">
-                                            <span className={cn('truncate text-sm', unread > 0 ? 'font-bold' : 'font-semibold')}>{user.name}</span>
-                                            {conv?.latest_message && (
-                                                <span
-                                                    className={cn(
-                                                        'shrink-0 text-[11px]',
-                                                        unread > 0 ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-muted-foreground',
-                                                    )}
-                                                >
-                                                    {formatTime(conv.latest_message.created_at)}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <p
-                                                className={cn(
-                                                    'truncate text-xs',
-                                                    unread > 0 ? 'text-foreground font-semibold' : 'text-muted-foreground',
-                                                )}
-                                            >
-                                                {conv?.latest_message
-                                                    ? `${conv.latest_message.user.id === auth.user.id ? 'You: ' : ''}${conv.latest_message.body}`
-                                                    : 'Say hi!'}
-                                            </p>
-                                            {unread > 0 && (
-                                                <span className="ml-auto flex h-4 min-w-[1rem] shrink-0 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white dark:bg-blue-500">
-                                                    {unread > 99 ? '99+' : unread}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </button>
-                            );
-                        })
+                            {loadingMore && (
+                                <div className="flex items-center justify-center py-3">
+                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                </div>
+                            )}
+
+                            <div id="bell-list-sentinel" className="h-1" />
+                        </>
                     )}
                 </div>
 

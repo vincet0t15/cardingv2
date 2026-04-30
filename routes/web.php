@@ -351,6 +351,8 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
     // MESSENGER
     Route::get('messenger', [ConversationController::class, 'index'])->name('messenger.index');
     Route::get('messenger/recent', [ConversationController::class, 'recent'])->name('messenger.recent');
+    Route::get('messenger/users', [ConversationController::class, 'paginatedUsers'])->name('messenger.users');
+    Route::get('messenger/conversations', [ConversationController::class, 'paginatedConversations'])->name('messenger.conversations');
     Route::post('messenger/conversations', [ConversationController::class, 'store'])->name('messenger.conversations.store');
     Route::get('messenger/{conversation}', [ConversationController::class, 'show'])->name('messenger.show');
     Route::get('messenger/{conversation}/messages', [ConversationController::class, 'getMessages'])->name('messenger.messages.index');

@@ -4,8 +4,8 @@ import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { Head, router, usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
-import { Edit, MessageCircle, Search, Users, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Edit, Loader2, MessageCircle, Search, Users, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type Props = {
     conversations: ConversationType[];
@@ -82,7 +82,7 @@ function nameColor(name: string) {
     return NAME_COLORS[hash % NAME_COLORS.length];
 }
 
-export default function Messenger({ conversations, users, activeConversation, messages: initialMessages }: Props) {
+export default function Messenger({ conversations: initialConversations, users: initialUsers, activeConversation, messages: initialMessages }: Props) {
     const { auth } = usePage().props as unknown as { auth: { user: UserType } };
 
     const [onlineUserIds, setOnlineUserIds] = useState<number[]>([]);
@@ -92,6 +92,20 @@ export default function Messenger({ conversations, users, activeConversation, me
     const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
     const [groupName, setGroupName] = useState('');
     const [creatingChat, setCreatingChat] = useState(false);
+
+    // Paginated state
+    const [conversations, setConversations] = useState<ConversationType[]>(initialConversations);
+    const [allUsers, setAllUsers] = useState<UserType[]>(initialUsers);
+    const [usersPage, setUsersPage] = useState(1);
+    const [convPage, setConvPage] = useState(1);
+    const [usersHasMore, setUsersHasMore] = useState(true);
+    const [convHasMore, setConvHasMore] = useState(true);
+    const [loadingUsers, setLoadingUsers] = useState(false);
+    const [loadingConvs, setLoadingConvs] = useState(false);
+
+    const listRef = useRef<HTMLDivElement>(null);
+    const usersLoadedRef = useRef(initialUsers.length > 0);
+    const convsLoadedRef = useRef(initialConversations.length > 0);
 
     // Presence channel — online users
     useEffect(() => {
@@ -105,6 +119,64 @@ export default function Messenger({ conversations, users, activeConversation, me
             (echo() as any).leave('messenger');
         };
     }, []);
+
+    const fetchUsers = useCallback(async (page: number) => {
+        if (loadingUsers || !usersHasMore) return;
+        setLoadingUsers(true);
+        try {
+            const res = await fetch(`/messenger/users?page=${page}`);
+            if (res.ok) {
+                const data = await res.json();
+                setAllUsers((prev) => {
+                    const existing = new Set(prev.map((u) => u.id));
+                    const newUsers = data.users.filter((u: UserType) => !existing.has(u.id));
+                    return [...prev, ...newUsers];
+                });
+                setUsersHasMore(data.has_more);
+                if (data.has_more) setUsersPage(page + 1);
+            }
+        } finally {
+            setLoadingUsers(false);
+        }
+    }, [loadingUsers, usersHasMore]);
+
+    const fetchConversations = useCallback(async (page: number) => {
+        if (loadingConvs || !convHasMore) return;
+        setLoadingConvs(true);
+        try {
+            const res = await fetch(`/messenger/conversations?page=${page}`);
+            if (res.ok) {
+                const data = await res.json();
+                setConversations((prev) => {
+                    const existing = new Set(prev.map((c) => c.id));
+                    const newConvs = data.conversations.filter((c: ConversationType) => !existing.has(c.id));
+                    return [...prev, ...newConvs];
+                });
+                setConvHasMore(data.has_more);
+                if (data.has_more) setConvPage(page + 1);
+            }
+        } finally {
+            setLoadingConvs(false);
+        }
+    }, [loadingConvs, convHasMore]);
+
+    // IntersectionObserver for infinite scroll
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting) {
+                    fetchUsers(usersPage);
+                    fetchConversations(convPage);
+                }
+            },
+            { root: listRef.current, threshold: 0.1 },
+        );
+
+        const sentinel = document.getElementById('chat-list-sentinel');
+        if (sentinel) observer.observe(sentinel);
+
+        return () => observer.disconnect();
+    }, [usersPage, convPage, fetchUsers, fetchConversations]);
 
     const createConversation = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -171,7 +243,7 @@ export default function Messenger({ conversations, users, activeConversation, me
             .filter((c) => c.is_group)
             .map((conv) => ({ kind: 'group', conv, sortKey: new Date(conv.updated_at).getTime() }));
 
-        const dms: Item[] = users.map((user) => {
+        const dms: Item[] = allUsers.map((user) => {
             const conv = conversations.find((c) => !c.is_group && c.participants.some((p) => p.id === user.id)) ?? null;
             return { kind: 'dm', user, conv, sortKey: conv ? new Date(conv.updated_at).getTime() : -1 };
         });
@@ -182,7 +254,7 @@ export default function Messenger({ conversations, users, activeConversation, me
         );
 
         return [...withConv, ...withoutConv];
-    }, [conversations, users]);
+    }, [conversations, allUsers]);
 
     const filteredList = useMemo(() => {
         const q = search.toLowerCase();
@@ -228,22 +300,81 @@ export default function Messenger({ conversations, users, activeConversation, me
                     </div>
 
                     {/* Unified list */}
-                    <div className="flex-1 overflow-y-auto px-2 py-1">
-                        {filteredList.length === 0 ? (
+                    <div ref={listRef} className="flex-1 overflow-y-auto px-2 py-1">
+                        {filteredList.length === 0 && !loadingUsers && !loadingConvs ? (
                             <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
                                 <MessageCircle className="text-muted-foreground/40 h-8 w-8" />
                                 <p className="text-muted-foreground text-sm">No results</p>
                             </div>
                         ) : (
-                            filteredList.map((item) => {
-                                if (item.kind === 'group') {
-                                    const conv = item.conv;
-                                    const isActive = activeConversation?.id === conv.id;
-                                    const unread = conv.unread_count;
+                            <>
+                                {filteredList.map((item) => {
+                                    if (item.kind === 'group') {
+                                        const conv = item.conv;
+                                        const isActive = activeConversation?.id === conv.id;
+                                        const unread = conv.unread_count;
+                                        return (
+                                            <button
+                                                key={`group-${conv.id}`}
+                                                onClick={() => router.visit(`/messenger/${conv.id}`, { preserveScroll: true })}
+                                                className={cn(
+                                                    'flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition',
+                                                    isActive
+                                                        ? 'bg-blue-600/10 ring-1 ring-blue-600/15 dark:bg-blue-400/10 dark:ring-blue-400/20'
+                                                        : 'hover:bg-muted/70 dark:hover:bg-slate-800/60',
+                                                )}
+                                            >
+                                                <div className="relative shrink-0">
+                                                    <div
+                                                        className={cn(
+                                                            'flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-white',
+                                                            avatarColor(conv.id),
+                                                        )}
+                                                    >
+                                                        <Users className="h-5 w-5" />
+                                                    </div>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-baseline justify-between gap-1">
+                                                        <span className={cn('truncate text-sm', unread > 0 ? 'font-bold' : 'font-semibold')}>
+                                                            {conv.name ?? 'Group Chat'}
+                                                        </span>
+                                                        {conv.latest_message && (
+                                                            <span className="text-muted-foreground shrink-0 text-[11px]">
+                                                                {formatTime(conv.latest_message.created_at)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        <p
+                                                            className={cn(
+                                                                'truncate text-xs',
+                                                                unread > 0 ? 'text-foreground font-semibold' : 'text-muted-foreground',
+                                                            )}
+                                                        >
+                                                            {conv.latest_message
+                                                                ? `${conv.latest_message.user.id === auth.user.id ? 'You: ' : `${conv.latest_message.user.name}: `}${conv.latest_message.body}`
+                                                                : 'No messages yet'}
+                                                        </p>
+                                                        {unread > 0 && (
+                                                            <span className="ml-auto flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white shadow-sm dark:bg-blue-500">
+                                                                {unread > 99 ? '99+' : unread}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        );
+                                    }
+
+                                    const { user, conv } = item;
+                                    const isActive = conv ? activeConversation?.id === conv.id : false;
+                                    const unread = conv?.unread_count ?? 0;
+                                    const online = isOnline(user.id);
                                     return (
                                         <button
-                                            key={`group-${conv.id}`}
-                                            onClick={() => router.visit(`/messenger/${conv.id}`, { preserveScroll: true })}
+                                            key={`user-${user.id}`}
+                                            onClick={() => (conv ? router.visit(`/messenger/${conv.id}`, { preserveScroll: true }) : startDm(user.id))}
                                             className={cn(
                                                 'flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition',
                                                 isActive
@@ -255,18 +386,25 @@ export default function Messenger({ conversations, users, activeConversation, me
                                                 <div
                                                     className={cn(
                                                         'flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-white',
-                                                        avatarColor(conv.id),
+                                                        avatarColor(user.id),
                                                     )}
                                                 >
-                                                    <Users className="h-5 w-5" />
+                                                    {getInitials(user.name)}
                                                 </div>
+                                                <span
+                                                    className={cn(
+                                                        'border-background absolute right-0.5 bottom-0.5 h-3.5 w-3.5 rounded-full border-2',
+                                                        online ? 'bg-green-500' : 'bg-zinc-400',
+                                                    )}
+                                                />
                                             </div>
+
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex items-baseline justify-between gap-1">
                                                     <span className={cn('truncate text-sm', unread > 0 ? 'font-bold' : 'font-semibold')}>
-                                                        {conv.name ?? 'Group Chat'}
+                                                        {user.name}
                                                     </span>
-                                                    {conv.latest_message && (
+                                                    {conv?.latest_message && (
                                                         <span className="text-muted-foreground shrink-0 text-[11px]">
                                                             {formatTime(conv.latest_message.created_at)}
                                                         </span>
@@ -279,9 +417,11 @@ export default function Messenger({ conversations, users, activeConversation, me
                                                             unread > 0 ? 'text-foreground font-semibold' : 'text-muted-foreground',
                                                         )}
                                                     >
-                                                        {conv.latest_message
-                                                            ? `${conv.latest_message.user.id === auth.user.id ? 'You: ' : `${conv.latest_message.user.name}: `}${conv.latest_message.body}`
-                                                            : 'No messages yet'}
+                                                        {conv?.latest_message
+                                                            ? `${conv.latest_message.user.id === auth.user.id ? 'You: ' : ''}${conv.latest_message.body}`
+                                                            : online
+                                                              ? 'Active now'
+                                                              : 'Say hi!'}
                                                     </p>
                                                     {unread > 0 && (
                                                         <span className="ml-auto flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white shadow-sm dark:bg-blue-500">
@@ -292,75 +432,16 @@ export default function Messenger({ conversations, users, activeConversation, me
                                             </div>
                                         </button>
                                     );
-                                }
+                                })}
 
-                                // DM user row
-                                const { user, conv } = item;
-                                const isActive = conv ? activeConversation?.id === conv.id : false;
-                                const unread = conv?.unread_count ?? 0;
-                                const online = isOnline(user.id);
-                                return (
-                                    <button
-                                        key={`user-${user.id}`}
-                                        onClick={() => (conv ? router.visit(`/messenger/${conv.id}`, { preserveScroll: true }) : startDm(user.id))}
-                                        className={cn(
-                                            'flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition',
-                                            isActive
-                                                ? 'bg-blue-600/10 ring-1 ring-blue-600/15 dark:bg-blue-400/10 dark:ring-blue-400/20'
-                                                : 'hover:bg-muted/70 dark:hover:bg-slate-800/60',
-                                        )}
-                                    >
-                                        <div className="relative shrink-0">
-                                            <div
-                                                className={cn(
-                                                    'flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-white',
-                                                    avatarColor(user.id),
-                                                )}
-                                            >
-                                                {getInitials(user.name)}
-                                            </div>
-                                            <span
-                                                className={cn(
-                                                    'border-background absolute right-0.5 bottom-0.5 h-3.5 w-3.5 rounded-full border-2',
-                                                    online ? 'bg-green-500' : 'bg-zinc-400',
-                                                )}
-                                            />
-                                        </div>
+                                {(loadingUsers || loadingConvs) && (
+                                    <div className="flex items-center justify-center py-4">
+                                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                    </div>
+                                )}
 
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex items-baseline justify-between gap-1">
-                                                <span className={cn('truncate text-sm', unread > 0 ? 'font-bold' : 'font-semibold')}>
-                                                    {user.name}
-                                                </span>
-                                                {conv?.latest_message && (
-                                                    <span className="text-muted-foreground shrink-0 text-[11px]">
-                                                        {formatTime(conv.latest_message.created_at)}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <p
-                                                    className={cn(
-                                                        'truncate text-xs',
-                                                        unread > 0 ? 'text-foreground font-semibold' : 'text-muted-foreground',
-                                                    )}
-                                                >
-                                                    {conv?.latest_message
-                                                        ? `${conv.latest_message.user.id === auth.user.id ? 'You: ' : ''}${conv.latest_message.body}`
-                                                        : online
-                                                          ? 'Active now'
-                                                          : 'Say hi!'}
-                                                </p>
-                                                {unread > 0 && (
-                                                    <span className="ml-auto flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white shadow-sm dark:bg-blue-500">
-                                                        {unread > 99 ? '99+' : unread}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </button>
-                                );
-                            })
+                                <div id="chat-list-sentinel" className="h-1" />
+                            </>
                         )}
                     </div>
                 </div>
@@ -439,7 +520,7 @@ export default function Messenger({ conversations, users, activeConversation, me
                             {selectedUserIds.length > 0 && (
                                 <div className="mb-3 flex flex-wrap gap-1.5">
                                     {selectedUserIds.map((id) => {
-                                        const u = users.find((x) => x.id === id);
+                                        const u = allUsers.find((x) => x.id === id);
                                         return u ? (
                                             <span
                                                 key={id}
@@ -456,7 +537,7 @@ export default function Messenger({ conversations, users, activeConversation, me
                             )}
 
                             <div className="border-border max-h-52 overflow-y-auto rounded-xl border">
-                                {users
+                                {allUsers
                                     .filter((u) => !selectedUserIds.includes(u.id) && u.name.toLowerCase().includes(newChatSearch.toLowerCase()))
                                     .map((u) => (
                                         <button
@@ -485,7 +566,7 @@ export default function Messenger({ conversations, users, activeConversation, me
                                         </button>
                                     ))}
 
-                                {users.filter((u) => !selectedUserIds.includes(u.id) && u.name.toLowerCase().includes(newChatSearch.toLowerCase()))
+                                {allUsers.filter((u) => !selectedUserIds.includes(u.id) && u.name.toLowerCase().includes(newChatSearch.toLowerCase()))
                                     .length === 0 && <p className="text-muted-foreground py-6 text-center text-sm">No users found</p>}
                             </div>
 
