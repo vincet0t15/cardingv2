@@ -18,8 +18,8 @@ class ConversationMessageController extends Controller
         );
 
         $request->validate([
-            'body' => ['required_if:file,', 'string', 'max:5000'],
-            'file' => ['nullable', 'file', 'max:10240'], // 10MB max
+            'body' => ['required_without:file', 'nullable', 'string', 'max:5000'],
+            'file' => ['required_without:body', 'nullable', 'file', 'max:10240'], // 10MB max
         ]);
 
         $data = [
