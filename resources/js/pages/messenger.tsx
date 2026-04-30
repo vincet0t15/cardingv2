@@ -248,6 +248,10 @@ export default function Messenger({ conversations, users, activeConversation, me
             }
         });
 
+        ch.listen('ConversationMessageDeleted', (event: { message_id: number }) => {
+            setMessages((prev) => prev.filter((m) => m.id !== event.message_id));
+        });
+
         ch.listenForWhisper('typing', (event: { userId: number; name: string }) => {
             if (event.userId === auth.user.id) return;
             setTypingUsers((prev) => ({ ...prev, [event.userId]: event.name }));
@@ -321,6 +325,17 @@ export default function Messenger({ conversations, users, activeConversation, me
         }
 
         setSending(false);
+    };
+
+    const deleteMessage = async (messageId: number) => {
+        if (!activeConversation) return;
+        // Optimistically remove from UI
+        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+        const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+        await fetch(`/messenger/${activeConversation.id}/messages/${messageId}`, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': token ?? '' },
+        });
     };
 
     const createConversation = async (e: React.FormEvent) => {
@@ -689,6 +704,7 @@ export default function Messenger({ conversations, users, activeConversation, me
                                                         {isMine && (
                                                             <button
                                                                 type="button"
+                                                                onClick={() => deleteMessage(message.id)}
                                                                 className="rounded-full p-1 text-zinc-400 transition hover:text-red-500"
                                                                 title="Remove"
                                                             >

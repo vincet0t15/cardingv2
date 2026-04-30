@@ -2,7 +2,7 @@ import { type OpenChat, useChatContext } from '@/contexts/chat-context';
 import { cn } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
-import { Eye, Minus, Paperclip, Send, Users, X } from 'lucide-react';
+import { CornerUpLeft, Eye, Minus, Paperclip, Send, Trash2, Users, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 interface MessageType {
@@ -45,7 +45,7 @@ interface Props {
 }
 
 export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
-    const { auth } = usePage().props as { auth: { user: { id: number; name: string } } };
+    const { auth } = usePage().props as unknown as { auth: { user: { id: number; name: string } } };
     const { closeChat, toggleMinimize, setConversation } = useChatContext();
     const displayName = chat.isGroup ? (chat.conversation?.name ?? 'Group Chat') : (chat.user?.name ?? '');
     const displayId = chat.isGroup ? (chat.conversation?.id ?? 0) : (chat.user?.id ?? 0);
