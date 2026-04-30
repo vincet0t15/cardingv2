@@ -1,6 +1,6 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { CornerUpLeft, FileText, Image, MoreHorizontal, Paperclip, Trash2 } from 'lucide-react';
+import { CornerUpLeft, Download, FileText, MoreHorizontal, Paperclip, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 const AVATAR_COLORS = ['bg-sky-500', 'bg-violet-500', 'bg-emerald-500', 'bg-rose-500', 'bg-amber-500', 'bg-cyan-500', 'bg-fuchsia-500'];
@@ -27,6 +27,17 @@ function formatFileSize(bytes: number | null): string {
     if (!bytes) return '';
     if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
     return `${(bytes / 1024).toFixed(0)} KB`;
+}
+
+function downloadFile(url: string, fileName: string) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
 
 interface MessageType {
@@ -68,7 +79,6 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete 
     });
 
     const isImage = msg.mime_type ? msg.mime_type.startsWith('image/') : false;
-    const isPdf = msg.mime_type === 'application/pdf';
 
     return (
         <div
@@ -122,22 +132,20 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete 
                                     className="block max-h-32 w-auto rounded-lg object-cover"
                                 />
                             </a>
-                        ) : msg.file_path && isPdf ? (
-                            <div className="flex items-center gap-2">
+                        ) : msg.file_path ? (
+                            <a
+                                href={storageUrl(msg.file_path)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                                download={msg.file_name ?? undefined}
+                            >
                                 <FileText className="h-4 w-4 shrink-0 opacity-70" />
                                 <div className="min-w-0 max-w-[160px]">
                                     <p className="truncate text-xs font-medium">{msg.file_name}</p>
                                     <p className="truncate text-[10px] opacity-60">{formatFileSize(msg.file_size)}</p>
                                 </div>
-                            </div>
-                        ) : msg.file_path ? (
-                            <div className="flex items-center gap-2">
-                                <Paperclip className="h-4 w-4 shrink-0 opacity-70" />
-                                <div className="min-w-0 max-w-[160px]">
-                                    <p className="truncate text-xs font-medium">{msg.file_name}</p>
-                                    <p className="truncate text-[10px] opacity-60">{formatFileSize(msg.file_size)}</p>
-                                </div>
-                            </div>
+                            </a>
                         ) : null}
                         {msg.body && <span>{msg.body}</span>}
                     </div>
@@ -159,6 +167,15 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete 
                             sideOffset={4}
                             className="w-28 min-w-[110px] border-zinc-100 p-1 shadow-md"
                         >
+                            {msg.file_path && (
+                                <DropdownMenuItem
+                                    onClick={() => downloadFile(storageUrl(msg.file_path), msg.file_name ?? 'file')}
+                                    className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
+                                >
+                                    <Download className="h-3 w-3 opacity-70" />
+                                    <span>Download</span>
+                                </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem
                                 onClick={() => onReply(msg)}
                                 className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
