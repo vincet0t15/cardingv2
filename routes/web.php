@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\ConversationController;
+use App\Http\Controllers\ConversationMessageController;
 use App\Http\Controllers\AdjustmentController;
 use App\Http\Controllers\AdjustmentTypeController;
 use App\Http\Controllers\AuditLogController;
@@ -36,6 +38,7 @@ use App\Http\Controllers\SalaryController;
 use App\Http\Controllers\SourceOfFundCodeController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierTransactionController;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -344,6 +347,17 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
     Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
     Route::post('notifications/{notification}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-as-read');
     Route::post('notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+
+    // MESSENGER
+    Route::get('messenger', [ConversationController::class, 'index'])->name('messenger.index');
+    Route::get('messenger/recent', [ConversationController::class, 'recent'])->name('messenger.recent');
+    Route::post('messenger/conversations', [ConversationController::class, 'store'])->name('messenger.conversations.store');
+    Route::get('messenger/{conversation}', [ConversationController::class, 'show'])->name('messenger.show');
+    Route::post('messenger/{conversation}/messages', [ConversationMessageController::class, 'store'])->name('messenger.messages.store');
+    Route::post('messenger/{conversation}/read', [ConversationMessageController::class, 'markRead'])->name('messenger.messages.read');
+
+    // Broadcasting auth (inside web+auth middleware so session/CSRF work)
+    Broadcast::routes();
 });
 
 require __DIR__ . '/settings.php';

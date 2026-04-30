@@ -56,6 +56,18 @@ class User extends Authenticatable
         return $this->hasMany(Notification::class);
     }
 
+    public function messages()
+    {
+        return $this->hasMany(Message::class);
+    }
+
+    public function conversations()
+    {
+        return $this->belongsToMany(Conversation::class)
+            ->withPivot('last_read_at')
+            ->withTimestamps();
+    }
+
     public function employee()
     {
         return $this->hasOne(Employee::class);
