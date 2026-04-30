@@ -353,6 +353,7 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
     Route::get('messenger/recent', [ConversationController::class, 'recent'])->name('messenger.recent');
     Route::post('messenger/conversations', [ConversationController::class, 'store'])->name('messenger.conversations.store');
     Route::get('messenger/{conversation}', [ConversationController::class, 'show'])->name('messenger.show');
+    Route::get('messenger/{conversation}/messages', [ConversationController::class, 'getMessages'])->name('messenger.messages.index');
     Route::post('messenger/{conversation}/messages', [ConversationMessageController::class, 'store'])->name('messenger.messages.store');
     Route::post('messenger/{conversation}/read', [ConversationMessageController::class, 'markRead'])->name('messenger.messages.read');
 

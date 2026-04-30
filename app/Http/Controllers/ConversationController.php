@@ -118,6 +118,28 @@ class ConversationController extends Controller
             ->get();
     }
 
+    public function getMessages(Conversation $conversation)
+    {
+        abort_unless(
+            $conversation->participants()->where('user_id', auth()->id())->exists(),
+            403
+        );
+
+        $messages = $conversation->messages()
+            ->with('user:id,name')
+            ->latest()
+            ->take(50)
+            ->get()
+            ->reverse()
+            ->values();
+
+        $conversation->participants()->updateExistingPivot(auth()->id(), [
+            'last_read_at' => now(),
+        ]);
+
+        return response()->json(['messages' => $messages]);
+    }
+
     public function recent()
     {
         $userId = auth()->id();

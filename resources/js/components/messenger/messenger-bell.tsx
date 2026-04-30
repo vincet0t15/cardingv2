@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useChatContext } from '@/contexts/chat-context';
 import { cn } from '@/lib/utils';
 import { router, usePage } from '@inertiajs/react';
 import { Edit, MessageCircle, Search, Users } from 'lucide-react';
@@ -61,6 +62,7 @@ function formatTime(dateStr: string): string {
 
 export function MessengerBell() {
     const { auth } = usePage().props as { auth: { user: UserType } };
+    const { openChat } = useChatContext();
     const [isOpen, setIsOpen] = useState(false);
     const [conversations, setConversations] = useState<ConversationType[]>([]);
     const [users, setUsers] = useState<UserType[]>([]);
@@ -141,18 +143,9 @@ export function MessengerBell() {
         });
     }, [mergedList, search, filter]);
 
-    const startDm = async (userId: number) => {
+    const openDm = (user: UserType, conv: ConversationType | null) => {
         setIsOpen(false);
-        const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
-        const res = await fetch('/messenger/conversations', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token ?? '' },
-            body: JSON.stringify({ user_ids: [userId], is_group: false }),
-        });
-        if (res.ok) {
-            const { id } = await res.json();
-            router.visit(`/messenger/${id}`);
-        }
+        openChat(user, conv);
     };
 
     return (
@@ -299,7 +292,7 @@ export function MessengerBell() {
                             return (
                                 <button
                                     key={`user-${user.id}`}
-                                    onClick={() => (conv ? (setIsOpen(false), router.visit(`/messenger/${conv.id}`)) : startDm(user.id))}
+                                    onClick={() => openDm(user, conv)}
                                     className="hover:bg-muted/60 dark:hover:bg-muted/20 flex w-full items-center gap-3 px-4 py-2.5 text-left transition"
                                 >
                                     <div className="relative shrink-0">
