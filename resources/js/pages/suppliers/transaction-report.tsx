@@ -1,10 +1,9 @@
 import PrintFFooter from '@/components/print-footer';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Supplier, SupplierTransaction } from '@/types/supplier';
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { Printer } from 'lucide-react';
 
 interface Props {
     supplier: Supplier;
@@ -21,143 +20,166 @@ const formatCurrency = (v: number) => new Intl.NumberFormat('en-PH', { style: 'c
 
 export default function SupplierTransactionReport({ supplier, transactions, search, year, month }: Props) {
     const totals = transactions.reduce(
-        (acc, txn) => {
-            return {
-                gross: acc.gross + txn.gross,
-                ewt: acc.ewt + txn.ewt,
-                vat: acc.vat + txn.vat,
-                net: acc.net + txn.net_amount,
-            };
-        },
+        (acc, txn) => ({
+            gross: acc.gross + txn.gross,
+            ewt: acc.ewt + txn.ewt,
+            vat: acc.vat + txn.vat,
+            net: acc.net + txn.net_amount,
+        }),
         { gross: 0, ewt: 0, vat: 0, net: 0 },
     );
 
+    const periodLabel = year && month ? `${MONTH_NAMES[parseInt(month, 10) - 1]} ${year}` : year ? `Year ${year}` : 'All Months';
+
+    const currentDate = new Date().toLocaleDateString('en-PH', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    });
+
     return (
-        <div className="mx-auto min-h-screen bg-white p-4 font-sans text-[12px] leading-6 text-black print:max-w-none print:p-0">
+        <div className="mx-auto bg-white p-4 font-sans text-[11px] leading-[1.3] text-black print:max-w-none print:p-0">
             <Head title={`${supplier.name} — Transaction Report`} />
 
-            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between print:hidden">
-                <div className="flex flex-wrap items-center gap-2">
-                    <Link
-                        href={route('suppliers.transactions.show', {
-                            supplier: supplier.id,
-                            ...(search ? { search } : {}),
-                            ...(year ? { year } : {}),
-                            ...(month ? { month } : {}),
-                        })}
-                    >
-                        <Button variant="outline" size="sm">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Transactions
-                        </Button>
-                    </Link>
-                    <div>
-                        <h1 className="text-lg font-semibold">Supplier Transaction Report</h1>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-                            <span>{year ? `Year: ${year}` : 'All years'}</span>
-                            <span>{month ? `Month: ${MONTH_NAMES[parseInt(month, 10) - 1]}` : 'All months'}</span>
-                            {search && <span>Search: {search}</span>}
-                        </div>
-                    </div>
-                </div>
+            <div className="mb-4 flex justify-end print:hidden">
                 <Button onClick={() => window.print()}>
                     <Printer className="mr-2 h-4 w-4" />
                     Print Report
                 </Button>
             </div>
 
-            <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4 print:border-0 print:bg-transparent">
-                <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                        <p className="text-xs tracking-[0.18em] text-slate-500 uppercase">Supplier</p>
-                        <p className="font-semibold">{supplier.name}</p>
-                        {supplier.address && <p className="text-sm text-slate-700">{supplier.address}</p>}
-                        {supplier.contact_number && <p className="text-sm text-slate-700">{supplier.contact_number}</p>}
-                        {supplier.email && <p className="text-sm text-slate-700">{supplier.email}</p>}
-                    </div>
-                    <div>
-                        <p className="text-xs tracking-[0.18em] text-slate-500 uppercase">Report generated</p>
-                        <p className="font-semibold">{new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                        <p className="text-sm text-slate-700">Total transactions: {transactions.length}</p>
-                        <p className="text-sm text-slate-700">Total net amount: {formatCurrency(totals.net)}</p>
-                    </div>
-                </div>
-            </div>
+            <div className="mx-auto w-[8in] print:w-full">
+                <table className="w-full border-0">
+                    <thead className="hidden print:table-header-group">
+                        <tr>
+                            <td>
+                                <div className="h-[9mm]" />
+                            </td>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <div className="mb-5 text-center">
+                                    <h2
+                                        className="m-0 text-[16px] font-bold uppercase"
+                                        style={{
+                                            fontFamily: '"Old English Text MT", "Times New Roman", serif',
+                                        }}
+                                    >
+                                        SUPPLIER TRANSACTION REPORT
+                                    </h2>
+                                    <p className="m-[2px_0] text-[11px] font-semibold">{supplier.name}</p>
+                                    {supplier.address && <p className="m-0 text-[10px]">{supplier.address}</p>}
+                                    {supplier.contact_number && <p className="m-0 text-[10px]">{supplier.contact_number}</p>}
+                                    {supplier.email && <p className="m-0 text-[10px]">{supplier.email}</p>}
+                                    <p className="m-0 text-[9px] text-gray-500">
+                                        Period: {periodLabel} • Generated: {currentDate}
+                                    </p>
+                                </div>
 
-            {transactions.length === 0 ? (
-                <Card>
-                    <CardContent className="py-16 text-center">
-                        <p className="text-sm font-medium">No transactions found for this supplier.</p>
-                    </CardContent>
-                </Card>
-            ) : (
-                <Card className="overflow-hidden border-black/10 print:border-black/10">
-                    <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full border-collapse text-left text-[11px] print:text-[10px]">
-                                <thead>
-                                    <tr className="bg-slate-100 text-slate-700">
-                                        <th className="border border-black px-2 py-2">PR Date</th>
-                                        <th className="border border-black px-2 py-2">PR No.</th>
-                                        <th className="border border-black px-2 py-2">Particulars</th>
-                                        <th className="border border-black px-2 py-2">Qty / Period</th>
-                                        <th className="border border-black px-2 py-2">Gross</th>
-                                        <th className="border border-black px-2 py-2">EWT</th>
-                                        <th className="border border-black px-2 py-2">VAT</th>
-                                        <th className="border border-black px-2 py-2">Net</th>
-                                        <th className="border border-black px-2 py-2">Earmark</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {transactions.map((txn) => (
-                                        <tr key={txn.id} className="odd:bg-white even:bg-slate-50">
-                                            <td className="border border-black px-2 py-1 align-top">{formatDate(txn.pr_date)}</td>
-                                            <td className="border border-black px-2 py-1 align-top">{txn.pr_no}</td>
-                                            <td className="border border-black px-2 py-1 align-top">{txn.particulars || '—'}</td>
-                                            <td className="border border-black px-2 py-1 align-top">{txn.qty_period_covered || '—'}</td>
-                                            <td className="border border-black px-2 py-1 text-right align-top tabular-nums">
-                                                {formatCurrency(txn.gross)}
-                                            </td>
-                                            <td className="border border-black px-2 py-1 text-right align-top tabular-nums">
-                                                {formatCurrency(txn.ewt)}
-                                            </td>
-                                            <td className="border border-black px-2 py-1 text-right align-top tabular-nums">
-                                                {formatCurrency(txn.vat)}
-                                            </td>
-                                            <td className="border border-black px-2 py-1 text-right align-top font-semibold text-green-600 tabular-nums">
-                                                {formatCurrency(txn.net_amount)}
-                                            </td>
-                                            <td className="border border-black px-2 py-1 align-top">{txn.earmark || '—'}</td>
+                                <table className="mb-4 w-full border-collapse border border-black text-[10px]">
+                                    <tbody>
+                                        <tr>
+                                            <td className="border border-black px-2 py-1 font-bold">Total Transactions</td>
+                                            <td className="border border-black px-2 py-1 text-right">{transactions.length}</td>
+                                            <td className="border border-black px-2 py-1 font-bold">Total Net</td>
+                                            <td className="border border-black px-2 py-1 text-right">{formatCurrency(totals.net)}</td>
                                         </tr>
-                                    ))}
-                                </tbody>
-                                <tfoot>
-                                    <tr className="bg-slate-100 font-semibold">
-                                        <td className="border border-black px-2 py-2 text-right" colSpan={4}>
-                                            Totals
-                                        </td>
-                                        <td className="border border-black px-2 py-2 text-right tabular-nums">{formatCurrency(totals.gross)}</td>
-                                        <td className="border border-black px-2 py-2 text-right tabular-nums">{formatCurrency(totals.ewt)}</td>
-                                        <td className="border border-black px-2 py-2 text-right tabular-nums">{formatCurrency(totals.vat)}</td>
-                                        <td className="border border-black px-2 py-2 text-right tabular-nums">{formatCurrency(totals.net)}</td>
-                                        <td className="border border-black px-2 py-2">&nbsp;</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+                                    </tbody>
+                                </table>
 
-            <div className="mt-6 print:mt-12">
-                <PrintFFooter />
+                                <table className="w-full border-collapse border border-black text-[10px]">
+                                    <thead>
+                                        <tr className="bg-gray-100">
+                                            <th className="border border-black px-2 py-1 text-left text-[10px] font-semibold">PR Date</th>
+                                            <th className="border border-black px-2 py-1 text-left text-[10px] font-semibold">PR No.</th>
+                                            <th className="border border-black px-2 py-1 text-left text-[10px] font-semibold">Particulars</th>
+                                            <th className="border border-black px-2 py-1 text-left text-[10px] font-semibold">Qty / Period</th>
+                                            <th className="border border-black px-2 py-1 text-right text-[10px] font-semibold">Gross</th>
+                                            <th className="border border-black px-2 py-1 text-right text-[10px] font-semibold">EWT</th>
+                                            <th className="border border-black px-2 py-1 text-right text-[10px] font-semibold">VAT</th>
+                                            <th className="border border-black px-2 py-1 text-right text-[10px] font-semibold">Net</th>
+                                            <th className="border border-black px-2 py-1 text-left text-[10px] font-semibold">Earmark</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {transactions.length > 0 ? (
+                                            transactions.map((txn, index) => (
+                                                <tr key={txn.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                                    <td className="border border-black px-2 py-1 text-[10px]">{formatDate(txn.pr_date)}</td>
+                                                    <td className="border border-black px-2 py-1 text-[10px]">{txn.pr_no}</td>
+                                                    <td className="border border-black px-2 py-1 text-[10px]">{txn.particulars || '—'}</td>
+                                                    <td className="border border-black px-2 py-1 text-[10px]">{txn.qty_period_covered || '—'}</td>
+                                                    <td className="border border-black px-2 py-1 text-right text-[10px] tabular-nums">
+                                                        {formatCurrency(txn.gross)}
+                                                    </td>
+                                                    <td className="border border-black px-2 py-1 text-right text-[10px] tabular-nums">
+                                                        {formatCurrency(txn.ewt)}
+                                                    </td>
+                                                    <td className="border border-black px-2 py-1 text-right text-[10px] tabular-nums">
+                                                        {formatCurrency(txn.vat)}
+                                                    </td>
+                                                    <td className="border border-black px-2 py-1 text-right text-[10px] tabular-nums">
+                                                        {formatCurrency(txn.net_amount)}
+                                                    </td>
+                                                    <td className="border border-black px-2 py-1 text-[10px]">{txn.earmark || '—'}</td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td
+                                                    colSpan={9}
+                                                    className="border border-black px-2 py-4 text-center text-[10px] text-gray-500 italic"
+                                                >
+                                                    No transactions found.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                    {transactions.length > 0 && (
+                                        <tfoot>
+                                            <tr className="bg-gray-100 font-bold">
+                                                <td className="border border-black px-2 py-1 text-right text-[10px]" colSpan={4}>
+                                                    TOTAL
+                                                </td>
+                                                <td className="border border-black px-2 py-1 text-right text-[10px] tabular-nums">
+                                                    {formatCurrency(totals.gross)}
+                                                </td>
+                                                <td className="border border-black px-2 py-1 text-right text-[10px] tabular-nums">
+                                                    {formatCurrency(totals.ewt)}
+                                                </td>
+                                                <td className="border border-black px-2 py-1 text-right text-[10px] tabular-nums">
+                                                    {formatCurrency(totals.vat)}
+                                                </td>
+                                                <td className="border border-black px-2 py-1 text-right text-[10px] tabular-nums">
+                                                    {formatCurrency(totals.net)}
+                                                </td>
+                                                <td className="border border-black px-2 py-1 text-[10px]">&nbsp;</td>
+                                            </tr>
+                                        </tfoot>
+                                    )}
+                                </table>
+
+                                <div className="mt-8 text-center text-[9px] text-gray-500">
+                                    <p>This is a computer-generated report and does not require a signature.</p>
+                                </div>
+
+                                <div className="mt-6">
+                                    <PrintFFooter />
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
             <style>{`
                 @media print {
-                    @page { margin: 10mm; size: auto; }
-                    body { margin: 0; -webkit-print-color-adjust: exact; }
-                    .print\\:hidden { display: none !important; }
+                    @page { margin: 0; size: auto; }
+                    body { margin: 0 10mm; -webkit-print-color-adjust: exact; }
+                    table { border-collapse: collapse; }
+                    td, th { padding: 4px 6px !important; font-size: 10px; page-break-inside: avoid; }
                 }
             `}</style>
         </div>

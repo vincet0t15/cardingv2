@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { PaginatedDataResponse } from '@/types/pagination';
 import { Supplier, SupplierTransaction } from '@/types/supplier';
@@ -294,80 +295,76 @@ export default function SupplierShow({ supplier, transactions, search: initialSe
                             </CardContent>
                         </Card>
                     ) : (
-                        <Card>
-                            <CardContent className="p-0">
-                                <div className="overflow-x-auto">
-                                    <table className="min-w-full table-auto text-sm">
-                                        <thead>
-                                            <tr className="bg-muted/40 text-left">
-                                                <th className="text-muted-foreground px-3 py-2 text-xs">PR Date</th>
-                                                <th className="text-muted-foreground px-3 py-2 text-xs">PR No.</th>
-                                                <th className="text-muted-foreground px-3 py-2 text-xs">Particulars</th>
-                                                <th className="text-muted-foreground px-3 py-2 text-right text-xs">Gross</th>
-                                                <th className="text-muted-foreground px-3 py-2 text-right text-xs">EWT</th>
-                                                <th className="text-muted-foreground px-3 py-2 text-right text-xs">VAT</th>
-                                                <th className="text-muted-foreground px-3 py-2 text-right text-xs">Net</th>
-                                                <th className="text-muted-foreground px-3 py-2 text-xs">Earmark</th>
-                                                <th className="text-muted-foreground px-3 py-2 text-xs">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {transactions.data.map((txn) => (
-                                                <tr key={txn.id} className="border-t">
-                                                    <td className="w-28 px-3 py-2 align-top">{formatDate(txn.pr_date)}</td>
-                                                    <td className="px-3 py-2 align-top">#{txn.pr_no}</td>
-                                                    <td className="max-w-xl truncate px-3 py-2 align-top">{txn.particulars || '—'}</td>
-                                                    <td className="px-3 py-2 text-right align-top tabular-nums">{formatCurrency(txn.gross)}</td>
-                                                    <td className="text-muted-foreground px-3 py-2 text-right align-top tabular-nums">
-                                                        - {formatCurrency(txn.ewt)}
-                                                    </td>
-                                                    <td className="px-3 py-2 text-right align-top tabular-nums">{formatCurrency(txn.vat)}</td>
-                                                    <td className="px-3 py-2 text-right align-top font-semibold text-green-600 tabular-nums">
-                                                        {formatCurrency(txn.net_amount)}
-                                                    </td>
-                                                    <td className="px-3 py-2 align-top">{txn.earmark || '—'}</td>
-                                                    <td className="px-3 py-2 align-top">
-                                                        <div className="flex items-center gap-1">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-7 w-7"
-                                                                onClick={() =>
-                                                                    router.get(
-                                                                        route('suppliers.transactions.print', {
-                                                                            supplier: supplier.id,
-                                                                            transaction: txn.id,
-                                                                        }),
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Printer className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-7 w-7"
-                                                                onClick={() => setEditingTransaction(txn)}
-                                                            >
-                                                                <PencilIcon className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="text-destructive hover:text-destructive h-7 w-7"
-                                                                onClick={() => setDeletingTransaction(txn)}
-                                                            >
-                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <div className="w-full overflow-hidden rounded-sm border shadow-sm">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-muted/40">
+                                        <TableHead className="text-muted-foreground px-3 py-2 text-xs">PR Date</TableHead>
+                                        <TableHead className="text-muted-foreground px-3 py-2 text-xs">PR No.</TableHead>
+                                        <TableHead className="text-muted-foreground px-3 py-2 text-xs">Particulars</TableHead>
+                                        <TableHead className="text-muted-foreground px-3 py-2 text-right text-xs">Gross</TableHead>
+                                        <TableHead className="text-muted-foreground px-3 py-2 text-right text-xs">EWT</TableHead>
+                                        <TableHead className="text-muted-foreground px-3 py-2 text-right text-xs">VAT</TableHead>
+                                        <TableHead className="text-muted-foreground px-3 py-2 text-right text-xs">Net</TableHead>
+                                        <TableHead className="text-muted-foreground px-3 py-2 text-xs">Earmark</TableHead>
+                                        <TableHead className="text-muted-foreground px-3 py-2 text-xs">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {transactions.data.map((txn) => (
+                                        <TableRow key={txn.id} className="border-t">
+                                            <TableCell className="w-28 px-3 py-2 align-top">{formatDate(txn.pr_date)}</TableCell>
+                                            <TableCell className="px-3 py-2 align-top">#{txn.pr_no}</TableCell>
+                                            <TableCell className="max-w-xl truncate px-3 py-2 align-top">{txn.particulars || '—'}</TableCell>
+                                            <TableCell className="px-3 py-2 text-right align-top tabular-nums">{formatCurrency(txn.gross)}</TableCell>
+                                            <TableCell className="text-muted-foreground px-3 py-2 text-right align-top tabular-nums">
+                                                - {formatCurrency(txn.ewt)}
+                                            </TableCell>
+                                            <TableCell className="px-3 py-2 text-right align-top tabular-nums">{formatCurrency(txn.vat)}</TableCell>
+                                            <TableCell className="px-3 py-2 text-right align-top font-semibold text-green-600 tabular-nums">
+                                                {formatCurrency(txn.net_amount)}
+                                            </TableCell>
+                                            <TableCell className="px-3 py-2 align-top">{txn.earmark || '—'}</TableCell>
+                                            <TableCell className="px-3 py-2 align-top">
+                                                <div className="flex items-center gap-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7"
+                                                        onClick={() =>
+                                                            router.get(
+                                                                route('suppliers.transactions.print', {
+                                                                    supplier: supplier.id,
+                                                                    transaction: txn.id,
+                                                                }),
+                                                            )
+                                                        }
+                                                    >
+                                                        <Printer className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7"
+                                                        onClick={() => setEditingTransaction(txn)}
+                                                    >
+                                                        <PencilIcon className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-destructive hover:text-destructive h-7 w-7"
+                                                        onClick={() => setDeletingTransaction(txn)}
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     )}
                 </div>
 
