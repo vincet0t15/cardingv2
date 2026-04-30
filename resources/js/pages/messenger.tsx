@@ -730,12 +730,12 @@ export default function Messenger({ conversations, users, activeConversation, me
                                                         <div
                                                             className={cn(
                                                                 'mb-0.5 flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs',
-                                                                isMine ? 'bg-blue-500/30 text-blue-100' : 'bg-muted text-muted-foreground',
+                                                                isMine ? 'bg-white/20 text-white' : 'bg-muted text-foreground',
                                                             )}
                                                         >
-                                                            <CornerUpLeft className="h-3 w-3 shrink-0 opacity-60" />
+                                                            <CornerUpLeft className="h-3 w-3 shrink-0" />
                                                             <span className="font-semibold">{message.reply_to.user.name}</span>
-                                                            <span className="truncate opacity-80">{message.reply_to.body ?? '📎 Attachment'}</span>
+                                                            <span className="truncate">{message.reply_to.body ?? '📎 Attachment'}</span>
                                                         </div>
                                                     )}
                                                     <div

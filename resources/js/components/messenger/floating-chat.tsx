@@ -380,13 +380,13 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                                                             className={cn(
                                                                 'mb-0.5 flex items-center gap-1 rounded-xl px-2 py-1 text-[11px]',
                                                                 isMe
-                                                                    ? 'bg-blue-500/20 text-blue-200'
-                                                                    : 'bg-zinc-200/70 text-zinc-500 dark:bg-zinc-700/60 dark:text-zinc-400',
+                                                                    ? 'bg-white/20 text-white'
+                                                                    : 'bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200',
                                                             )}
                                                         >
-                                                            <CornerUpLeft className="h-3 w-3 shrink-0 opacity-60" />
+                                                            <CornerUpLeft className="h-3 w-3 shrink-0" />
                                                             <span className="font-semibold">{msg.reply_to.user.name}:</span>
-                                                            <span className="truncate opacity-80">{msg.reply_to.body ?? '📎'}</span>
+                                                            <span className="truncate">{msg.reply_to.body ?? '📎'}</span>
                                                         </div>
                                                     )}
                                                     <div
