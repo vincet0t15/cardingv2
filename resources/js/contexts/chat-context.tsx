@@ -23,6 +23,7 @@ interface ChatContextType {
     openChats: OpenChat[];
     openChat: (user: ChatUser, conversation?: ChatConversation | null) => void;
     closeChat: (userId: number) => void;
+    closeAllChats: () => void;
     toggleMinimize: (userId: number) => void;
     focusChat: (userId: number) => void;
     setConversation: (userId: number, conversation: ChatConversation) => void;
@@ -52,6 +53,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         setOpenChats((prev) => prev.map((c) => (c.user.id === userId ? { ...c, minimized: !c.minimized } : c)));
     }, []);
 
+    const closeAllChats = useCallback(() => {
+        setOpenChats([]);
+    }, []);
+
     const focusChat = useCallback((userId: number) => {
         setOpenChats((prev) => {
             const index = prev.findIndex((c) => c.user.id === userId);
@@ -71,6 +76,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                 openChats,
                 openChat,
                 closeChat,
+                closeAllChats,
                 toggleMinimize,
                 focusChat,
                 setConversation,

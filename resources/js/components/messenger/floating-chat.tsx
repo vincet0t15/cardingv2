@@ -32,9 +32,10 @@ function csrfToken() {
 interface Props {
     chat: OpenChat;
     index: number;
+    extraRight?: number;
 }
 
-export function FloatingChat({ chat, index }: Props) {
+export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
     const { auth } = usePage().props as { auth: { user: { id: number; name: string } } };
     const { closeChat, toggleMinimize, setConversation } = useChatContext();
 
@@ -158,11 +159,11 @@ export function FloatingChat({ chat, index }: Props) {
     };
 
     // ── Right offset (stack windows) ─────────────────────────────────────────
-    // Right sidebar is ~256px; keep clear of it. Each window is 320px + 12px gap.
+    // Base right position plus optional extra offset for the chat rail.
     const WINDOW_WIDTH = 320;
     const GAP = 12;
     const BASE_RIGHT = 20; // px from right edge of viewport
-    const rightOffset = BASE_RIGHT + index * (WINDOW_WIDTH + GAP);
+    const rightOffset = BASE_RIGHT + extraRight + index * (WINDOW_WIDTH + GAP);
 
     return (
         <div
