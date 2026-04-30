@@ -1,7 +1,8 @@
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { router } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
-import { CornerUpLeft, Loader2, Paperclip, PictureInPicture2, PictureInPicture2Icon, Send, Trash2, Users, X } from 'lucide-react';
+import { CornerUpLeft, Loader2, MoreHorizontal, Paperclip, PictureInPicture2, PictureInPicture2Icon, Send, Trash2, Users, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConversationType, MessageType, UserType } from './message-types';
 
@@ -345,27 +346,38 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                                         </div>
                                     )}
 
-                                    {isMine && hoveredMessageId === message.id && (
-                                        <div className="mb-1 flex items-center gap-1">
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setReplyingTo(message);
-                                                    inputRef.current?.focus();
-                                                }}
-                                                className="text-muted-foreground hover:text-foreground rounded-full p-1 transition"
-                                                title="Reply"
-                                            >
-                                                <CornerUpLeft className="h-4 w-4" />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => deleteMessage(message.id)}
-                                                className="rounded-full p-1 text-zinc-400 transition hover:text-red-500"
-                                                title="Remove"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
+                                    {hoveredMessageId === message.id && isMine && (
+                                        <div className="mb-1">
+                                            <DropdownMenu modal={false}>
+                                                <DropdownMenuTrigger asChild>
+                                                    <button
+                                                        type="button"
+                                                        className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground/70 transition-colors hover:bg-muted"
+                                                    >
+                                                        <MoreHorizontal className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-28 min-w-[110px] p-1 shadow-md">
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setReplyingTo(message);
+                                                            inputRef.current?.focus();
+                                                        }}
+                                                        className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
+                                                    >
+                                                        <CornerUpLeft className="h-3 w-3 opacity-70" />
+                                                        <span>Reply</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator className="my-1 bg-border" />
+                                                    <DropdownMenuItem
+                                                        onClick={() => deleteMessage(message.id)}
+                                                        className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] text-red-500 focus:bg-red-50 focus:text-red-600"
+                                                    >
+                                                        <Trash2 className="h-3 w-3 opacity-70" />
+                                                        <span>Delete</span>
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </div>
                                     )}
 
@@ -378,13 +390,13 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                                         {message.reply_to && (
                                             <div
                                                 className={cn(
-                                                    'mb-0.5 flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs',
-                                                    isMine ? 'bg-white/20 text-white' : 'bg-muted text-foreground',
+                                                    'relative rounded-2xl px-3 pt-2 pb-5 text-[11px] leading-tight opacity-80',
+                                                    isMine ? 'mr-2 bg-white/20' : 'ml-2 bg-muted',
                                                 )}
                                             >
-                                                <CornerUpLeft className="h-3 w-3 shrink-0" />
-                                                <span className="font-semibold">{message.reply_to.user.name}</span>
-                                                <span className="truncate">{message.reply_to.body ?? '📎 Attachment'}</span>
+                                                <p className="max-w-[150px] truncate italic">
+                                                    {message.reply_to.body ?? '📎 Attachment'}
+                                                </p>
                                             </div>
                                         )}
                                         <div
@@ -475,18 +487,29 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                                     </div>
 
                                     {!isMine && hoveredMessageId === message.id && (
-                                        <div className="mb-1 flex items-center gap-1">
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setReplyingTo(message);
-                                                    inputRef.current?.focus();
-                                                }}
-                                                className="text-muted-foreground hover:text-foreground rounded-full p-1 transition"
-                                                title="Reply"
-                                            >
-                                                <CornerUpLeft className="h-4 w-4" />
-                                            </button>
+                                        <div className="mb-1">
+                                            <DropdownMenu modal={false}>
+                                                <DropdownMenuTrigger asChild>
+                                                    <button
+                                                        type="button"
+                                                        className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground/70 transition-colors hover:bg-muted"
+                                                    >
+                                                        <MoreHorizontal className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="start" className="w-28 min-w-[110px] p-1 shadow-md">
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setReplyingTo(message);
+                                                            inputRef.current?.focus();
+                                                        }}
+                                                        className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
+                                                    >
+                                                        <CornerUpLeft className="h-3 w-3 opacity-70" />
+                                                        <span>Reply</span>
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </div>
                                     )}
                                 </div>

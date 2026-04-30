@@ -113,7 +113,7 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete 
                     'group-hover:opacity-100 opacity-0',
                 )}
             >
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                         <button className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100">
                             <MoreHorizontal className="h-3.5 w-3.5" />
