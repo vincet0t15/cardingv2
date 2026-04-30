@@ -76,7 +76,7 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete 
                 </div>
             )}
 
-            <div className={cn('flex max-w-[80%] flex-col', isMe ? 'items-end' : 'items-start')}>
+            <div className={cn('relative flex max-w-[80%] flex-col', isMe ? 'items-end' : 'items-start')}>
                 {msg.reply_to && (
                     <div
                         className={cn(
@@ -90,62 +90,63 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete 
                     </div>
                 )}
 
-                <div
-                    className={cn(
-                        'relative z-10 -mt-4 rounded-[18px] px-4 py-2 text-[13px] shadow-sm transition-all',
-                        isMe
-                            ? 'rounded-br-none bg-[#5b3df5] text-white'
-                            : 'rounded-bl-none border border-zinc-100 bg-white text-zinc-800',
-                    )}
-                >
-                    {msg.body && <span>{msg.body}</span>}
+                {/* Bubble + aligned dropdown */}
+                <div className={cn('relative flex items-end gap-1', isMe ? 'flex-row-reverse' : 'flex-row')}>
+                    <div
+                        className={cn(
+                            'relative z-10 rounded-[18px] px-4 py-2 text-[13px] shadow-sm transition-all',
+                            isMe
+                                ? 'rounded-br-none bg-[#5b3df5] text-white'
+                                : 'rounded-bl-none border border-zinc-100 bg-white text-zinc-800',
+                        )}
+                    >
+                        {msg.body && <span>{msg.body}</span>}
+                    </div>
+
+                    {/* Dropdown — aligned to bubble top */}
+                    <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                className={cn(
+                                    'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-opacity duration-200 hover:bg-zinc-100',
+                                    'group-hover:opacity-100 opacity-0',
+                                )}
+                            >
+                                <MoreHorizontal className="h-3.5 w-3.5" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                            align={isMe ? 'end' : 'start'}
+                            sideOffset={4}
+                            className="w-28 min-w-[110px] border-zinc-100 p-1 shadow-md"
+                        >
+                            <DropdownMenuItem
+                                onClick={() => onReply(msg)}
+                                className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
+                            >
+                                <CornerUpLeft className="h-3 w-3 opacity-70" />
+                                <span>Reply</span>
+                            </DropdownMenuItem>
+                            {isMe && (
+                                <>
+                                    <DropdownMenuSeparator className="my-1 bg-zinc-100" />
+                                    <DropdownMenuItem
+                                        onClick={handleDelete}
+                                        className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] text-red-500 focus:bg-red-50 focus:text-red-600"
+                                    >
+                                        <Trash2 className="h-3 w-3 opacity-70" />
+                                        <span>Delete</span>
+                                    </DropdownMenuItem>
+                                </>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
 
                 <div className={cn('mt-1 flex gap-1.5 text-[10px] opacity-50', isMe ? 'mr-1' : 'ml-1')}>
                     <span>{formattedTime}</span>
                     {isMe && msg.seen_at && <span className="font-medium text-[#5b3df5]">Seen</span>}
                 </div>
-            </div>
-
-            <div
-                className={cn(
-                    'mt-2 transition-opacity duration-200',
-                    'group-hover:opacity-100 opacity-0',
-                )}
-            >
-                <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger asChild>
-                        <button className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100">
-                            <MoreHorizontal className="h-3.5 w-3.5" />
-                        </button>
-                    </DropdownMenuTrigger>
-
-                    <DropdownMenuContent
-                        align={isMe ? 'end' : 'start'}
-                        className="w-28 min-w-[110px] border-zinc-100 p-1 shadow-md"
-                    >
-                        <DropdownMenuItem
-                            onClick={() => onReply(msg)}
-                            className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
-                        >
-                            <CornerUpLeft className="h-3 w-3 opacity-70" />
-                            <span>Reply</span>
-                        </DropdownMenuItem>
-
-                        {isMe && (
-                            <>
-                                <DropdownMenuSeparator className="my-1 bg-zinc-100" />
-                                <DropdownMenuItem
-                                    onClick={handleDelete}
-                                    className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] text-red-500 focus:bg-red-50 focus:text-red-600"
-                                >
-                                    <Trash2 className="h-3 w-3 opacity-70" />
-                                    <span>Delete</span>
-                                </DropdownMenuItem>
-                            </>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
             </div>
         </div>
     );
