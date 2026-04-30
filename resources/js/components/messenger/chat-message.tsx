@@ -1,6 +1,6 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { CornerUpLeft, MoreHorizontal, Trash2 } from 'lucide-react';
+import { CornerUpLeft, FileText, Image, MoreHorizontal, Paperclip, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 const AVATAR_COLORS = ['bg-sky-500', 'bg-violet-500', 'bg-emerald-500', 'bg-rose-500', 'bg-amber-500', 'bg-cyan-500', 'bg-fuchsia-500'];
@@ -16,6 +16,17 @@ function getInitials(name: string) {
         .join('')
         .toUpperCase()
         .slice(0, 2);
+}
+
+function storageUrl(path: string | null): string {
+    if (!path) return '';
+    return new URL(`/storage/${path}`, window.location.origin).toString();
+}
+
+function formatFileSize(bytes: number | null): string {
+    if (!bytes) return '';
+    if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+    return `${(bytes / 1024).toFixed(0)} KB`;
 }
 
 interface MessageType {
@@ -56,6 +67,9 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete 
         minute: '2-digit',
     });
 
+    const isImage = msg.mime_type ? msg.mime_type.startsWith('image/') : false;
+    const isPdf = msg.mime_type === 'application/pdf';
+
     return (
         <div
             className={cn(
@@ -94,12 +108,37 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete 
                 <div className={cn('relative flex items-end gap-1', isMe ? 'flex-row-reverse' : 'flex-row')}>
                     <div
                         className={cn(
-                            'rounded-[18px] px-4 py-2 text-[13px] shadow-sm',
+                            'max-w-[220px] rounded-[18px] px-4 py-2 text-[13px] shadow-sm',
                             isMe
                                 ? 'rounded-br-none bg-[#5b3df5] text-white'
                                 : 'rounded-bl-none border border-zinc-100 bg-white text-zinc-800',
                         )}
                     >
+                        {msg.file_path && isImage ? (
+                            <a href={storageUrl(msg.file_path)} target="_blank" rel="noopener noreferrer">
+                                <img
+                                    src={storageUrl(msg.file_path)}
+                                    alt={msg.file_name ?? 'Image'}
+                                    className="block max-h-32 w-auto rounded-lg object-cover"
+                                />
+                            </a>
+                        ) : msg.file_path && isPdf ? (
+                            <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 shrink-0 opacity-70" />
+                                <div className="min-w-0 max-w-[160px]">
+                                    <p className="truncate text-xs font-medium">{msg.file_name}</p>
+                                    <p className="truncate text-[10px] opacity-60">{formatFileSize(msg.file_size)}</p>
+                                </div>
+                            </div>
+                        ) : msg.file_path ? (
+                            <div className="flex items-center gap-2">
+                                <Paperclip className="h-4 w-4 shrink-0 opacity-70" />
+                                <div className="min-w-0 max-w-[160px]">
+                                    <p className="truncate text-xs font-medium">{msg.file_name}</p>
+                                    <p className="truncate text-[10px] opacity-60">{formatFileSize(msg.file_size)}</p>
+                                </div>
+                            </div>
+                        ) : null}
                         {msg.body && <span>{msg.body}</span>}
                     </div>
 

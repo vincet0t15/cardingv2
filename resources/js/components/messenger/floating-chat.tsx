@@ -244,6 +244,9 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             setSelectedFile(null);
             setReplyingTo(null);
             if (fileInputRef.current) fileInputRef.current.value = '';
+        } else {
+            const error = await res.json().catch(() => null);
+            console.error('Send message error:', res.status, error);
         }
         setSending(false);
     };
