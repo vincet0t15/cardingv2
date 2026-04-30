@@ -1,10 +1,11 @@
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ChatMessage } from './chat-message';
 import { type OpenChat, useChatContext } from '@/contexts/chat-context';
 import { cn } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
-import { CornerUpLeft, Minus, MoreHorizontal, Paperclip, Send, Trash2, Users, X } from 'lucide-react';
+import { CornerUpLeft, Minus, Paperclip, Send, Users, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+
 interface MessageType {
     id: number;
     body: string | null;
@@ -22,9 +23,11 @@ interface MessageType {
 }
 
 const AVATAR_COLORS = ['bg-sky-500', 'bg-violet-500', 'bg-emerald-500', 'bg-rose-500', 'bg-amber-500', 'bg-cyan-500', 'bg-fuchsia-500'];
+
 function avatarColor(id: number) {
     return AVATAR_COLORS[id % AVATAR_COLORS.length];
 }
+
 function getInitials(name: string) {
     return name
         .split(' ')
@@ -61,13 +64,13 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
     const [typingUser, setTypingUser] = useState<{ id: number; name: string } | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [replyingTo, setReplyingTo] = useState<MessageType | null>(null);
-    const [hoveredMsgId, setHoveredMsgId] = useState<number | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const bottomRef = useRef<HTMLDivElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isNearBottom = useRef(true);
 
     // ── Step 1: resolve conversation (create if needed) ──────────────────────
     useEffect(() => {
@@ -77,7 +80,6 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             let convId = conversationId;
 
             if (!convId && !chat.isGroup) {
-                // Create a DM conversation
                 const res = await fetch('/messenger/conversations', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
@@ -98,7 +100,6 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                 });
             }
 
-            // Load messages
             const res = await fetch(`/messenger/${convId}/messages`);
             if (res.ok) {
                 const data = await res.json();
@@ -109,20 +110,40 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
         };
 
         init();
-        // Only run when the chat opens/conversation initializes; not on every minimized change
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [chat.chatId]);
 
-    // ── Step 2: scroll to bottom when opened (not when prepending old messages) ──
+    // ── Track if user is near bottom ─────────────────────────────────────────
+    useEffect(() => {
+        const container = scrollRef.current;
+        if (!container) return;
+
+        const handleScroll = () => {
+            const threshold = 80;
+            const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+            isNearBottom.current = distanceFromBottom <= threshold;
+        };
+
+        container.addEventListener('scroll', handleScroll);
+        return () => container.removeEventListener('scroll', handleScroll);
+    }, [loading]);
+
+    // ── Scroll to bottom on new messages (only if near bottom) ───────────────
     const isLoadingMoreRef = useRef(false);
+    useEffect(() => {
+        if (!chat.minimized && !isLoadingMoreRef.current && isNearBottom.current) {
+            bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [messages.length, chat.minimized]);
+
     useEffect(() => {
         if (!chat.minimized && !isLoadingMoreRef.current) {
             bottomRef.current?.scrollIntoView({ behavior: 'instant' });
             inputRef.current?.focus();
         }
-    }, [chat.minimized, messages.length]);
+    }, [chat.minimized]);
 
-    // ── Step 2b: load older messages when scrolled to top ───────────────────
+    // ── Load older messages when scrolled to top ─────────────────────────────
     const fetchOlder = async () => {
         if (!conversationId || loadingMore || !hasMore || messages.length === 0) return;
         const oldestId = messages[0].id;
@@ -137,7 +158,6 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             if (data.messages.length > 0) {
                 setMessages((prev) => [...data.messages, ...prev]);
                 setHasMore(data.messages.length === 50);
-                // Restore scroll position so view doesn't jump
                 requestAnimationFrame(() => {
                     if (container) {
                         container.scrollTop = container.scrollHeight - prevScrollHeight;
@@ -160,7 +180,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
         }
     };
 
-    // ── Step 3: WebSocket subscription ──────────────────────────────────────
+    // ── WebSocket subscription ──────────────────────────────────────────────
     useEffect(() => {
         if (!conversationId) return;
 
@@ -168,7 +188,6 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
 
         ch.listen('ConversationMessageSent', (event: { message: MessageType }) => {
             setMessages((prev) => (prev.some((m) => m.id === event.message.id) ? prev : [...prev, event.message]));
-            // Mark message as seen if chat is open
             if (event.message.user.id !== auth.user.id && conversationId) {
                 fetch(`/messenger/${conversationId}/messages/${event.message.id}/seen`, {
                     method: 'POST',
@@ -230,7 +249,6 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
     // ── Delete message ───────────────────────────────────────────────────────
     const deleteMessage = async (msgId: number) => {
         if (!conversationId) return;
-        // Optimistically remove
         setMessages((prev) => prev.filter((m) => m.id !== msgId));
         await fetch(`/messenger/${conversationId}/messages/${msgId}`, {
             method: 'DELETE',
@@ -248,10 +266,9 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
     };
 
     // ── Right offset (stack windows) ─────────────────────────────────────────
-    // Base right position plus optional extra offset for the chat rail.
     const WINDOW_WIDTH = 320;
     const GAP = 12;
-    const BASE_RIGHT = 20; // px from right edge of viewport
+    const BASE_RIGHT = 20;
     const rightOffset = BASE_RIGHT + extraRight + index * (WINDOW_WIDTH + GAP);
 
     return (
@@ -331,112 +348,23 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                                         const prevMsg = messages[i - 1];
                                         const showAvatar = !isMe && prevMsg?.user.id !== msg.user.id;
                                         return (
-                                            <div
+                                            <ChatMessage
                                                 key={msg.id}
-                                                className={cn('group relative flex items-start gap-2', isMe ? 'flex-row-reverse' : 'flex-row')}
-                                                onMouseEnter={() => setHoveredMsgId(msg.id)}
-                                                onMouseLeave={() => setHoveredMsgId(null)}
-                                            >
-                                                {/* Avatar Section */}
-                                                {!isMe && (
-                                                    <div
-                                                        className={cn(
-                                                            'mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white',
-                                                            showAvatar ? avatarColor(msg.user.id) : 'invisible',
-                                                        )}
-                                                    >
-                                                        {getInitials(msg.user.name)}
-                                                    </div>
-                                                )}
-
-                                                {/* Message Content Stack */}
-                                                <div className={cn('flex max-w-[80%] flex-col', isMe ? 'items-end' : 'items-start')}>
-                                                    {/* Reply Quote Wrapper */}
-                                                    {msg.reply_to && (
-                                                        <div
-                                                            className={cn(
-                                                                'relative rounded-2xl px-3 pt-2 pb-5 text-[11px] leading-tight opacity-80 transition-all',
-                                                                isMe ? 'mr-2 bg-zinc-100' : 'ml-2 bg-zinc-100',
-                                                            )}
-                                                        >
-                                                            <p className="max-w-[150px] truncate text-zinc-500 italic">
-                                                                {msg.reply_to.body ?? '📎 Attachment'}
-                                                            </p>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Main Bubble */}
-                                                    <div
-                                                        className={cn(
-                                                            'relative z-10 -mt-4 rounded-[18px] px-4 py-2 text-[13px] shadow-sm transition-all',
-                                                            isMe
-                                                                ? 'rounded-br-none bg-[#5b3df5] text-white'
-                                                                : 'rounded-bl-none border border-zinc-100 bg-white text-zinc-800',
-                                                        )}
-                                                    >
-                                                        {msg.body && <span>{msg.body}</span>}
-                                                    </div>
-
-                                                    {/* Metadata (Time & Seen) */}
-                                                    <div className={cn('mt-1 flex gap-1.5 text-[10px] opacity-50', isMe ? 'mr-1' : 'ml-1')}>
-                                                        <span>
-                                                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        </span>
-                                                        {isMe && msg.seen_at && <span className="font-medium text-[#5b3df5]">Seen</span>}
-                                                    </div>
-                                                </div>
-
-                                                {/* 3-Dot Dropdown Menu — Tabing tabi ng bubble */}
-                                                <div
-                                                    className={cn(
-                                                        'mt-2 transition-opacity duration-200',
-                                                        hoveredMsgId === msg.id ? 'opacity-100' : 'opacity-0',
-                                                    )}
-                                                >
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <button className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100">
-                                                                <MoreHorizontal className="h-3.5 w-3.5" />
-                                                            </button>
-                                                        </DropdownMenuTrigger>
-
-                                                        {/* Binawasan ang width (w-28) at padding (p-1) */}
-                                                        <DropdownMenuContent
-                                                            align={isMe ? 'end' : 'start'}
-                                                            className="w-28 min-w-[110px] border-zinc-100 p-1 shadow-md"
-                                                        >
-                                                            <DropdownMenuItem
-                                                                onClick={() => {
-                                                                    setReplyingTo(msg);
-                                                                    inputRef.current?.focus();
-                                                                }}
-                                                                className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
-                                                            >
-                                                                <CornerUpLeft className="h-3 w-3 opacity-70" />
-                                                                <span>Reply</span>
-                                                            </DropdownMenuItem>
-
-                                                            {isMe && (
-                                                                <>
-                                                                    <DropdownMenuSeparator className="my-1 bg-zinc-100" />
-                                                                    <DropdownMenuItem
-                                                                        onClick={() => deleteMessage(msg.id)}
-                                                                        className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] text-red-500 focus:bg-red-50 focus:text-red-600"
-                                                                    >
-                                                                        <Trash2 className="h-3 w-3 opacity-70" />
-                                                                        <span>Delete</span>
-                                                                    </DropdownMenuItem>
-                                                                </>
-                                                            )}
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </div>
-                                            </div>
+                                                msg={msg}
+                                                prevMsg={prevMsg}
+                                                isMe={isMe}
+                                                showAvatar={showAvatar}
+                                                onReply={(m) => {
+                                                    setReplyingTo(m);
+                                                    inputRef.current?.focus();
+                                                }}
+                                                onDelete={deleteMessage}
+                                            />
                                         );
                                     })
                                 )}
                                 {typingDots && (
-                                    <div className="flex items-end gap-1.5">
+                                    <div className="animate-in fade-in-0 slide-in-from-bottom-1 flex items-end gap-1.5 duration-200">
                                         <div
                                             className={cn(
                                                 'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white',
