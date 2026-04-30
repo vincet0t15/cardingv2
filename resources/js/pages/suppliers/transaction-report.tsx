@@ -21,10 +21,10 @@ const formatCurrency = (v: number) => new Intl.NumberFormat('en-PH', { style: 'c
 export default function SupplierTransactionReport({ supplier, transactions, search, year, month }: Props) {
     const totals = transactions.reduce(
         (acc, txn) => ({
-            gross: acc.gross + txn.gross,
-            ewt: acc.ewt + txn.ewt,
-            vat: acc.vat + txn.vat,
-            net: acc.net + txn.net_amount,
+            gross: acc.gross + Number(txn.gross),
+            ewt: acc.ewt + Number(txn.ewt),
+            vat: acc.vat + Number(txn.vat),
+            net: acc.net + Number(txn.net_amount),
         }),
         { gross: 0, ewt: 0, vat: 0, net: 0 },
     );
