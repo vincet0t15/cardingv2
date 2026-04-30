@@ -32,7 +32,11 @@ class ConversationMessageController extends Controller
             'last_read_at' => now(),
         ]);
 
-        broadcast(new ConversationMessageSent($message))->toOthers();
+        try {
+            broadcast(new ConversationMessageSent($message))->toOthers();
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         return response()->json([
             'message' => [
