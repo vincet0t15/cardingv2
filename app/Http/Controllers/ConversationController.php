@@ -118,33 +118,36 @@ class ConversationController extends Controller
             ->get();
     }
 
-    public function getMessages(Conversation $conversation)
+    public function getMessages(Request $request, Conversation $conversation)
     {
         abort_unless(
             $conversation->participants()->where('user_id', auth()->id())->exists(),
             403
         );
 
-        $conversation->participants()->updateExistingPivot(auth()->id(), [
-            'last_read_at' => now(),
-        ]);
+        $before = $request->query('before');
 
-        $conversation->messages()
-            ->where('user_id', '!=', auth()->id())
-            ->whereNull('seen_at')
-            ->update([
-                'seen_at' => now(),
-                'seen_by' => auth()->id(),
+        if (!$before) {
+            $conversation->participants()->updateExistingPivot(auth()->id(), [
+                'last_read_at' => now(),
             ]);
 
-        $messages = $conversation->messages()
-            ->with('user:id,name')
-            ->with('seenBy:id,name')
-            ->latest()
-            ->take(50)
-            ->get()
-            ->reverse()
-            ->values();
+            $conversation->messages()
+                ->where('user_id', '!=', auth()->id())
+                ->whereNull('seen_at')
+                ->update([
+                    'seen_at' => now(),
+                    'seen_by' => auth()->id(),
+                ]);
+        }
+
+        $query = $conversation->messages()->with('user:id,name')->with('seenBy:id,name');
+
+        if ($before) {
+            $query->where('id', '<', $before);
+        }
+
+        $messages = $query->latest()->take(50)->get()->reverse()->values();
 
         return response()->json(['messages' => $messages]);
     }

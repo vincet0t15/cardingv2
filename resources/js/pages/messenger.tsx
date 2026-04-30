@@ -2,8 +2,8 @@ import AppLayout from '@/layouts/app-layout';
 import { cn } from '@/lib/utils';
 import { Head, router, usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
-import { Edit, MessageCircle, Search, Send, Users, X } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Edit, Loader2, MessageCircle, Search, Send, Users, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type UserType = { id: number; name: string; username: string };
 type MessageType = {
@@ -101,7 +101,7 @@ function nameColor(name: string) {
 }
 
 export default function Messenger({ conversations, users, activeConversation, messages: initialMessages }: Props) {
-    const { auth } = usePage().props as { auth: { user: UserType } };
+    const { auth } = usePage().props as unknown as { auth: { user: UserType } };
 
     const [messages, setMessages] = useState<MessageType[]>(initialMessages);
     const [input, setInput] = useState('');
@@ -115,13 +115,42 @@ export default function Messenger({ conversations, users, activeConversation, me
     const [groupName, setGroupName] = useState('');
     const [creatingChat, setCreatingChat] = useState(false);
 
+    const [loadingOlder, setLoadingOlder] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
+    const restoreScroll = useRef<{ h: number; t: number } | null>(null);
+
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const typingTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+    const typingTimers = useRef<{ [key: number]: number }>({});
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // Load older messages when scrolling up
+    const loadOlderMessages = useCallback(async () => {
+        if (loadingOlder || !hasMore || !activeConversation || messages.length === 0) return;
+        const container = messagesContainerRef.current;
+        if (container) {
+            restoreScroll.current = { h: container.scrollHeight, t: container.scrollTop };
+        }
+        setLoadingOlder(true);
+        try {
+            const firstMessage = messages[0];
+            const response = await fetch(`/messenger/${activeConversation.id}/messages?before=${firstMessage.id}`);
+            const data = await response.json();
+            if (data.messages.length < 50) setHasMore(false);
+            setMessages(prev => [...data.messages, ...prev]);
+        } catch (error) {
+            console.error('Failed to load older messages:', error);
+        } finally {
+            setLoadingOlder(false);
+        }
+    }, [loadingOlder, hasMore, activeConversation, messages]);
 
     // Sync messages when active conversation changes
     useEffect(() => {
         setMessages(initialMessages);
+        setHasMore(true);
+        setLoadingOlder(false);
+        restoreScroll.current = null;
     }, [activeConversation?.id, initialMessages]);
 
     // Scroll to bottom on conversation open
@@ -130,10 +159,32 @@ export default function Messenger({ conversations, users, activeConversation, me
         inputRef.current?.focus();
     }, [activeConversation?.id]);
 
-    // Smooth scroll on new messages
+    // Restore scroll position after loading older messages
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages.length]);
+        if (!loadingOlder && restoreScroll.current && messagesContainerRef.current) {
+            requestAnimationFrame(() => {
+                if (messagesContainerRef.current && restoreScroll.current) {
+                    const { h, t } = restoreScroll.current;
+                    const newHeight = messagesContainerRef.current.scrollHeight;
+                    messagesContainerRef.current.scrollTop = newHeight - h + t;
+                    restoreScroll.current = null;
+                }
+            });
+        }
+    }, [loadingOlder]);
+
+    // Scroll listener for infinite scroll
+    useEffect(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+        const handleScroll = () => {
+            if (container.scrollTop < 50 && !loadingOlder && hasMore) {
+                loadOlderMessages();
+            }
+        };
+        container.addEventListener('scroll', handleScroll);
+        return () => container.removeEventListener('scroll', handleScroll);
+    }, [loadOlderMessages]);
 
     // Presence channel — online users
     useEffect(() => {
@@ -156,6 +207,7 @@ export default function Messenger({ conversations, users, activeConversation, me
 
         ch.listen('ConversationMessageSent', (event: { message: MessageType }) => {
             setMessages((prev) => (prev.some((m) => m.id === event.message.id) ? prev : [...prev, event.message]));
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
             // Mark message as seen if conversation is open
             if (activeConversation && event.message.user.id !== auth.user.id) {
                 const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
@@ -225,6 +277,7 @@ export default function Messenger({ conversations, users, activeConversation, me
             const json = await response.json();
             setMessages((prev) => [...prev, json.message]);
             setInput('');
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
             router.reload({ only: ['conversations'] });
         }
 
@@ -528,8 +581,16 @@ export default function Messenger({ conversations, users, activeConversation, me
                         </div>
 
                         {/* Messages */}
-                        <div className="flex-1 overflow-y-auto px-4 py-3">
+                        <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-3">
                             <div className="flex w-full flex-col gap-0.5">
+                                {loadingOlder && (
+                                    <div className="flex justify-center py-2">
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                    </div>
+                                )}
+                                {!hasMore && messages.length > 0 && (
+                                    <div className="text-muted-foreground py-2 text-center text-xs">No more messages</div>
+                                )}
                                 {messages.length === 0 && (
                                     <div className="text-muted-foreground py-8 text-center text-sm">No messages yet. Say hi!</div>
                                 )}
@@ -607,19 +668,19 @@ export default function Messenger({ conversations, users, activeConversation, me
                                                         )}
                                                     >
                                                         <p className="whitespace-pre-wrap">{message.body}</p>
-                                                        {isLastInGroup && (
-                                                            <div
-                                                                className={cn(
-                                                                    'mt-1 text-[10px] tabular-nums',
-                                                                    isMine ? 'text-blue-100' : 'text-muted-foreground',
-                                                                )}
-                                                            >
-                                                                <p>{formatTime(message.created_at)}</p>
-                                                                {isMine && message.seen_at && i === messages.length - 1 && (
-                                                                    <p className="text-[10px]">Seen {formatTime(message.seen_at)}</p>
-                                                                )}
-                                                            </div>
-                                                        )}
+                                                        <div
+                                                            className={cn(
+                                                                'mt-1 text-[10px] tabular-nums',
+                                                                isMine ? 'text-blue-100' : 'text-muted-foreground',
+                                                            )}
+                                                        >
+                                                            <p>{formatTime(message.created_at)}</p>
+                                                            {isMine && message.seen_at && i === messages.length - 1 && (
+                                                                <p className="flex items-center gap-1 text-[10px] text-white">
+                                                                    Seen {formatTime(message.seen_at)}
+                                                                </p>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>

@@ -2,7 +2,7 @@ import { type OpenChat, useChatContext } from '@/contexts/chat-context';
 import { cn } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
-import { Minus, Send, X } from 'lucide-react';
+import { Minus, Send, X, Eye } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 interface MessageType {
@@ -264,8 +264,12 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                                             )}
                                         >
                                             {msg.body}
+                                            <div className="mt-0.5 text-[10px]">
+                                                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </div>
                                             {isMe && msg.seen_at && i === messages.length - 1 && (
-                                                <div className="mt-0.5 text-[10px] text-blue-200">
+                                                <div className="mt-0.5 text-[10px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
+                                                    <Eye className="h-3 w-3" />
                                                     Seen {new Date(msg.seen_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </div>
                                             )}
