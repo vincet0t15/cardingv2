@@ -1,7 +1,7 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { Check, CheckCheck, CornerUpLeft, Download, FileText, MoreHorizontal, Paperclip, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState, useCallback } from 'react';
 import { ImageLightbox } from './image-lightbox';
 
 const AVATAR_COLORS = ['bg-sky-500', 'bg-violet-500', 'bg-emerald-500', 'bg-rose-500', 'bg-amber-500', 'bg-cyan-500', 'bg-fuchsia-500'];
@@ -251,3 +251,13 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete,
         </>
     );
 }
+
+export const MemoizedChatMessage = memo(ChatMessage, (prevProps, nextProps) => {
+    return (
+        prevProps.msg.id === nextProps.msg.id &&
+        prevProps.msg.body === nextProps.msg.body &&
+        prevProps.msg.seen_at === nextProps.msg.seen_at &&
+        prevProps.isMe === nextProps.isMe &&
+        prevProps.showAvatar === nextProps.showAvatar
+    );
+});

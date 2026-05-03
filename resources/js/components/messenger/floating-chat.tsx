@@ -1,11 +1,11 @@
-import { ChatMessage } from './chat-message';
+import { MemoizedChatMessage } from './chat-message';
 import { GroupMembersDialog } from './group-members-dialog';
 import { type OpenChat, useChatContext } from '@/contexts/chat-context';
 import { cn } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
 import { CornerUpLeft, Minus, Paperclip, Send, Upload, Users, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 
 interface MessageType {
     id: number;
@@ -107,7 +107,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             if (res.ok) {
                 const data = await res.json();
                 setMessages(data.messages);
-                setHasMore(data.messages.length === 50);
+                setHasMore(data.messages.length === 100);
             }
             setLoading(false);
         };
@@ -137,13 +137,20 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
         const container = scrollRef.current;
         if (!container) return;
 
+        let ticking = false;
         const handleScroll = () => {
-            const threshold = 80;
-            const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-            isNearBottom.current = distanceFromBottom <= threshold;
+            if (!ticking) {
+                requestAnimationFrame(() => {
+                    const threshold = 80;
+                    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+                    isNearBottom.current = distanceFromBottom <= threshold;
+                    ticking = false;
+                });
+                ticking = true;
+            }
         };
 
-        container.addEventListener('scroll', handleScroll);
+        container.addEventListener('scroll', handleScroll, { passive: true });
         return () => container.removeEventListener('scroll', handleScroll);
     }, [loading]);
 
@@ -174,7 +181,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             const data = await res.json();
             if (data.messages.length > 0) {
                 setMessages((prev) => [...data.messages, ...prev]);
-                setHasMore(data.messages.length === 50);
+                setHasMore(data.messages.length === 100);
                 requestAnimationFrame(() => {
                     if (container) {
                         container.scrollTop = container.scrollHeight - prevScrollHeight;
@@ -229,7 +236,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
         };
     }, [conversationId, auth.user.id]);
 
-    const sendMessage = async (e?: React.FormEvent) => {
+    const sendMessage = useCallback(async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         if ((!input.trim() && !selectedFile) || !conversationId || sending) return;
 
@@ -262,25 +269,25 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             console.error('Send message error:', res.status, error);
         }
         setSending(false);
-    };
+    }, [input, selectedFile, replyingTo, conversationId, sending]);
 
-    const deleteMessage = async (msgId: number) => {
+    const deleteMessage = useCallback(async (msgId: number) => {
         if (!conversationId) return;
         setMessages((prev) => prev.filter((m) => m.id !== msgId));
         await fetch(`/messenger/${conversationId}/messages/${msgId}`, {
             method: 'DELETE',
             headers: { 'X-CSRF-TOKEN': csrfToken() },
         });
-    };
+    }, [conversationId]);
 
-    const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleTyping = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setInput(e.target.value);
         if (!conversationId) return;
         (echo() as any).private(`conversation.${conversationId}`).whisper('typing', {
             userId: auth.user.id,
             name: auth.user.name,
         });
-    };
+    }, [conversationId, auth.user.id]);
 
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -308,6 +315,24 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
     const GAP = 12;
     const BASE_RIGHT = 20;
     const rightOffset = BASE_RIGHT + extraRight + index * (WINDOW_WIDTH + GAP);
+
+    const messageItems = useMemo(() => messages.map((msg, i) => {
+        const isMe = msg.user.id === auth.user.id;
+        const prevMsg = messages[i - 1];
+        const showAvatar = !isMe && prevMsg?.user.id !== msg.user.id;
+        return (
+            <MemoizedChatMessage
+                key={msg.id}
+                msg={msg}
+                prevMsg={prevMsg}
+                isMe={isMe}
+                showAvatar={showAvatar}
+                onReply={(m) => { setReplyingTo(m); inputRef.current?.focus(); }}
+                onDelete={deleteMessage}
+                conversationId={conversationId}
+            />
+        );
+    }), [messages, auth.user.id, deleteMessage, conversationId]);
 
     return (
         <>
@@ -419,23 +444,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                                             <p className="text-xs text-zinc-400">{chat.isGroup ? 'No messages yet' : 'Start a conversation'}</p>
                                         </div>
                                     ) : (
-                                        messages.map((msg, i) => {
-                                            const isMe = msg.user.id === auth.user.id;
-                                            const prevMsg = messages[i - 1];
-                                            const showAvatar = !isMe && prevMsg?.user.id !== msg.user.id;
-                                            return (
-                                                <ChatMessage
-                                                    key={msg.id}
-                                                    msg={msg}
-                                                    prevMsg={prevMsg}
-                                                    isMe={isMe}
-                                                    showAvatar={showAvatar}
-                                                    onReply={(m) => { setReplyingTo(m); inputRef.current?.focus(); }}
-                                                    onDelete={deleteMessage}
-                                                    conversationId={conversationId}
-                                                />
-                                            );
-                                        })
+                                        messageItems
                                     )}
                                     {typingDots && (
                                         <div className="animate-in fade-in-0 slide-in-from-bottom-1 flex items-end gap-1.5 duration-200">
