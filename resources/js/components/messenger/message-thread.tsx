@@ -174,7 +174,7 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
     }, [activeConversation.id, initialMessages]);
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         inputRef.current?.focus();
     }, [activeConversation.id]);
 

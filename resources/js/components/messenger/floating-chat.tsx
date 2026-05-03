@@ -163,7 +163,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
 
     useEffect(() => {
         if (!chat.minimized && !isLoadingMoreRef.current) {
-            bottomRef.current?.scrollIntoView({ behavior: 'instant' });
+            bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
             inputRef.current?.focus();
         }
     }, [chat.minimized]);
