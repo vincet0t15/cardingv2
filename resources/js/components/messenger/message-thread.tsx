@@ -441,18 +441,18 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                                                 <DropdownMenuTrigger asChild>
                                                     <button
                                                         type="button"
-                                                        className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground/70 transition-colors hover:bg-muted"
+                                                        className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground/70 transition-all hover:bg-muted hover:text-foreground"
                                                     >
-                                                        <MoreHorizontal className="h-3.5 w-3.5" />
+                                                        <MoreHorizontal className="h-4 w-4" />
                                                     </button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-28 min-w-[110px] p-1 shadow-md">
+                                                <DropdownMenuContent align="end" sideOffset={5} className="w-28 border-zinc-200 bg-white p-1 shadow-lg">
                                                     {message.file_path && (
                                                         <DropdownMenuItem
                                                             onClick={() => handleDownload(message.id, STORAGE_URL(message.file_path), message.file_name!)}
-                                                            className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
+                                                            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-zinc-700 transition-colors hover:bg-zinc-100 focus:bg-zinc-100"
                                                         >
-                                                            <Download className="h-3 w-3 opacity-70" />
+                                                            <Download className="h-3.5 w-3.5 text-zinc-500" />
                                                             <span>Download</span>
                                                         </DropdownMenuItem>
                                                     )}
@@ -461,17 +461,17 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                                                             setReplyingTo(message);
                                                             inputRef.current?.focus();
                                                         }}
-                                                        className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
+                                                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-zinc-700 transition-colors hover:bg-zinc-100 focus:bg-zinc-100"
                                                     >
-                                                        <CornerUpLeft className="h-3 w-3 opacity-70" />
+                                                        <CornerUpLeft className="h-3.5 w-3.5 text-zinc-500" />
                                                         <span>Reply</span>
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuSeparator className="my-1 bg-border" />
+                                                    <DropdownMenuSeparator className="my-1 bg-zinc-200" />
                                                     <DropdownMenuItem
                                                         onClick={() => deleteMessage(message.id)}
-                                                        className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] text-red-500 focus:bg-red-50 focus:text-red-600"
+                                                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-red-600 transition-colors hover:bg-red-50 focus:bg-red-50"
                                                     >
-                                                        <Trash2 className="h-3 w-3 opacity-70" />
+                                                        <Trash2 className="h-3.5 w-3.5" />
                                                         <span>Delete</span>
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
@@ -593,18 +593,18 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                                                 <DropdownMenuTrigger asChild>
                                                     <button
                                                         type="button"
-                                                        className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground/70 transition-colors hover:bg-muted"
+                                                        className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground/70 transition-all hover:bg-muted hover:text-foreground"
                                                     >
-                                                        <MoreHorizontal className="h-3.5 w-3.5" />
+                                                        <MoreHorizontal className="h-4 w-4" />
                                                     </button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="start" className="w-28 min-w-[110px] p-1 shadow-md">
+                                                <DropdownMenuContent align="start" sideOffset={5} className="w-28 border-zinc-200 bg-white p-1 shadow-lg">
                                                     {message.file_path && (
                                                         <DropdownMenuItem
                                                             onClick={() => handleDownload(message.id, STORAGE_URL(message.file_path), message.file_name!)}
-                                                            className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
+                                                            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-zinc-700 transition-colors hover:bg-zinc-100 focus:bg-zinc-100"
                                                         >
-                                                            <Download className="h-3 w-3 opacity-70" />
+                                                            <Download className="h-3.5 w-3.5 text-zinc-500" />
                                                             <span>Download</span>
                                                         </DropdownMenuItem>
                                                     )}
@@ -613,9 +613,9 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                                                             setReplyingTo(message);
                                                             inputRef.current?.focus();
                                                         }}
-                                                        className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
+                                                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-zinc-700 transition-colors hover:bg-zinc-100 focus:bg-zinc-100"
                                                     >
-                                                        <CornerUpLeft className="h-3 w-3 opacity-70" />
+                                                        <CornerUpLeft className="h-3.5 w-3.5 text-zinc-500" />
                                                         <span>Reply</span>
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>

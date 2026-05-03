@@ -312,15 +312,28 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
     return (
         <>
             <div
-                className="fixed z-50 flex min-h-0 flex-col overflow-hidden rounded-t-xl border border-zinc-200 shadow-2xl dark:border-zinc-700"
+                className="fixed bottom-0 left-2 right-2 top-16 z-50 flex min-h-0 w-auto flex-col overflow-hidden rounded-t-xl border border-zinc-200 shadow-2xl md:top-auto md:left-auto md:right-0 md:bottom-0 md:w-80 dark:border-zinc-700"
                 style={{
-                    width: WINDOW_WIDTH,
-                    bottom: 0,
-                    right: rightOffset,
-                    height: chat.minimized ? 48 : 450,
-                    transition: 'height 0.2s ease',
-                }}
+                    '--chat-height': chat.minimized ? '48px' : 'auto',
+                    '--mobile-height': 'calc(100vh - 80px)',
+                    '--desktop-height': '450px',
+                    ['--right-offset' as string]: `${rightOffset}px`,
+                } as React.CSSProperties}
             >
+            <style>{`
+                @media (min-width: 768px) {
+                    [style*="--chat-height"] {
+                        right: var(--right-offset, 20px);
+                        height: var(--desktop-height);
+                    }
+                }
+                @media (max-width: 767px) {
+                    [style*="--chat-height"] {
+                        height: var(--mobile-height);
+                    }
+                }
+            `}</style>
+            <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <button
                 onClick={() => toggleMinimize(chat.chatId)}
                 className={cn('flex h-12 shrink-0 cursor-pointer items-center gap-2 px-3 select-none', avatarColor(displayId))}
@@ -329,207 +342,160 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                     {chat.isGroup ? <Users className="h-4 w-4" /> : getInitials(displayName)}
                     {!chat.isGroup && onlineUserId && (
                         <span className="absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500" />
-                    )}
+)}
                 </div>
-                <span className="flex-1 truncate text-sm font-semibold text-white">{displayName}</span>
-                {!chat.isGroup && (
-                    <span className="text-[10px] text-white/80">
-                        {onlineUserId ? 'Active now' : 'Offline'}
-                    </span>
-                )}
-                {chat.isGroup && (
+                <span className="truncate text-sm font-semibold text-white">{displayName}</span>
+                <div className="ml-auto flex items-center gap-1">
+                    {chat.isGroup && (
+                        <span
+                            role="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowMembers(true);
+                            }}
+                            className="flex h-6 w-6 items-center justify-center rounded-full text-white hover:bg-white/20"
+                        >
+                            <Users className="h-3.5 w-3.5" />
+                        </span>
+                    )}
                     <span
                         role="button"
                         onClick={(e) => {
                             e.stopPropagation();
-                            setShowMembers(true);
+                            toggleMinimize(chat.chatId);
                         }}
                         className="flex h-6 w-6 items-center justify-center rounded-full text-white hover:bg-white/20"
                     >
-                        <Users className="h-3.5 w-3.5" />
+                        <Minus className="h-3.5 w-3.5" />
                     </span>
-                )}
-                <span
-                    role="button"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        toggleMinimize(chat.chatId);
-                    }}
-                    className="flex h-6 w-6 items-center justify-center rounded-full text-white hover:bg-white/20"
-                >
-                    <Minus className="h-3.5 w-3.5" />
-                </span>
-                <span
-                    role="button"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        closeChat(chat.chatId);
-                    }}
-                    className="flex h-6 w-6 items-center justify-center rounded-full text-white hover:bg-white/20"
-                >
-                    <X className="h-3.5 w-3.5" />
-                </span>
+                    <span
+                        role="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            closeChat(chat.chatId);
+                        }}
+                        className="flex h-6 w-6 items-center justify-center rounded-full text-white hover:bg-white/20"
+                    >
+                        <X className="h-3.5 w-3.5" />
+                    </span>
+                </div>
             </button>
 
             {!chat.minimized && (
-                <div
-                    className={cn('flex min-h-0 flex-1 flex-col', isDragOver && 'ring-2 ring-blue-500 ring-inset')}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                >
-                    {isDragOver && (
-                        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-blue-500/10 backdrop-blur-[1px]">
-                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/20">
-                                <Upload className="h-8 w-8 text-blue-500" />
-                            </div>
-                            <p className="mt-3 text-sm font-medium text-blue-600">Drop file to attach</p>
-                        </div>
-                    )}
-
-                    <div ref={scrollRef} onScroll={handleScroll} className="min-h-0 flex-1 space-y-1 overflow-y-auto bg-white px-3 py-2 dark:bg-zinc-900">
-                        {loading ? (
-                            <div className="flex h-full items-center justify-center">
-                                <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-                            </div>
-                        ) : (
-                            <>
-                                {loadingMore && (
-                                    <div className="flex justify-center py-2">
-                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-                                    </div>
-                                )}
-                                {messages.length === 0 ? (
-                                    <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
-                                        <div
-                                            className={cn(
-                                                'flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold text-white',
-                                                avatarColor(displayId),
-                                            )}
-                                        >
-                                            {chat.isGroup ? <Users className="h-8 w-8" /> : getInitials(displayName)}
-                                        </div>
-                                        <p className="mt-2 text-sm font-semibold">{displayName}</p>
-                                        <p className="text-xs text-zinc-400">{chat.isGroup ? 'No messages yet' : 'Start a conversation'}</p>
-                                    </div>
-                                ) : (
-                                    messages.map((msg, i) => {
-                                        const isMe = msg.user.id === auth.user.id;
-                                        const prevMsg = messages[i - 1];
-                                        const showAvatar = !isMe && prevMsg?.user.id !== msg.user.id;
-                                        return (
-                                            <ChatMessage
-                                                key={msg.id}
-                                                msg={msg}
-                                                prevMsg={prevMsg}
-                                                isMe={isMe}
-                                                showAvatar={showAvatar}
-                                                onReply={(m) => {
-                                                    setReplyingTo(m);
-                                                    inputRef.current?.focus();
-                                                }}
-                                                onDelete={deleteMessage}
-                                                conversationId={conversationId}
-                                            />
-                                        );
-                                    })
-                                )}
-                                {typingDots && (
-                                    <div className="animate-in fade-in-0 slide-in-from-bottom-1 flex items-end gap-1.5 duration-200">
-                                        <div
-                                            className={cn(
-                                                'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white',
-                                                avatarColor(typingUser?.id ?? displayId),
-                                            )}
-                                        >
-                                            {getInitials(typingUser?.name ?? displayName)}
-                                        </div>
-                                        <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm bg-zinc-100 px-3 py-2 dark:bg-zinc-800">
-                                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:0ms]" />
-                                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:150ms]" />
-                                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:300ms]" />
-                                        </div>
-                                    </div>
-                                )}
-                                <div ref={bottomRef} />
-                            </>
-                        )}
-                    </div>
-
-                    <form onSubmit={sendMessage} className="flex flex-col border-t bg-white dark:border-zinc-700 dark:bg-zinc-900">
-                        {replyingTo && (
-                            <div className="flex items-center gap-2 border-b bg-zinc-50 px-3 py-1.5 dark:border-zinc-700 dark:bg-zinc-800/60">
-                                <CornerUpLeft className="h-3.5 w-3.5 shrink-0 text-blue-500" />
-                                <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[11px] font-semibold text-blue-600 dark:text-blue-400">
-                                        {replyingTo.user.id === auth.user.id ? 'Yourself' : replyingTo.user.name}
-                                    </p>
-                                    <p className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">{replyingTo.body ?? '📎 Attachment'}</p>
+                <>
+                    <div
+                        className={cn('flex min-h-0 flex-1 flex-col', isDragOver && 'ring-2 ring-blue-500 ring-inset')}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                    >
+                        {isDragOver && (
+                            <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-blue-500/10 backdrop-blur-[1px]">
+                                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/20">
+                                    <Upload className="h-8 w-8 text-blue-500" />
                                 </div>
-                                <button type="button" onClick={() => setReplyingTo(null)} className="shrink-0 text-zinc-400 hover:text-zinc-600">
-                                    <X className="h-3.5 w-3.5" />
-                                </button>
+                                <p className="mt-3 text-sm font-medium text-blue-600">Drop file to attach</p>
                             </div>
                         )}
-                        {selectedFile && (
-                            <div className="flex items-center gap-2 border-b px-3 py-1.5 dark:border-zinc-700">
-                                {selectedFile.type.startsWith('image/') ? (
-                                    <img src={URL.createObjectURL(selectedFile)} alt="preview" className="h-8 w-8 rounded object-cover" />
-                                ) : (
-                                    <Paperclip className="h-4 w-4 shrink-0 text-zinc-400" />
-                                )}
-                                <span className="flex-1 truncate text-xs text-zinc-600 dark:text-zinc-300">{selectedFile.name}</span>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setSelectedFile(null);
-                                        if (fileInputRef.current) fileInputRef.current.value = '';
-                                    }}
-                                    className="text-zinc-400 hover:text-red-500"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                </button>
-                            </div>
-                        )}
-                        <div className="flex items-center gap-2 px-3 py-2">
-                            <input
-                                ref={inputRef}
-                                value={input}
-                                onChange={handleTyping}
-                                placeholder="Aa"
-                                className="flex-1 rounded-full bg-zinc-100 px-3 py-1.5 text-sm outline-none placeholder:text-zinc-400 dark:bg-zinc-800 dark:text-zinc-100"
-                                disabled={sending}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        if (input.trim() || selectedFile || replyingTo) sendMessage(e as unknown as React.FormEvent);
-                                    }
-                                }}
-                            />
-                            <label className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800">
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept="image/*,.pdf,.doc,.docx,.txt"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                        if (e.target.files?.[0]) setSelectedFile(e.target.files[0]);
-                                    }}
-                                />
-                                <Paperclip className="h-3.5 w-3.5" />
-                            </label>
-                            <button
-                                type="submit"
-                                disabled={(!input.trim() && !selectedFile && !replyingTo) || sending}
-                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white transition hover:bg-blue-700 disabled:opacity-40"
-                            >
-                                <Send className="h-3.5 w-3.5" />
-                            </button>
+
+                        <div ref={scrollRef} onScroll={handleScroll} className="min-h-0 flex-1 space-y-1 overflow-y-auto bg-white px-3 py-2 dark:bg-zinc-900">
+                            {loading ? (
+                                <div className="flex h-full items-center justify-center">
+                                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                                </div>
+                            ) : (
+                                <>
+                                    {loadingMore && (
+                                        <div className="flex justify-center py-2">
+                                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                                        </div>
+                                    )}
+                                    {messages.length === 0 ? (
+                                        <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
+                                            <div className={cn('flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold text-white', avatarColor(displayId))}>
+                                                {chat.isGroup ? <Users className="h-8 w-8" /> : getInitials(displayName)}
+                                            </div>
+                                            <p className="mt-2 text-sm font-semibold">{displayName}</p>
+                                            <p className="text-xs text-zinc-400">{chat.isGroup ? 'No messages yet' : 'Start a conversation'}</p>
+                                        </div>
+                                    ) : (
+                                        messages.map((msg, i) => {
+                                            const isMe = msg.user.id === auth.user.id;
+                                            const prevMsg = messages[i - 1];
+                                            const showAvatar = !isMe && prevMsg?.user.id !== msg.user.id;
+                                            return (
+                                                <ChatMessage
+                                                    key={msg.id}
+                                                    msg={msg}
+                                                    prevMsg={prevMsg}
+                                                    isMe={isMe}
+                                                    showAvatar={showAvatar}
+                                                    onReply={(m) => { setReplyingTo(m); inputRef.current?.focus(); }}
+                                                    onDelete={deleteMessage}
+                                                    conversationId={conversationId}
+                                                />
+                                            );
+                                        })
+                                    )}
+                                    {typingDots && (
+                                        <div className="animate-in fade-in-0 slide-in-from-bottom-1 flex items-end gap-1.5 duration-200">
+                                            <div className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white', avatarColor(typingUser?.id ?? displayId))}>
+                                                {getInitials(typingUser?.name ?? displayName)}
+                                            </div>
+                                            <div className="flex items-center gap-1 rounded-2xl rounded-bl-sm bg-zinc-100 px-3 py-2 dark:bg-zinc-800">
+                                                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:0ms]" />
+                                                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:150ms]" />
+                                                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:300ms]" />
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div ref={bottomRef} />
+                                </>
+                            )}
                         </div>
-                    </form>
-                </div>
+
+                        <form onSubmit={sendMessage} className="flex flex-col border-t bg-white dark:border-zinc-700 dark:bg-zinc-900">
+                            {replyingTo && (
+                                <div className="flex items-center gap-2 border-b bg-zinc-50 px-3 py-1.5 dark:border-zinc-700 dark:bg-zinc-800/60">
+                                    <CornerUpLeft className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                                            {replyingTo.user.id === auth.user.id ? 'Yourself' : replyingTo.user.name}
+                                        </p>
+                                        <p className="truncate text-[11px] text-zinc-500 dark:text-zinc-400">{replyingTo.body ?? '📎 Attachment'}</p>
+                                    </div>
+                                    <button type="button" onClick={() => setReplyingTo(null)} className="shrink-0 text-zinc-400 hover:text-zinc-600">
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            )}
+                            {selectedFile && (
+                                <div className="flex items-center gap-2 border-b px-3 py-1.5 dark:border-zinc-700">
+                                    {selectedFile.type.startsWith('image/') ? (
+                                        <img src={URL.createObjectURL(selectedFile)} alt="preview" className="h-8 w-8 rounded object-cover" />
+                                    ) : (
+                                        <Paperclip className="h-4 w-4 shrink-0 text-zinc-400" />
+                                    )}
+                                    <span className="flex-1 truncate text-xs text-zinc-600 dark:text-zinc-300">{selectedFile.name}</span>
+                                    <button type="button" onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} className="text-zinc-400 hover:text-red-500">
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            )}
+                            <div className="flex items-center gap-2 px-3 py-2">
+                                <input ref={inputRef} value={input} onChange={handleTyping} placeholder="Aa" className="flex-1 rounded-full bg-zinc-100 px-3 py-1.5 text-sm outline-none placeholder:text-zinc-400 dark:bg-zinc-800 dark:text-zinc-100" disabled={sending} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (input.trim() || selectedFile || replyingTo) sendMessage(e as unknown as React.FormEvent); } }} />
+                                <label className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800">
+                                    <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setSelectedFile(e.target.files[0]); }} />
+                                    <Paperclip className="h-3.5 w-3.5" />
+                                </label>
+                                <button type="submit" disabled={(!input.trim() && !selectedFile && !replyingTo) || sending} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white transition hover:bg-blue-700 disabled:opacity-40">
+                                    <Send className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </>
             )}
-        </div>
 
             {chat.isGroup && conversationId && (
                 <GroupMembersDialog
@@ -540,6 +506,8 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                     onLeaveSuccess={() => closeChat(chat.chatId)}
                 />
             )}
+            </div>
+        </div>
         </>
     );
 }

@@ -189,42 +189,42 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete,
                             <DropdownMenuTrigger asChild>
                                 <button
                                     className={cn(
-                                        'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-opacity duration-200 hover:bg-zinc-100',
+                                        'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-zinc-400 transition-all duration-200 hover:bg-zinc-100 hover:text-zinc-600',
                                         'group-hover:opacity-100 opacity-0',
                                     )}
                                 >
-                                    <MoreHorizontal className="h-3.5 w-3.5" />
+                                    <MoreHorizontal className="h-4 w-4" />
                                 </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
                                 align={isMe ? 'end' : 'start'}
-                                sideOffset={4}
-                                className="w-28 min-w-[110px] border-zinc-100 p-1 shadow-md"
+                                sideOffset={5}
+                                className="w-28 border-zinc-200 bg-white p-1 shadow-lg"
                             >
                                 {msg.file_path && (
                                     <DropdownMenuItem
                                         onClick={handleDownload}
-                                        className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
+                                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-zinc-700 transition-colors hover:bg-zinc-100 focus:bg-zinc-100"
                                     >
-                                        <Download className="h-3 w-3 opacity-70" />
+                                        <Download className="h-3.5 w-3.5 text-zinc-500" />
                                         <span>Download</span>
                                     </DropdownMenuItem>
                                 )}
                                 <DropdownMenuItem
                                     onClick={() => onReply(msg)}
-                                    className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] focus:bg-zinc-50"
+                                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-zinc-700 transition-colors hover:bg-zinc-100 focus:bg-zinc-100"
                                 >
-                                    <CornerUpLeft className="h-3 w-3 opacity-70" />
+                                    <CornerUpLeft className="h-3.5 w-3.5 text-zinc-500" />
                                     <span>Reply</span>
                                 </DropdownMenuItem>
                                 {isMe && (
                                     <>
-                                        <DropdownMenuSeparator className="my-1 bg-zinc-100" />
+                                        <DropdownMenuSeparator className="my-1 bg-zinc-200" />
                                         <DropdownMenuItem
                                             onClick={handleDelete}
-                                            className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-[12px] text-red-500 focus:bg-red-50 focus:text-red-600"
+                                            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-red-600 transition-colors hover:bg-red-50 focus:bg-red-50"
                                         >
-                                            <Trash2 className="h-3 w-3 opacity-70" />
+                                            <Trash2 className="h-3.5 w-3.5" />
                                             <span>Delete</span>
                                         </DropdownMenuItem>
                                     </>
