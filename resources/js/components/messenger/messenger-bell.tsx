@@ -105,6 +105,27 @@ export function MessengerBell() {
         };
     }, []);
 
+    // Stop polling when popover is closed to save resources
+    useEffect(() => {
+        if (isOpen) {
+            fetchRecent();
+            if (!intervalRef.current) {
+                intervalRef.current = setInterval(fetchRecent, 30000);
+            }
+        } else {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+        }
+        return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+        };
+    }, [isOpen]);
+
     useEffect(() => {
         if (isOpen) {
             setConversations([]);
@@ -120,10 +141,7 @@ export function MessengerBell() {
     const fetchInitialPages = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [convRes, userRes] = await Promise.all([
-                fetch('/messenger/conversations?page=1'),
-                fetch('/messenger/users?page=1'),
-            ]);
+            const [convRes, userRes] = await Promise.all([fetch('/messenger/conversations?page=1'), fetch('/messenger/users?page=1')]);
             if (convRes.ok) {
                 const data = await convRes.json();
                 setConversations(data.conversations);
@@ -249,8 +267,21 @@ export function MessengerBell() {
         });
     }, [mergedList, search, filter]);
 
-    const openDm = (user: UserType, conv: ConversationType | null) => {
+    const openDm = async (user: UserType, conv: ConversationType | null) => {
         setIsOpen(false);
+        if (conv?.id) {
+            try {
+                await fetch(route('messenger.messages.read', conv.id), {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    },
+                });
+                fetchRecent();
+            } catch (error) {
+                console.error('Failed to mark conversation as read:', error);
+            }
+        }
         openChat(user, conv);
     };
 
@@ -262,7 +293,7 @@ export function MessengerBell() {
                     {totalUnread > 0 && (
                         <Badge
                             variant="destructive"
-                            className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full p-0 text-xs font-bold"
+                            className="absolute -top-2 -right-2 flex h-5 w-10 items-center justify-center rounded-full bg-transparent p-0 text-xs font-bold"
                         >
                             {totalUnread > 99 ? '99+' : totalUnread}
                         </Badge>
@@ -339,8 +370,20 @@ export function MessengerBell() {
                                     return (
                                         <button
                                             key={`group-${conv.id}`}
-                                            onClick={() => {
+                                            onClick={async () => {
                                                 setIsOpen(false);
+                                                try {
+                                                    await fetch(route('messenger.messages.read', conv.id), {
+                                                        method: 'POST',
+                                                        headers: {
+                                                            'X-CSRF-TOKEN':
+                                                                document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                                                        },
+                                                    });
+                                                    fetchRecent();
+                                                } catch (error) {
+                                                    console.error('Failed to mark group as read:', error);
+                                                }
                                                 openGroupChat(conv);
                                             }}
                                             className="hover:bg-muted/60 dark:hover:bg-muted/20 flex w-full items-center gap-3 px-4 py-2.5 text-left transition"
@@ -420,7 +463,9 @@ export function MessengerBell() {
                                         </div>
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-baseline justify-between gap-1">
-                                                <span className={cn('truncate text-sm', unread > 0 ? 'font-bold' : 'font-semibold')}>{user.name}</span>
+                                                <span className={cn('truncate text-sm', unread > 0 ? 'font-bold' : 'font-semibold')}>
+                                                    {user.name}
+                                                </span>
                                                 {conv?.latest_message && (
                                                     <span
                                                         className={cn(
@@ -456,7 +501,7 @@ export function MessengerBell() {
 
                             {loadingMore && (
                                 <div className="flex items-center justify-center py-3">
-                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                    <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
                                 </div>
                             )}
 

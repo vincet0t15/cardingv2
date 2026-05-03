@@ -37,14 +37,26 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
 
     const fetchNotifications = async () => {
         try {
-            const response = await fetch(route('notifications.recent'));
-            const data = await response.json();
+            const recentRes = await fetch(route('notifications.recent'));
+            if (!recentRes.ok) throw new Error('Failed to fetch recent notifications');
+            const recentData = await recentRes.json();
+            setNotifications(recentData.notifications);
 
-            const recent = data.notifications;
-            setNotifications(recent);
-
-            const unread = recent.filter((n: Notification) => !n.is_read).length;
-            setUnreadCount(unread);
+            try {
+                const countRes = await fetch(route('notifications.unread-count'));
+                if (countRes.ok) {
+                    const countData = await countRes.json();
+                    setUnreadCount(countData.count);
+                } else {
+                    console.error('Failed to fetch unread count, status:', countRes.status);
+                    const unread = recentData.notifications.filter((n: Notification) => !n.is_read).length;
+                    setUnreadCount(unread);
+                }
+            } catch (countError) {
+                console.error('Failed to fetch unread count:', countError);
+                const unread = recentData.notifications.filter((n: Notification) => !n.is_read).length;
+                setUnreadCount(unread);
+            }
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
         } finally {
@@ -87,7 +99,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
                     {unreadCount > 0 && (
                         <Badge
                             variant="destructive"
-                            className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full p-0 text-xs font-bold"
+                            className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-transparent p-0 text-xs font-bold"
                         >
                             {unreadCount > 99 ? '99+' : unreadCount}
                         </Badge>

@@ -213,7 +213,7 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                 fetch(`/messenger/${activeConversation.id}/messages/${event.message.id}/seen`, {
                     method: 'POST',
                     headers: { 'X-CSRF-TOKEN': csrfToken() },
-                });
+                }).catch((error) => console.error('Failed to mark message as seen:', error));
             }
         });
 
@@ -243,18 +243,20 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
         fetch(`/messenger/${activeConversation.id}/read`, {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': csrfToken() },
-        });
+        }).catch((error) => console.error('Failed to mark as read:', error));
     }, [activeConversation.id]);
 
-    const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleTyping = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setInput(e.target.value);
-        (echo() as any).private(`conversation.${activeConversation.id}`).whisper('typing', {
-            userId: auth.id,
-            name: auth.name,
-        });
-    };
+        if (activeConversation.id) {
+            (echo() as any).private(`conversation.${activeConversation.id}`).whisper('typing', {
+                userId: auth.id,
+                name: auth.name,
+            });
+        }
+    }, [activeConversation.id, auth.id, auth.name]);
 
-    const sendMessage = async (e: React.FormEvent) => {
+    const sendMessage = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
         if ((!input.trim() && !selectedFile && !replyingTo) || sending) return;
 
@@ -286,15 +288,19 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
         }
 
         setSending(false);
-    };
+    }, [input, selectedFile, replyingTo, activeConversation.id, sending]);
 
-    const deleteMessage = async (messageId: number) => {
+    const deleteMessage = useCallback(async (messageId: number) => {
         setMessages((prev) => prev.filter((m) => m.id !== messageId));
-        await fetch(`/messenger/${activeConversation.id}/messages/${messageId}`, {
-            method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': csrfToken() },
-        });
-    };
+        try {
+            await fetch(`/messenger/${activeConversation.id}/messages/${messageId}`, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-TOKEN': csrfToken() },
+            });
+        } catch (error) {
+            console.error('Failed to delete message:', error);
+        }
+    }, [activeConversation.id]);
 
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();

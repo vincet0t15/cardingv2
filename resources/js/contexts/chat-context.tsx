@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { router } from '@inertiajs/react';
 
 export interface ChatUser {
     id: number;
@@ -45,6 +46,25 @@ function loadFromStorage(): OpenChat[] {
     }
 }
 
+const pendingMarkRead = new Set<number>();
+
+function markConversationAsRead(conversationId: number) {
+    if (pendingMarkRead.has(conversationId)) return;
+    pendingMarkRead.add(conversationId);
+    fetch(route('messenger.messages.read', conversationId), {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+    })
+        .catch((error) => {
+            console.error('Failed to mark conversation as read:', error);
+        })
+        .finally(() => {
+            pendingMarkRead.delete(conversationId);
+        });
+}
+
 const ChatContext = createContext<ChatContextType | null>(null);
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
@@ -65,8 +85,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             const index = prev.findIndex((c) => c.chatId === chatId);
             if (index !== -1) {
                 const target = { ...prev[index], minimized: false, conversation: conversation ?? prev[index].conversation };
+                if (conversation?.id) markConversationAsRead(conversation.id);
                 return [target, ...prev.filter((c) => c.chatId !== chatId)];
             }
+            if (conversation?.id) markConversationAsRead(conversation.id);
             return [{ chatId, isGroup: false, user, conversation, minimized: false }, ...prev];
         });
     }, []);
@@ -77,8 +99,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
             const index = prev.findIndex((c) => c.chatId === chatId);
             if (index !== -1) {
                 const target = { ...prev[index], minimized: false };
+                markConversationAsRead(conversation.id);
                 return [target, ...prev.filter((c) => c.chatId !== chatId)];
             }
+            markConversationAsRead(conversation.id);
             return [{ chatId, isGroup: true, user: null, conversation, minimized: false }, ...prev];
         });
     }, []);

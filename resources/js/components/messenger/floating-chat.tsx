@@ -107,7 +107,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             if (res.ok) {
                 const data = await res.json();
                 setMessages(data.messages);
-                setHasMore(data.messages.length === 100);
+                setHasMore(data.messages.length === 50);
             }
             setLoading(false);
         };
@@ -181,7 +181,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             const data = await res.json();
             if (data.messages.length > 0) {
                 setMessages((prev) => [...data.messages, ...prev]);
-                setHasMore(data.messages.length === 100);
+                setHasMore(data.messages.length === 50);
                 requestAnimationFrame(() => {
                     if (container) {
                         container.scrollTop = container.scrollHeight - prevScrollHeight;
@@ -269,7 +269,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             console.error('Send message error:', res.status, error);
         }
         setSending(false);
-    }, [input, selectedFile, replyingTo, conversationId, sending]);
+    }, [input, selectedFile, replyingTo, conversationId]);
 
     const deleteMessage = useCallback(async (msgId: number) => {
         if (!conversationId) return;
