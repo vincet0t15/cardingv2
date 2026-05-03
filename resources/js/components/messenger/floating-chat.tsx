@@ -51,7 +51,7 @@ interface Props {
 export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
     const { auth } = usePage().props as unknown as { auth: { user: { id: number; name: string } } };
     const { closeChat, toggleMinimize, setConversation } = useChatContext();
-    const displayName = chat.isGroup ? (chat.conversation?.name ?? 'Group Chat') : (chat.user?.name ?? '');
+    const displayName = chat.isGroup ? (chat.conversation?.name ?? 'Group Chat') : (chat.user?.name ?? chat.user?.username ?? 'Unknown');
     const displayId = chat.isGroup ? (chat.conversation?.id ?? 0) : (chat.user?.id ?? 0);
 
     const [messages, setMessages] = useState<MessageType[]>([]);
@@ -312,7 +312,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
     return (
         <>
             <div
-                className="fixed z-50 flex flex-col overflow-hidden rounded-t-xl border border-zinc-200 shadow-2xl dark:border-zinc-700"
+                className="fixed z-50 flex min-h-0 flex-col overflow-hidden rounded-t-xl border border-zinc-200 shadow-2xl dark:border-zinc-700"
                 style={{
                     width: WINDOW_WIDTH,
                     bottom: 0,
@@ -373,7 +373,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
 
             {!chat.minimized && (
                 <div
-                    className={cn('flex flex-1 flex-col', isDragOver && 'ring-2 ring-blue-500 ring-inset')}
+                    className={cn('flex min-h-0 flex-1 flex-col', isDragOver && 'ring-2 ring-blue-500 ring-inset')}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
@@ -387,7 +387,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                         </div>
                     )}
 
-                    <div ref={scrollRef} onScroll={handleScroll} className="flex-1 space-y-1 overflow-y-auto bg-white px-3 py-2 dark:bg-zinc-900">
+                    <div ref={scrollRef} onScroll={handleScroll} className="min-h-0 flex-1 space-y-1 overflow-y-auto bg-white px-3 py-2 dark:bg-zinc-900">
                         {loading ? (
                             <div className="flex h-full items-center justify-center">
                                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
