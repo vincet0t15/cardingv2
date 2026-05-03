@@ -1,4 +1,4 @@
-export type UserType = { id: number; name: string; username: string };
+export type UserType = { id: number; name: string; username: string; is_admin?: boolean };
 
 export type MessageType = {
     id: number;
@@ -22,6 +22,7 @@ export type ConversationType = {
     id: number;
     name: string | null;
     is_group: boolean;
+    created_by: number | null;
     participants: UserType[];
     latest_message: MessageType | null;
     unread_count: number;

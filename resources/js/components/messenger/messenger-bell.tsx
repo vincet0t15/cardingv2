@@ -25,6 +25,7 @@ interface ConversationType {
     id: number;
     name: string | null;
     is_group: boolean;
+    created_by: number | null;
     participants: UserType[];
     latest_message: MessageType | null;
     unread_count: number;

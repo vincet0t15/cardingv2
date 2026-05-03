@@ -122,7 +122,6 @@ class ConversationController extends Controller
             ->orderByDesc('updated_at')
             ->get();
 
-        // Calculate unread count for each conversation using raw query
         foreach ($conversations as $conversation) {
             $userInConv = DB::table('conversation_user')
                 ->where('conversation_id', $conversation->id)
@@ -227,6 +226,7 @@ class ConversationController extends Controller
                 'id' => $conversation->id,
                 'name' => $conversation->name,
                 'is_group' => (bool) $conversation->is_group,
+                'created_by' => $conversation->created_by,
                 'participants' => $conversation->participants->map(fn($p) => [
                     'id' => $p->id,
                     'name' => $p->name,
@@ -389,6 +389,7 @@ class ConversationController extends Controller
                     'id' => $conversation->id,
                     'name' => $conversation->name,
                     'is_group' => (bool) $conversation->is_group,
+                    'created_by' => $conversation->created_by,
                     'participants' => $participants->map(fn($p) => [
                         'id' => $p->id,
                         'name' => $p->name,
@@ -456,6 +457,26 @@ class ConversationController extends Controller
         }
 
         $conversation->participants()->detach(Auth::id());
+
+        return response()->json(['success' => true]);
+    }
+
+    public function destroy(Conversation $conversation)
+    {
+        abort_unless($conversation->is_group, 400);
+        abort_unless(
+            $conversation->participants()->where('user_id', Auth::id())->exists(),
+            403
+        );
+
+        $user = Auth::user();
+        $canDelete = $conversation->created_by === $user->id || $user->isAdmin();
+
+        abort_unless($canDelete, 403);
+
+        $conversation->messages()->delete();
+        $conversation->participants()->detach();
+        $conversation->delete();
 
         return response()->json(['success' => true]);
     }

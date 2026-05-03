@@ -361,6 +361,7 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
     Route::post('messenger/{conversation}/messages/{message}/seen', [ConversationMessageController::class, 'markSeen'])->name('messenger.messages.seen');
     Route::delete('messenger/{conversation}/messages/{message}', [ConversationMessageController::class, 'destroy'])->name('messenger.messages.destroy');
     Route::post('messenger/{conversation}/leave', [ConversationController::class, 'leave'])->name('messenger.conversations.leave');
+    Route::delete('messenger/{conversation}', [ConversationController::class, 'destroy'])->name('messenger.conversations.destroy');
     Route::get('messenger/{conversation}/members', [ConversationController::class, 'members'])->name('messenger.conversations.members');
     Route::get('messenger/users/{userId}/online', [ConversationController::class, 'isOnline'])->name('messenger.users.online');
 });

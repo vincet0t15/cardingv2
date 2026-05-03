@@ -4,7 +4,7 @@ import { ImageLightbox } from './image-lightbox';
 import { cn } from '@/lib/utils';
 import { router } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
-import { Check, CheckCheck, CornerUpLeft, Download, Loader2, MoreHorizontal, Paperclip, PictureInPicture2Icon, Send, Trash2, Upload, Users, X } from 'lucide-react';
+import { AlertTriangle, Check, CheckCheck, CornerUpLeft, Download, Loader2, MoreHorizontal, Paperclip, PictureInPicture2Icon, Send, Trash2, Upload, Users, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConversationType, MessageType, UserType } from './message-types';
 
@@ -131,6 +131,8 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
     const [lightboxSrc, setLightboxSrc] = useState('');
     const [lightboxAlt, setLightboxAlt] = useState('');
     const [downloadingFile, setDownloadingFile] = useState<number | null>(null);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const restoreScroll = useRef<{ h: number; t: number } | null>(null);
@@ -302,6 +304,29 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
         }
     }, [activeConversation.id]);
 
+    const deleteGroup = useCallback(async () => {
+        if (deleting) return;
+        setDeleting(true);
+        try {
+            const response = await fetch(`/messenger/${activeConversation.id}`, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-TOKEN': csrfToken() },
+            });
+            if (response.ok) {
+                router.visit('/messenger');
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Failed to delete group');
+            }
+        } catch (error) {
+            console.error('Failed to delete group:', error);
+            alert('Failed to delete group');
+        } finally {
+            setDeleting(false);
+            setShowDeleteDialog(false);
+        }
+    }, [activeConversation.id, deleting]);
+
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -366,12 +391,31 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                     </p>
                 </div>
                 {activeConversation.is_group && (
-                    <button
-                        onClick={() => setShowMembers(true)}
-                        className="ml-auto flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
-                    >
-                        <Users className="h-4 w-4" />
-                    </button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                type="button"
+                                className="ml-auto flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
+                            >
+                                <MoreHorizontal className="h-4 w-4" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem onClick={() => setShowMembers(true)}>
+                                <Users className="mr-2 h-4 w-4" />
+                                View Members
+                            </DropdownMenuItem>
+                            {(activeConversation.created_by === auth.id || auth.is_admin) && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600 focus:text-red-600">
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete Group
+                                    </DropdownMenuItem>
+                                </>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 )}
             </div>
 
@@ -753,6 +797,40 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                     authUserId={auth.id}
                     onLeaveSuccess={() => router.visit('/messenger')}
                 />
+            )}
+
+            {showDeleteDialog && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div className="bg-background w-full max-w-sm rounded-xl p-6 shadow-2xl">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold">Delete Group</h3>
+                                <p className="text-muted-foreground text-sm">This action cannot be undone.</p>
+                            </div>
+                        </div>
+                        <p className="mt-4 text-sm text-muted-foreground">
+                            Are you sure you want to delete <span className="font-medium">{activeConversation.name ?? 'this group'}</span>? All messages will be permanently removed.
+                        </p>
+                        <div className="mt-6 flex gap-3">
+                            <button
+                                onClick={() => setShowDeleteDialog(false)}
+                                className="flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-muted"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={deleteGroup}
+                                disabled={deleting}
+                                className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
+                            >
+                                {deleting ? 'Deleting...' : 'Delete'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {lightboxOpen && (
