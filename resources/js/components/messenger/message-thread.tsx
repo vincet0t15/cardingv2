@@ -372,6 +372,8 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                 if (fileInputRef.current) fileInputRef.current.value = '';
                 setReplyingTo(null);
                 messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                // Refocus on input after sending
+                inputRef.current?.focus();
                 router.reload({ only: ['conversations'] });
             }
 
