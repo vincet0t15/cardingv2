@@ -1,7 +1,9 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
 import { TrendingUp } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from 'recharts';
+import { router } from '@inertiajs/react';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
@@ -92,7 +94,7 @@ export function ChartOfficeClaims({ claimsData, overtimeData, title = 'Claims & 
     return (
         <Card>
             <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <CardTitle className="flex items-center gap-2">
                             <TrendingUp className="h-5 w-5" />
@@ -100,21 +102,26 @@ export function ChartOfficeClaims({ claimsData, overtimeData, title = 'Claims & 
                         </CardTitle>
                         {description && <CardDescription>{description}</CardDescription>}
                     </div>
-                    <ToggleGroup
-                        type="single"
-                        value={filterType}
-                        onValueChange={(value) => value && setFilterType(value as 'all' | 'claims' | 'overtime')}
-                    >
-                        <ToggleGroupItem value="all" aria-label="Show All">
-                            All
-                        </ToggleGroupItem>
-                        <ToggleGroupItem value="claims" aria-label="Show Claims">
-                            Claims
-                        </ToggleGroupItem>
-                        <ToggleGroupItem value="overtime" aria-label="Show Overtime">
-                            Overtime
-                        </ToggleGroupItem>
-                    </ToggleGroup>
+                    <div className="flex items-center gap-2">
+                        <ToggleGroup
+                            type="single"
+                            value={filterType}
+                            onValueChange={(value) => value && setFilterType(value as 'all' | 'claims' | 'overtime')}
+                        >
+                            <ToggleGroupItem value="all" aria-label="Show All">
+                                All
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="claims" aria-label="Show Claims">
+                                Claims
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="overtime" aria-label="Show Overtime">
+                                Overtime
+                            </ToggleGroupItem>
+                        </ToggleGroup>
+                        <Button variant="ghost" size="sm" onClick={() => router.get(route('claims.report'))}>
+                            View All
+                        </Button>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent>

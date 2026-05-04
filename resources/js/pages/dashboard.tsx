@@ -415,23 +415,29 @@ export default function Dashboard({
                                     {filterData.year}
                                 </CardDescription>
                             </div>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="sm">
-                                        <Filter className="mr-2 h-4 w-4" />
-                                        {salaryViewMode === 'byFund' ? 'By Fund' : 'By Code'}
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-40">
-                                    <DropdownMenuRadioGroup
-                                        value={salaryViewMode}
-                                        onValueChange={(value) => setSalaryViewMode(value as 'byFund' | 'byCode')}
-                                    >
-                                        <DropdownMenuRadioItem value="byFund">By Fund</DropdownMenuRadioItem>
-                                        <DropdownMenuRadioItem value="byCode">By Code</DropdownMenuRadioItem>
-                                    </DropdownMenuRadioGroup>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                            <div className="flex items-center gap-2">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                            <Filter className="mr-2 h-4 w-4" />
+                                            {salaryViewMode === 'byFund' ? 'By Fund' : 'By Code'}
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-40">
+                                        <DropdownMenuRadioGroup
+                                            value={salaryViewMode}
+                                            onValueChange={(value) => setSalaryViewMode(value as 'byFund' | 'byCode')}
+                                        >
+                                            <DropdownMenuRadioItem value="byFund">By Fund</DropdownMenuRadioItem>
+                                            <DropdownMenuRadioItem value="byCode">By Code</DropdownMenuRadioItem>
+                                        </DropdownMenuRadioGroup>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                <Button variant="ghost" size="sm" onClick={() => router.get(route('employees.source-of-fund.index'))}>
+                                    View All
+                                    <ArrowUpRight className="ml-1 h-3 w-3" />
+                                </Button>
+                            </div>
                         </div>
                     </CardHeader>
                 </Card>
@@ -829,11 +835,19 @@ export default function Dashboard({
                     {/* Top Deduction Types */}
                     <Card className="lg:col-span-4">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <TrendingDown className="h-5 w-5" />
-                                Top Deduction Types
-                            </CardTitle>
-                            <CardDescription>Highest deduction categories for {currentPeriod.monthName}</CardDescription>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <TrendingDown className="h-5 w-5" />
+                                        Top Deduction Types
+                                    </CardTitle>
+                                    <CardDescription>Highest deduction categories for {currentPeriod.monthName}</CardDescription>
+                                </div>
+                                <Button variant="ghost" size="sm" onClick={() => router.get(route('may-deductions.index'))}>
+                                    View All
+                                    <ArrowUpRight className="ml-1 h-3 w-3" />
+                                </Button>
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
@@ -937,20 +951,27 @@ export default function Dashboard({
                 {/* Employees by Office */}
                 <Card className="border-0 shadow-md">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <div className="rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 p-2">
-                                <Building2 className="h-5 w-5 text-white" />
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <div className="rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 p-2">
+                                    <Building2 className="h-5 w-5 text-white" />
+                                </div>
+                                <span>Employees by Office</span>
                             </div>
-                            <span>Employees by Office</span>
-                        </CardTitle>
+                            <Button variant="ghost" size="sm" onClick={() => router.get(route('employees.index'))}>
+                                View All
+                                <ArrowUpRight className="ml-1 h-3 w-3" />
+                            </Button>
+                        </div>
                         <CardDescription>Workforce distribution across departments</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             {employeesByOffice.slice(0, 16).map((office) => (
-                                <div
+                                <button
                                     key={office.id}
-                                    className="group flex items-center justify-between rounded-md border border-slate-200 bg-gradient-to-r from-white to-slate-50 p-4 transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md dark:border-slate-700 dark:from-slate-800 dark:to-slate-900"
+                                    onClick={() => router.get(route('employees.index', { office_id: office.id }))}
+                                    className="group flex items-center justify-between rounded-md border border-slate-200 bg-gradient-to-r from-white to-slate-50 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md dark:border-slate-700 dark:from-slate-800 dark:to-slate-900"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-slate-100 to-slate-50 transition-all group-hover:from-blue-100 group-hover:to-indigo-100 dark:from-slate-700 dark:to-slate-800">
@@ -961,7 +982,7 @@ export default function Dashboard({
                                     <span className="rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 px-3 py-1.5 text-xs font-bold text-blue-700 transition-all group-hover:from-blue-100 group-hover:to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 dark:text-blue-300">
                                         {office.employees_count}
                                     </span>
-                                </div>
+                                </button>
                             ))}
                         </div>
                     </CardContent>
