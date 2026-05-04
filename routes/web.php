@@ -354,6 +354,7 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
     Route::get('messenger/users', [ConversationController::class, 'paginatedUsers'])->name('messenger.users');
     Route::get('messenger/conversations', [ConversationController::class, 'paginatedConversations'])->name('messenger.conversations');
     Route::post('messenger/conversations', [ConversationController::class, 'store'])->name('messenger.conversations.store');
+    Route::get('messenger/users/{userId}/online', [ConversationController::class, 'isOnline'])->name('messenger.users.online');
     Route::get('messenger/{conversation}', [ConversationController::class, 'show'])->name('messenger.show');
     Route::get('messenger/{conversation}/messages', [ConversationController::class, 'getMessages'])->name('messenger.messages.index');
     Route::post('messenger/{conversation}/messages', [ConversationMessageController::class, 'store'])->name('messenger.messages.store');
@@ -361,11 +362,10 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
     Route::post('messenger/{conversation}/messages/{message}/seen', [ConversationMessageController::class, 'markSeen'])->name('messenger.messages.seen');
     Route::delete('messenger/{conversation}/messages/{message}', [ConversationMessageController::class, 'destroy'])->name('messenger.messages.destroy');
     Route::post('messenger/{conversation}/leave', [ConversationController::class, 'leave'])->name('messenger.conversations.leave');
-    Route::delete('messenger/{conversation}', [ConversationController::class, 'destroy'])->name('messenger.conversations.destroy');
     Route::get('messenger/{conversation}/members', [ConversationController::class, 'members'])->name('messenger.conversations.members');
     Route::post('messenger/{conversation}/members/add', [ConversationController::class, 'addMember'])->name('messenger.conversations.members.add');
     Route::post('messenger/{conversation}/members/remove', [ConversationController::class, 'removeMember'])->name('messenger.conversations.members.remove');
-    Route::get('messenger/users/{userId}/online', [ConversationController::class, 'isOnline'])->name('messenger.users.online');
+    Route::delete('messenger/{conversation}', [ConversationController::class, 'destroy'])->name('messenger.conversations.destroy');
 });
 
 // Broadcasting auth — must be outside custom middleware groups so EnsureAccountIsActive
