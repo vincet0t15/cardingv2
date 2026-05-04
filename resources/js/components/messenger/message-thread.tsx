@@ -843,6 +843,16 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                                 ref={inputRef}
                                 value={input}
                                 onChange={handleTyping}
+                                onPaste={(e) => {
+                                    const items = e.clipboardData.items;
+                                    for (let i = 0; i < items.length; i++) {
+                                        if (items[i].type.indexOf('image') !== -1) {
+                                            const file = items[i].getAsFile();
+                                            if (file) setSelectedFile(file);
+                                            break;
+                                        }
+                                    }
+                                }}
                                 placeholder="Aa"
                                 disabled={sending}
                                 autoComplete="off"

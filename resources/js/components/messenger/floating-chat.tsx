@@ -650,6 +650,16 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                                             ref={inputRef}
                                             value={input}
                                             onChange={handleTyping}
+                                            onPaste={(e) => {
+                                                const items = e.clipboardData.items;
+                                                for (let i = 0; i < items.length; i++) {
+                                                    if (items[i].type.indexOf('image') !== -1) {
+                                                        const file = items[i].getAsFile();
+                                                        if (file) setSelectedFile(file);
+                                                        break;
+                                                    }
+                                                }
+                                            }}
                                             placeholder="Aa"
                                             className="flex-1 rounded-full bg-zinc-100 px-3 py-1.5 text-sm outline-none placeholder:text-zinc-400 dark:bg-zinc-800 dark:text-zinc-100"
                                             disabled={sending}

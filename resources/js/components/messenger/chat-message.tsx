@@ -151,8 +151,12 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete,
                             className={cn(
                                 'max-w-[220px] rounded-[18px] px-4 py-2 text-[13px] shadow-sm',
                                 isMe
-                                    ? 'rounded-br-none bg-[#5b3df5] text-white'
-                                    : 'rounded-bl-none border border-zinc-100 bg-white text-zinc-800',
+                                    ? !msg.body && msg.file_path
+                                        ? 'bg-transparent'
+                                        : 'rounded-br-none bg-[#5b3df5] text-white'
+                                    : !msg.body && msg.file_path
+                                        ? 'bg-transparent'
+                                        : 'rounded-bl-none border border-zinc-100 bg-white text-zinc-800',
                             )}
                         >
                             {msg.file_path && isImage ? (
