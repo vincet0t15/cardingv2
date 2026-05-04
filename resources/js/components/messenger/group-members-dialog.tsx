@@ -142,6 +142,7 @@ export function GroupMembersDialog({
                 const newMember = availableUsers.find((u) => u.id === userId);
                 if (newMember) {
                     setMembers([...members, newMember]);
+                    setAvailableUsers(availableUsers.filter((u) => u.id !== userId));
                     onMemberAdded?.(newMember);
                 }
                 setSearchQuery('');
