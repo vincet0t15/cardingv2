@@ -129,6 +129,14 @@ interface DashboardProps {
         name: string;
         count: number;
     }[];
+    topSuppliers: {
+        id: number;
+        name: string;
+        owner_name: string | null;
+        contact_number: string | null;
+        total_amount: number;
+        transaction_count: number;
+    }[];
     salaryDistribution: {
         id: number;
         code: string;
@@ -173,6 +181,7 @@ export default function Dashboard({
     claimsByOffice,
     overtimeByOffice,
     employeesByEmploymentStatus,
+    topSuppliers,
 }: DashboardProps) {
     const [chartType, setChartType] = React.useState<'bar' | 'pie'>('bar');
     const [salaryViewMode, setSalaryViewMode] = React.useState<'byFund' | 'byCode'>('byFund');
@@ -712,6 +721,85 @@ export default function Dashboard({
                                     <Users className="h-6 w-6 text-slate-400" />
                                 </div>
                                 <p className="text-muted-foreground text-sm">No employment types found</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Top 10 Suppliers */}
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="flex items-center gap-2">
+                                <Building2 className="h-5 w-5" />
+                                Top 10 Suppliers
+                            </CardTitle>
+                            <Button variant="ghost" size="sm" onClick={() => router.get(route('suppliers.index'))}>
+                                View All
+                                <ArrowUpRight className="ml-1 h-3 w-3" />
+                            </Button>
+                        </div>
+                        <CardDescription>
+                            Suppliers with highest transaction amounts for {months.find((m) => m.value === filterData.month)?.label || 'Current'}{' '}
+                            {filterData.year}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="bg-white">
+                        {topSuppliers.length > 0 ? (
+                            <div className="space-y-3">
+                                {topSuppliers.map((supplier, index) => {
+                                    const maxAmount = topSuppliers[0]?.total_amount || 1;
+                                    const percentage = (supplier.total_amount / maxAmount) * 100;
+                                    return (
+                                        <div key={supplier.id} className="space-y-1">
+                                            <div className="flex items-center justify-between text-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <span
+                                                        className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                                                            index === 0
+                                                                ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'
+                                                                : index === 1
+                                                                  ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                                                                  : index === 2
+                                                                    ? 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300'
+                                                                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                                        }`}
+                                                    >
+                                                        {index + 1}
+                                                    </span>
+                                                    <div>
+                                                        <button
+                                                            onClick={() => router.get(route('suppliers.transactions.show', supplier.id))}
+                                                            className="cursor-pointer text-left font-medium text-blue-600 hover:underline"
+                                                        >
+                                                            {supplier.name}
+                                                        </button>
+                                                        <p className="text-muted-foreground text-xs">{supplier.owner_name || 'N/A'}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="font-semibold text-blue-600">{formatCurrency(supplier.total_amount)}</p>
+                                                    <p className="text-muted-foreground text-xs">
+                                                        {formatNumber(supplier.transaction_count)} transactions
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                                                <div
+                                                    className="h-full rounded-full bg-gradient-to-r from-purple-500 to-purple-600 transition-all"
+                                                    style={{ width: `${percentage}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="py-8 text-center">
+                                <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                                    <Building2 className="h-6 w-6 text-slate-400" />
+                                </div>
+                                <p className="text-muted-foreground text-sm">No supplier transactions data for this period</p>
                             </div>
                         )}
                     </CardContent>

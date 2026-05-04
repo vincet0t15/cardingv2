@@ -13,6 +13,8 @@ use App\Models\Pera;
 use App\Models\Rata;
 use App\Models\Salary;
 use App\Models\SourceOfFundCode;
+use App\Models\Supplier;
+use App\Models\SupplierTransaction;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -451,6 +453,44 @@ class DashboardController extends Controller
                 ];
             });
 
+        // Top 10 Suppliers by Transaction Amount
+        $topSuppliersQuery = Supplier::query();
+
+        if ($useFilters) {
+            $topSuppliersQuery->whereHas('transactions', function ($query) use ($currentMonth, $currentYear) {
+                $query->whereMonth('date_processed', $currentMonth)
+                    ->whereYear('date_processed', $currentYear);
+            });
+        }
+
+        $topSuppliers = $topSuppliersQuery
+            ->withSum(['transactions as total_amount' => function ($query) use ($currentMonth, $currentYear, $useFilters) {
+                if ($useFilters) {
+                    $query->whereMonth('date_processed', $currentMonth)
+                        ->whereYear('date_processed', $currentYear);
+                }
+            }], 'net_amount')
+            ->withCount(['transactions as transaction_count' => function ($query) use ($currentMonth, $currentYear, $useFilters) {
+                if ($useFilters) {
+                    $query->whereMonth('date_processed', $currentMonth)
+                        ->whereYear('date_processed', $currentYear);
+                }
+            }])
+            ->whereHas('transactions')
+            ->orderByDesc('total_amount')
+            ->limit(10)
+            ->get()
+            ->map(function ($supplier) {
+                return [
+                    'id' => $supplier->id,
+                    'name' => $supplier->name,
+                    'owner_name' => $supplier->owner_name,
+                    'contact_number' => $supplier->contact_number,
+                    'total_amount' => (float) ($supplier->total_amount ?? 0),
+                    'transaction_count' => (int) ($supplier->transaction_count ?? 0),
+                ];
+            });
+
         return Inertia::render('dashboard', [
             'stats' => [
                 'totalEmployees' => $totalEmployees,
@@ -491,6 +531,7 @@ class DashboardController extends Controller
             'mostOvertimeClaims' => $mostOvertimeClaims,
             'claimsByOffice' => $claimsByOffice,
             'overtimeByOffice' => $overtimeByOffice,
+            'topSuppliers' => $topSuppliers,
         ]);
     }
 }
