@@ -1,11 +1,26 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { GroupMembersDialog } from './group-members-dialog';
-import { ImageLightbox } from './image-lightbox';
 import { cn } from '@/lib/utils';
 import { router } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
-import { AlertTriangle, Check, CheckCheck, CornerUpLeft, Download, Loader2, MoreHorizontal, Paperclip, PictureInPicture2Icon, Send, Trash2, Upload, Users, X } from 'lucide-react';
+import {
+    AlertTriangle,
+    Check,
+    CheckCheck,
+    CornerUpLeft,
+    Download,
+    Loader2,
+    MoreHorizontal,
+    Paperclip,
+    PictureInPicture2Icon,
+    Send,
+    Trash2,
+    Upload,
+    Users,
+    X,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { GroupMembersDialog } from './group-members-dialog';
+import { ImageLightbox } from './image-lightbox';
 import { ConversationType, MessageType, UserType } from './message-types';
 
 const STORAGE_URL = (path: string | null): string => {
@@ -90,6 +105,27 @@ const NAME_COLORS = [
     'text-purple-700 dark:text-purple-300',
 ] as const;
 
+function throttle(func: (...args: any[]) => void, wait: number) {
+    let timeout: NodeJS.Timeout | null = null;
+    let lastRun = 0;
+    return function executedFunction(...args: any[]) {
+        const now = Date.now();
+        if (now - lastRun >= wait) {
+            func(...args);
+            lastRun = now;
+        } else if (!timeout) {
+            timeout = setTimeout(
+                () => {
+                    func(...args);
+                    lastRun = Date.now();
+                    timeout = null;
+                },
+                wait - (now - lastRun),
+            );
+        }
+    };
+}
+
 function nameColor(name: string) {
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
@@ -140,6 +176,7 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
     const typingTimers = useRef<{ [key: number]: number }>({});
     const inputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const prevConversationIdRef = useRef<number | null>(null);
 
     const otherParticipant = useMemo(
         () => activeConversation.participants.find((p) => p.id !== auth.id) ?? null,
@@ -169,16 +206,61 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
     }, [activeConversation.id, hasMore, loadingOlder, messages]);
 
     useEffect(() => {
-        setMessages(initialMessages);
-        setHasMore(true);
-        setLoadingOlder(false);
-        restoreScroll.current = null;
+        // Only reset if we're actually changing to a different conversation
+        const isConversationChange = prevConversationIdRef.current !== null && prevConversationIdRef.current !== activeConversation.id;
+
+        if (prevConversationIdRef.current === null || isConversationChange) {
+            setMessages(initialMessages);
+            setHasMore(true);
+            setLoadingOlder(false);
+            setReplyingTo(null);
+            setTypingUsers({});
+            restoreScroll.current = null;
+            // Clear saved scroll position for this conversation
+            localStorage.removeItem(`messenger_scroll_${activeConversation.id}`);
+        }
+        prevConversationIdRef.current = activeConversation.id;
     }, [activeConversation.id, initialMessages]);
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        inputRef.current?.focus();
+        // Save scroll position periodically when user scrolls through messages
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        const handleScroll = () => {
+            localStorage.setItem(
+                `messenger_scroll_${activeConversation.id}`,
+                JSON.stringify({ top: container.scrollTop, height: container.scrollHeight }),
+            );
+        };
+
+        const throttledScroll = throttle(handleScroll, 500);
+        container.addEventListener('scroll', throttledScroll);
+        return () => container.removeEventListener('scroll', throttledScroll);
     }, [activeConversation.id]);
+
+    // Restore scroll position when messages load
+    useEffect(() => {
+        if (messages.length > 0 && messagesContainerRef.current) {
+            requestAnimationFrame(() => {
+                try {
+                    const saved = localStorage.getItem(`messenger_scroll_${activeConversation.id}`);
+                    if (saved) {
+                        const { top } = JSON.parse(saved);
+                        if (messagesContainerRef.current) {
+                            messagesContainerRef.current.scrollTop = top;
+                        }
+                    } else {
+                        // Default: scroll to bottom
+                        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+                    }
+                } catch (e) {
+                    // Ignore errors, fall back to scroll to bottom
+                    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+                }
+            });
+        }
+    }, [messages.length, activeConversation.id]);
 
     useEffect(() => {
         if (!loadingOlder && restoreScroll.current && messagesContainerRef.current) {
@@ -248,61 +330,70 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
         }).catch((error) => console.error('Failed to mark as read:', error));
     }, [activeConversation.id]);
 
-    const handleTyping = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        setInput(e.target.value);
-        if (activeConversation.id) {
-            (echo() as any).private(`conversation.${activeConversation.id}`).whisper('typing', {
-                userId: auth.id,
-                name: auth.name,
+    const handleTyping = useCallback(
+        (e: React.ChangeEvent<HTMLInputElement>) => {
+            setInput(e.target.value);
+            if (activeConversation.id) {
+                (echo() as any).private(`conversation.${activeConversation.id}`).whisper('typing', {
+                    userId: auth.id,
+                    name: auth.name,
+                });
+            }
+        },
+        [activeConversation.id, auth.id, auth.name],
+    );
+
+    const sendMessage = useCallback(
+        async (e: React.FormEvent) => {
+            e.preventDefault();
+            if ((!input.trim() && !selectedFile && !replyingTo) || sending) return;
+
+            setSending(true);
+            const socketId = (echo() as any).socketId?.() ?? null;
+            const formData = new FormData();
+            if (input.trim()) formData.append('body', input.trim());
+            if (replyingTo) formData.append('reply_to_id', String(replyingTo.id));
+            if (selectedFile) formData.append('file', selectedFile);
+
+            const response = await fetch(`/messenger/${activeConversation.id}/messages`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken(),
+                    ...(socketId ? { 'X-Socket-ID': socketId } : {}),
+                },
+                body: formData,
             });
-        }
-    }, [activeConversation.id, auth.id, auth.name]);
 
-    const sendMessage = useCallback(async (e: React.FormEvent) => {
-        e.preventDefault();
-        if ((!input.trim() && !selectedFile && !replyingTo) || sending) return;
+            if (response.ok) {
+                const json = await response.json();
+                setMessages((prev) => [...prev, json.message]);
+                setInput('');
+                setSelectedFile(null);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+                setReplyingTo(null);
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                router.reload({ only: ['conversations'] });
+            }
 
-        setSending(true);
-        const socketId = (echo() as any).socketId?.() ?? null;
-        const formData = new FormData();
-        if (input.trim()) formData.append('body', input.trim());
-        if (replyingTo) formData.append('reply_to_id', String(replyingTo.id));
-        if (selectedFile) formData.append('file', selectedFile);
+            setSending(false);
+        },
+        [input, selectedFile, replyingTo, activeConversation.id, sending],
+    );
 
-        const response = await fetch(`/messenger/${activeConversation.id}/messages`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': csrfToken(),
-                ...(socketId ? { 'X-Socket-ID': socketId } : {}),
-            },
-            body: formData,
-        });
-
-        if (response.ok) {
-            const json = await response.json();
-            setMessages((prev) => [...prev, json.message]);
-            setInput('');
-            setSelectedFile(null);
-            if (fileInputRef.current) fileInputRef.current.value = '';
-            setReplyingTo(null);
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-            router.reload({ only: ['conversations'] });
-        }
-
-        setSending(false);
-    }, [input, selectedFile, replyingTo, activeConversation.id, sending]);
-
-    const deleteMessage = useCallback(async (messageId: number) => {
-        setMessages((prev) => prev.filter((m) => m.id !== messageId));
-        try {
-            await fetch(`/messenger/${activeConversation.id}/messages/${messageId}`, {
-                method: 'DELETE',
-                headers: { 'X-CSRF-TOKEN': csrfToken() },
-            });
-        } catch (error) {
-            console.error('Failed to delete message:', error);
-        }
-    }, [activeConversation.id]);
+    const deleteMessage = useCallback(
+        async (messageId: number) => {
+            setMessages((prev) => prev.filter((m) => m.id !== messageId));
+            try {
+                await fetch(`/messenger/${activeConversation.id}/messages/${messageId}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': csrfToken() },
+                });
+            } catch (error) {
+                console.error('Failed to delete message:', error);
+            }
+        },
+        [activeConversation.id],
+    );
 
     const deleteGroup = useCallback(async () => {
         if (deleting) return;
@@ -366,428 +457,456 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
     return (
         <>
             <div className="flex flex-1 flex-col overflow-hidden">
-            <div className="border-sidebar-border/50 flex items-center gap-3 border-b px-4 py-2.5">
-                <div className="relative shrink-0">
-                    <div
-                        className={cn(
-                            'flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white',
-                            avatarColor(otherParticipant?.id ?? activeConversation.id),
-                        )}
-                    >
-                        {activeConversation.is_group ? (
-                            <Users className="h-4 w-4" />
-                        ) : (
-                            getInitials(otherParticipant ? otherParticipant.name : getConversationName(activeConversation, auth))
-                        )}
-                    </div>
-                    {otherParticipant && otherIsOnline && (
-                        <span className="border-background absolute right-0.5 bottom-0.5 h-2.5 w-2.5 rounded-full border-2 bg-green-500" />
-                    )}
-                </div>
-                <div>
-                    <p className="text-sm leading-tight font-semibold">{getConversationName(activeConversation, auth)}</p>
-                    <p className="text-muted-foreground text-xs">
-                        {otherIsOnline ? 'Active now' : activeConversation.is_group ? `${activeConversation.participants.length} members` : 'Offline'}
-                    </p>
-                </div>
-                {activeConversation.is_group && (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <button
-                                type="button"
-                                className="ml-auto flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
-                            >
-                                <MoreHorizontal className="h-4 w-4" />
-                            </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem onClick={() => setShowMembers(true)}>
-                                <Users className="mr-2 h-4 w-4" />
-                                View Members
-                            </DropdownMenuItem>
-                            {(activeConversation.created_by === auth.id || auth.is_admin) && (
-                                <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600 focus:text-red-600">
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete Group
-                                    </DropdownMenuItem>
-                                </>
+                <div className="border-sidebar-border/50 flex items-center gap-3 border-b px-4 py-2.5">
+                    <div className="relative shrink-0">
+                        <div
+                            className={cn(
+                                'flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white',
+                                avatarColor(otherParticipant?.id ?? activeConversation.id),
                             )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                )}
-            </div>
-
-            <div
-                ref={messagesContainerRef}
-                className={cn('flex-1 overflow-y-auto px-4 py-3', isDragOver && 'ring-2 ring-blue-500 ring-inset rounded-lg')}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-            >
-                {isDragOver && (
-                    <div className="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center bg-blue-500/10 backdrop-blur-[1px]">
-                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/20">
-                            <Upload className="h-8 w-8 text-blue-500" />
+                        >
+                            {activeConversation.is_group ? (
+                                <Users className="h-4 w-4" />
+                            ) : (
+                                getInitials(otherParticipant ? otherParticipant.name : getConversationName(activeConversation, auth))
+                            )}
                         </div>
-                        <p className="mt-3 text-sm font-medium text-blue-600">Drop file to attach</p>
+                        {otherParticipant && otherIsOnline && (
+                            <span className="border-background absolute right-0.5 bottom-0.5 h-2.5 w-2.5 rounded-full border-2 bg-green-500" />
+                        )}
                     </div>
-                )}
+                    <div>
+                        <p className="text-sm leading-tight font-semibold">{getConversationName(activeConversation, auth)}</p>
+                        <p className="text-muted-foreground text-xs">
+                            {otherIsOnline
+                                ? 'Active now'
+                                : activeConversation.is_group
+                                  ? `${activeConversation.participants.length} members`
+                                  : 'Offline'}
+                        </p>
+                    </div>
+                    {activeConversation.is_group && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button
+                                    type="button"
+                                    className="text-muted-foreground hover:bg-muted ml-auto flex h-8 w-8 items-center justify-center rounded-full transition"
+                                >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                                <DropdownMenuItem onClick={() => setShowMembers(true)}>
+                                    <Users className="mr-2 h-4 w-4" />
+                                    View Members
+                                </DropdownMenuItem>
+                                {(activeConversation.created_by === auth.id || auth.is_admin) && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600 focus:text-red-600">
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Delete Group
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+                </div>
 
-                <div className="flex w-full flex-col gap-0.5">
-                    {loadingOlder && (
-                        <div className="flex justify-center py-2">
-                            <Loader2 className="h-5 w-5 animate-spin" />
+                <div
+                    ref={messagesContainerRef}
+                    className={cn('flex-1 overflow-y-auto px-4 py-3', isDragOver && 'rounded-lg ring-2 ring-blue-500 ring-inset')}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                >
+                    {isDragOver && (
+                        <div className="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center bg-blue-500/10 backdrop-blur-[1px]">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/20">
+                                <Upload className="h-8 w-8 text-blue-500" />
+                            </div>
+                            <p className="mt-3 text-sm font-medium text-blue-600">Drop file to attach</p>
                         </div>
                     )}
-                    {!hasMore && messages.length > 0 && <div className="text-muted-foreground py-2 text-center text-xs">No more messages</div>}
-                    {messages.length === 0 && <div className="text-muted-foreground py-8 text-center text-sm">No messages yet. Say hi!</div>}
-                    {messages.map((message, i) => {
-                        const isMine = message.user.id === auth.id;
-                        const prev = messages[i - 1];
-                        const next = messages[i + 1];
-                        const isFirstInGroup = prev?.user.id !== message.user.id;
-                        const isLastInGroup = next?.user.id !== message.user.id;
-                        const showAvatar = !isMine && isLastInGroup;
-                        const showName = !isMine && isFirstInGroup && activeConversation.is_group;
-                        const showDateSep = !prev || isDifferentDay(prev.created_at, message.created_at);
 
-                        return (
-                            <div key={message.id}>
-                                {showDateSep && (
-                                    <div className="my-3 flex items-center justify-center">
-                                        <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-xs">
-                                            {formatDateSeparator(message.created_at)}
-                                        </span>
-                                    </div>
-                                )}
-                                <div
-                                    className={cn(
-                                        'group flex w-full items-end gap-1.5',
-                                        isMine ? 'justify-end' : 'justify-start',
-                                        !isLastInGroup && 'mb-0',
-                                        isLastInGroup && 'mb-1',
-                                    )}
-                                    onMouseEnter={() => setHoveredMessageId(message.id)}
-                                    onMouseLeave={() => setHoveredMessageId(null)}
-                                >
-                                    {!isMine && (
-                                        <div className={cn('mb-0.5 shrink-0', !showAvatar && 'opacity-0')}>
-                                            <div
-                                                className={cn(
-                                                    'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold text-white',
-                                                    avatarColor(message.user.id),
-                                                )}
-                                            >
-                                                {getInitials(message.user.name)}
-                                            </div>
+                    <div className="flex w-full flex-col gap-0.5">
+                        {loadingOlder && (
+                            <div className="flex justify-center py-2">
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                            </div>
+                        )}
+                        {!hasMore && messages.length > 0 && <div className="text-muted-foreground py-2 text-center text-xs">No more messages</div>}
+                        {messages.length === 0 && <div className="text-muted-foreground py-8 text-center text-sm">No messages yet. Say hi!</div>}
+                        {messages.map((message, i) => {
+                            const isMine = message.user.id === auth.id;
+                            const prev = messages[i - 1];
+                            const next = messages[i + 1];
+                            const isFirstInGroup = prev?.user.id !== message.user.id;
+                            const isLastInGroup = next?.user.id !== message.user.id;
+                            const showAvatar = !isMine && isLastInGroup;
+                            const showName = !isMine && isFirstInGroup && activeConversation.is_group;
+                            const showDateSep = !prev || isDifferentDay(prev.created_at, message.created_at);
+
+                            return (
+                                <div key={message.id}>
+                                    {showDateSep && (
+                                        <div className="my-3 flex items-center justify-center">
+                                            <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-xs">
+                                                {formatDateSeparator(message.created_at)}
+                                            </span>
                                         </div>
                                     )}
+                                    <div
+                                        className={cn(
+                                            'group flex w-full items-end gap-1.5',
+                                            isMine ? 'justify-end' : 'justify-start',
+                                            !isLastInGroup && 'mb-0',
+                                            isLastInGroup && 'mb-1',
+                                        )}
+                                        onMouseEnter={() => setHoveredMessageId(message.id)}
+                                        onMouseLeave={() => setHoveredMessageId(null)}
+                                    >
+                                        {!isMine && (
+                                            <div className={cn('mb-0.5 shrink-0', !showAvatar && 'opacity-0')}>
+                                                <div
+                                                    className={cn(
+                                                        'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold text-white',
+                                                        avatarColor(message.user.id),
+                                                    )}
+                                                >
+                                                    {getInitials(message.user.name)}
+                                                </div>
+                                            </div>
+                                        )}
 
-                                    {hoveredMessageId === message.id && isMine && (
-                                        <div className="mb-1">
-                                            <DropdownMenu modal={false}>
-                                                <DropdownMenuTrigger asChild>
-                                                    <button
-                                                        type="button"
-                                                        className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground/70 transition-all hover:bg-muted hover:text-foreground"
+                                        {hoveredMessageId === message.id && isMine && (
+                                            <div className="mb-1">
+                                                <DropdownMenu modal={false}>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <button
+                                                            type="button"
+                                                            className="text-muted-foreground/70 hover:bg-muted hover:text-foreground flex h-6 w-6 items-center justify-center rounded-full transition-all"
+                                                        >
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent
+                                                        align="end"
+                                                        sideOffset={5}
+                                                        className="w-28 border-zinc-200 bg-white p-1 shadow-lg"
                                                     >
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" sideOffset={5} className="w-28 border-zinc-200 bg-white p-1 shadow-lg">
-                                                    {message.file_path && (
+                                                        {message.file_path && (
+                                                            <DropdownMenuItem
+                                                                onClick={() =>
+                                                                    handleDownload(message.id, STORAGE_URL(message.file_path), message.file_name!)
+                                                                }
+                                                                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-zinc-700 transition-colors hover:bg-zinc-100 focus:bg-zinc-100"
+                                                            >
+                                                                <Download className="h-3.5 w-3.5 text-zinc-500" />
+                                                                <span>Download</span>
+                                                            </DropdownMenuItem>
+                                                        )}
                                                         <DropdownMenuItem
-                                                            onClick={() => handleDownload(message.id, STORAGE_URL(message.file_path), message.file_name!)}
+                                                            onClick={() => {
+                                                                setReplyingTo(message);
+                                                                inputRef.current?.focus();
+                                                            }}
                                                             className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-zinc-700 transition-colors hover:bg-zinc-100 focus:bg-zinc-100"
                                                         >
-                                                            <Download className="h-3.5 w-3.5 text-zinc-500" />
-                                                            <span>Download</span>
+                                                            <CornerUpLeft className="h-3.5 w-3.5 text-zinc-500" />
+                                                            <span>Reply</span>
                                                         </DropdownMenuItem>
-                                                    )}
-                                                    <DropdownMenuItem
-                                                        onClick={() => {
-                                                            setReplyingTo(message);
-                                                            inputRef.current?.focus();
-                                                        }}
-                                                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-zinc-700 transition-colors hover:bg-zinc-100 focus:bg-zinc-100"
-                                                    >
-                                                        <CornerUpLeft className="h-3.5 w-3.5 text-zinc-500" />
-                                                        <span>Reply</span>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator className="my-1 bg-zinc-200" />
-                                                    <DropdownMenuItem
-                                                        onClick={() => deleteMessage(message.id)}
-                                                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-red-600 transition-colors hover:bg-red-50 focus:bg-red-50"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                        <span>Delete</span>
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    )}
-
-                                    <div className={cn('flex max-w-[min(100%,20rem)] flex-col lg:max-w-sm xl:max-w-md', isMine && 'items-end')}>
-                                        {showName && (
-                                            <span className={cn('mb-0.5 px-3 text-xs font-medium', nameColor(message.user.name))}>
-                                                {message.user.name}
-                                            </span>
-                                        )}
-                                        {message.reply_to && (
-                                            <div
-                                                className={cn(
-                                                    'rounded-2xl px-3 py-1.5 text-[11px] leading-tight opacity-80 transition-all',
-                                                    isMine ? 'mr-2 bg-white/20' : 'ml-2 bg-muted',
-                                                )}
-                                            >
-                                                <p className="max-w-[150px] truncate text-zinc-500 italic">
-                                                    {message.reply_to.body ?? '📎 Attachment'}
-                                                </p>
+                                                        <DropdownMenuSeparator className="my-1 bg-zinc-200" />
+                                                        <DropdownMenuItem
+                                                            onClick={() => deleteMessage(message.id)}
+                                                            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-red-600 transition-colors hover:bg-red-50 focus:bg-red-50"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                            <span>Delete</span>
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </div>
                                         )}
-                                        <div
-                                            className={cn(
-                                                'px-3.5 py-2 text-sm leading-relaxed break-words',
-                                                isMine
-                                                    ? 'bg-[#0b7ff5] text-white shadow-md shadow-blue-600/25'
-                                                    : 'bg-card text-foreground shadow-sm ring-1 shadow-black/[0.06] ring-black/[0.04] dark:shadow-black/40 dark:ring-white/[0.07]',
-                                                isFirstInGroup && isLastInGroup && 'rounded-2xl',
-                                                isFirstInGroup &&
-                                                    !isLastInGroup &&
-                                                    (isMine
-                                                        ? 'rounded-t-2xl rounded-br-sm rounded-bl-2xl'
-                                                        : 'rounded-t-2xl rounded-br-2xl rounded-bl-sm'),
-                                                !isFirstInGroup &&
-                                                    isLastInGroup &&
-                                                    (isMine
-                                                        ? 'rounded-tl-2xl rounded-tr-sm rounded-b-2xl'
-                                                        : 'rounded-tl-sm rounded-tr-2xl rounded-b-2xl'),
-                                                !isFirstInGroup &&
-                                                    !isLastInGroup &&
-                                                    (isMine ? 'rounded-l-2xl rounded-r-sm' : 'rounded-l-sm rounded-r-2xl'),
-                                            )}
-                                        >
-                                            <p className="whitespace-pre-wrap">{message.body}</p>
-                                            {message.file_name && (
-                                                <div className="mt-2 max-w-xs">
-                                                    {message.is_image ? (
-                                                        <>
-                                                            <button
-                                                                onClick={() => openLightbox(STORAGE_URL(message.file_path), message.file_name!)}
-                                                                className="border-muted hover:border-primary/50 block rounded border p-0 cursor-pointer"
-                                                            >
-                                                                <img
-                                                                    src={STORAGE_URL(message.file_path)}
-                                                                    alt={message.file_name}
-                                                                    className="block h-auto max-h-48 w-full rounded object-cover"
-                                                                />
-                                                            </button>
-                                                            <p className="text-muted-foreground mt-1 truncate text-center text-xs">
-                                                                {message.file_name}
-                                                            </p>
-                                                        </>
-                                                    ) : message.is_pdf ? (
-                                                        <button
-                                                            onClick={() => handleDownload(message.id, STORAGE_URL(message.file_path), message.file_name!)}
-                                                            className="bg-muted/50 flex w-full items-center gap-2 rounded-md px-3 py-2 cursor-pointer hover:opacity-80 transition-opacity text-left"
-                                                            disabled={downloadingFile === message.id}
-                                                        >
-                                                            <PictureInPicture2Icon className="text-muted-foreground h-5 w-5 shrink-0" />
-                                                            <div className="min-w-0 flex-1">
-                                                                <p className="truncate text-sm font-medium">{message.file_name}</p>
-                                                                <p className="text-muted-foreground truncate text-xs">{formatFileSize(message.file_size)}</p>
-                                                            </div>
-                                                            {downloadingFile === message.id && (
-                                                                <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
-                                                            )}
-                                                        </button>
-                                                    ) : (
-                                                        <button
-                                                            onClick={() => handleDownload(message.id, STORAGE_URL(message.file_path), message.file_name!)}
-                                                            className="bg-muted/50 flex w-full items-center gap-2 rounded-md px-3 py-2 cursor-pointer hover:opacity-80 transition-opacity text-left"
-                                                            disabled={downloadingFile === message.id}
-                                                        >
-                                                            <Paperclip className="text-muted-foreground h-5 w-5 shrink-0" />
-                                                            <div className="min-w-0 flex-1">
-                                                                <p className="truncate text-sm font-medium">{message.file_name}</p>
-                                                                <p className="text-muted-foreground truncate text-xs">{formatFileSize(message.file_size)}</p>
-                                                            </div>
-                                                            {downloadingFile === message.id && (
-                                                                <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
-                                                            )}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
 
-                                        <div className={cn('mt-0.5 flex items-center gap-1 text-[10px] opacity-50', isMine ? 'mr-2' : 'ml-2')}>
-                                            <span>{formatTime(message.created_at)}</span>
-                                            {isMine && (
-                                                <span className="ml-0.5 inline-flex">
-                                                    {message.seen_at ? (
-                                                        <CheckCheck className="h-3.5 w-3.5 text-blue-500" />
-                                                    ) : (
-                                                        <Check className="h-3.5 w-3.5 opacity-50" />
-                                                    )}
+                                        <div className={cn('flex max-w-[min(100%,20rem)] flex-col lg:max-w-sm xl:max-w-md', isMine && 'items-end')}>
+                                            {showName && (
+                                                <span className={cn('mb-0.5 px-3 text-xs font-medium', nameColor(message.user.name))}>
+                                                    {message.user.name}
                                                 </span>
                                             )}
-                                        </div>
-                                    </div>
+                                            {message.reply_to && (
+                                                <div
+                                                    className={cn(
+                                                        'rounded-2xl px-3 py-1.5 text-[11px] leading-tight opacity-80 transition-all',
+                                                        isMine ? 'mr-2 bg-white/20' : 'bg-muted ml-2',
+                                                    )}
+                                                >
+                                                    <p className="max-w-[150px] truncate text-zinc-500 italic">
+                                                        {message.reply_to.body ?? '📎 Attachment'}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            <div
+                                                className={cn(
+                                                    'px-3.5 py-2 text-sm leading-relaxed break-words',
+                                                    isMine
+                                                        ? 'bg-[#0b7ff5] text-white shadow-md shadow-blue-600/25'
+                                                        : 'bg-card text-foreground shadow-sm ring-1 shadow-black/[0.06] ring-black/[0.04] dark:shadow-black/40 dark:ring-white/[0.07]',
+                                                    isFirstInGroup && isLastInGroup && 'rounded-2xl',
+                                                    isFirstInGroup &&
+                                                        !isLastInGroup &&
+                                                        (isMine
+                                                            ? 'rounded-t-2xl rounded-br-sm rounded-bl-2xl'
+                                                            : 'rounded-t-2xl rounded-br-2xl rounded-bl-sm'),
+                                                    !isFirstInGroup &&
+                                                        isLastInGroup &&
+                                                        (isMine
+                                                            ? 'rounded-tl-2xl rounded-tr-sm rounded-b-2xl'
+                                                            : 'rounded-tl-sm rounded-tr-2xl rounded-b-2xl'),
+                                                    !isFirstInGroup &&
+                                                        !isLastInGroup &&
+                                                        (isMine ? 'rounded-l-2xl rounded-r-sm' : 'rounded-l-sm rounded-r-2xl'),
+                                                )}
+                                            >
+                                                <p className="whitespace-pre-wrap">{message.body}</p>
+                                                {message.file_name && (
+                                                    <div className="mt-2 max-w-xs">
+                                                        {message.is_image ? (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => openLightbox(STORAGE_URL(message.file_path), message.file_name!)}
+                                                                    className="border-muted hover:border-primary/50 block cursor-pointer rounded border p-0"
+                                                                >
+                                                                    <img
+                                                                        src={STORAGE_URL(message.file_path)}
+                                                                        alt={message.file_name}
+                                                                        className="block h-auto max-h-48 w-full rounded object-cover"
+                                                                    />
+                                                                </button>
+                                                                <p className="text-muted-foreground mt-1 truncate text-center text-xs">
+                                                                    {message.file_name}
+                                                                </p>
+                                                            </>
+                                                        ) : message.is_pdf ? (
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleDownload(message.id, STORAGE_URL(message.file_path), message.file_name!)
+                                                                }
+                                                                className="bg-muted/50 flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left transition-opacity hover:opacity-80"
+                                                                disabled={downloadingFile === message.id}
+                                                            >
+                                                                <PictureInPicture2Icon className="text-muted-foreground h-5 w-5 shrink-0" />
+                                                                <div className="min-w-0 flex-1">
+                                                                    <p className="truncate text-sm font-medium">{message.file_name}</p>
+                                                                    <p className="text-muted-foreground truncate text-xs">
+                                                                        {formatFileSize(message.file_size)}
+                                                                    </p>
+                                                                </div>
+                                                                {downloadingFile === message.id && (
+                                                                    <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                                                                )}
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleDownload(message.id, STORAGE_URL(message.file_path), message.file_name!)
+                                                                }
+                                                                className="bg-muted/50 flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left transition-opacity hover:opacity-80"
+                                                                disabled={downloadingFile === message.id}
+                                                            >
+                                                                <Paperclip className="text-muted-foreground h-5 w-5 shrink-0" />
+                                                                <div className="min-w-0 flex-1">
+                                                                    <p className="truncate text-sm font-medium">{message.file_name}</p>
+                                                                    <p className="text-muted-foreground truncate text-xs">
+                                                                        {formatFileSize(message.file_size)}
+                                                                    </p>
+                                                                </div>
+                                                                {downloadingFile === message.id && (
+                                                                    <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
 
-                                    {!isMine && hoveredMessageId === message.id && (
-                                        <div className="mb-1">
-                                            <DropdownMenu modal={false}>
-                                                <DropdownMenuTrigger asChild>
-                                                    <button
-                                                        type="button"
-                                                        className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground/70 transition-all hover:bg-muted hover:text-foreground"
+                                            <div className={cn('mt-0.5 flex items-center gap-1 text-[10px] opacity-50', isMine ? 'mr-2' : 'ml-2')}>
+                                                <span>{formatTime(message.created_at)}</span>
+                                                {isMine && (
+                                                    <span className="ml-0.5 inline-flex">
+                                                        {message.seen_at ? (
+                                                            <CheckCheck className="h-3.5 w-3.5 text-blue-500" />
+                                                        ) : (
+                                                            <Check className="h-3.5 w-3.5 opacity-50" />
+                                                        )}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {!isMine && hoveredMessageId === message.id && (
+                                            <div className="mb-1">
+                                                <DropdownMenu modal={false}>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <button
+                                                            type="button"
+                                                            className="text-muted-foreground/70 hover:bg-muted hover:text-foreground flex h-6 w-6 items-center justify-center rounded-full transition-all"
+                                                        >
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent
+                                                        align="start"
+                                                        sideOffset={5}
+                                                        className="w-28 border-zinc-200 bg-white p-1 shadow-lg"
                                                     >
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="start" sideOffset={5} className="w-28 border-zinc-200 bg-white p-1 shadow-lg">
-                                                    {message.file_path && (
+                                                        {message.file_path && (
+                                                            <DropdownMenuItem
+                                                                onClick={() =>
+                                                                    handleDownload(message.id, STORAGE_URL(message.file_path), message.file_name!)
+                                                                }
+                                                                className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-zinc-700 transition-colors hover:bg-zinc-100 focus:bg-zinc-100"
+                                                            >
+                                                                <Download className="h-3.5 w-3.5 text-zinc-500" />
+                                                                <span>Download</span>
+                                                            </DropdownMenuItem>
+                                                        )}
                                                         <DropdownMenuItem
-                                                            onClick={() => handleDownload(message.id, STORAGE_URL(message.file_path), message.file_name!)}
+                                                            onClick={() => {
+                                                                setReplyingTo(message);
+                                                                inputRef.current?.focus();
+                                                            }}
                                                             className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-zinc-700 transition-colors hover:bg-zinc-100 focus:bg-zinc-100"
                                                         >
-                                                            <Download className="h-3.5 w-3.5 text-zinc-500" />
-                                                            <span>Download</span>
+                                                            <CornerUpLeft className="h-3.5 w-3.5 text-zinc-500" />
+                                                            <span>Reply</span>
                                                         </DropdownMenuItem>
-                                                    )}
-                                                    <DropdownMenuItem
-                                                        onClick={() => {
-                                                            setReplyingTo(message);
-                                                            inputRef.current?.focus();
-                                                        }}
-                                                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-zinc-700 transition-colors hover:bg-zinc-100 focus:bg-zinc-100"
-                                                    >
-                                                        <CornerUpLeft className="h-3.5 w-3.5 text-zinc-500" />
-                                                        <span>Reply</span>
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+
+                        {typingNames.length > 0 && (
+                            <div className="flex items-end gap-1.5">
+                                <div
+                                    className={cn(
+                                        'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold text-white',
+                                        avatarColor(Object.keys(typingUsers).map(Number)[0] ?? 0),
                                     )}
+                                >
+                                    {getInitials(typingNames[0])}
+                                </div>
+                                <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-2.5 dark:bg-slate-800">
+                                    <div className="flex gap-1">
+                                        <span className="bg-muted-foreground h-2 w-2 animate-bounce rounded-full [animation-delay:0ms]" />
+                                        <span className="bg-muted-foreground h-2 w-2 animate-bounce rounded-full [animation-delay:150ms]" />
+                                        <span className="bg-muted-foreground h-2 w-2 animate-bounce rounded-full [animation-delay:300ms]" />
+                                    </div>
                                 </div>
                             </div>
-                        );
-                    })}
+                        )}
 
-                    {typingNames.length > 0 && (
-                        <div className="flex items-end gap-1.5">
-                            <div
-                                className={cn(
-                                    'flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold text-white',
-                                    avatarColor(Object.keys(typingUsers).map(Number)[0] ?? 0),
-                                )}
-                            >
-                                {getInitials(typingNames[0])}
-                            </div>
-                            <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-2.5 dark:bg-slate-800">
-                                <div className="flex gap-1">
-                                    <span className="bg-muted-foreground h-2 w-2 animate-bounce rounded-full [animation-delay:0ms]" />
-                                    <span className="bg-muted-foreground h-2 w-2 animate-bounce rounded-full [animation-delay:150ms]" />
-                                    <span className="bg-muted-foreground h-2 w-2 animate-bounce rounded-full [animation-delay:300ms]" />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    <div ref={messagesEndRef} />
+                        <div ref={messagesEndRef} />
+                    </div>
                 </div>
-            </div>
 
-            <div className="border-sidebar-border/50 border-t px-4 py-3">
-                {replyingTo && (
-                    <div className="bg-muted/60 mb-2 flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
-                        <CornerUpLeft className="text-muted-foreground h-4 w-4 shrink-0" />
-                        <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                                Replying to {replyingTo.user.id === auth.id ? 'yourself' : replyingTo.user.name}
-                            </p>
-                            <p className="text-muted-foreground truncate text-xs">{replyingTo.body ?? '📎 Attachment'}</p>
-                        </div>
-                        <button type="button" onClick={() => setReplyingTo(null)} className="text-muted-foreground hover:text-foreground shrink-0">
-                            <X className="h-4 w-4" />
-                        </button>
-                    </div>
-                )}
-                <form onSubmit={sendMessage} className="flex w-full flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                        <input
-                            ref={inputRef}
-                            value={input}
-                            onChange={handleTyping}
-                            placeholder="Aa"
-                            disabled={sending}
-                            autoComplete="off"
-                            className="bg-muted/60 focus:bg-muted flex-1 rounded-full px-4 py-2.5 text-sm transition outline-none dark:bg-slate-800/60 dark:focus:bg-slate-800"
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    if (input.trim() || selectedFile || replyingTo) {
-                                        sendMessage(e as unknown as React.FormEvent);
-                                    }
-                                }
-                            }}
-                        />
-                        <label
-                            htmlFor="file-input"
-                            className="hover:text-muted-foreground/80 bg-muted/60 hover:bg-muted/80 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition-colors"
-                        >
-                            <input
-                                ref={fileInputRef}
-                                id="file-input"
-                                type="file"
-                                accept="image/*,.pdf,.doc,.docx,.txt"
-                                onChange={(e) => {
-                                    if (e.target.files && e.target.files[0]) {
-                                        setSelectedFile(e.target.files[0]);
-                                    }
-                                }}
-                                className="hidden"
-                            />
-                            <Paperclip className="h-4 w-4" />
-                        </label>
-                        <button
-                            type="submit"
-                            disabled={(!input.trim() && !selectedFile && !replyingTo) || sending}
-                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0b7ff5] text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-600 hover:shadow-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            <Send className="h-4 w-4" />
-                        </button>
-                    </div>
-                    {selectedFile && (
-                        <div className="bg-muted/50 flex items-center gap-2 rounded-md px-3 py-2">
-                            <div className="flex-shrink-0">
-                                {selectedFile.type && selectedFile.type.startsWith('image/') ? (
-                                    <img src={URL.createObjectURL(selectedFile)} alt="Preview" className="h-8 w-8 rounded object-cover" />
-                                ) : selectedFile.type === 'application/pdf' ? (
-                                    <PictureInPicture2Icon className="text-muted-foreground h-8 w-8" />
-                                ) : (
-                                    <Paperclip className="text-muted-foreground h-8 w-8" />
-                                )}
-                            </div>
-                            <div className="flex-1">
-                                <p className="truncate text-sm font-medium">{selectedFile.name}</p>
-                                <p className="text-muted-foreground truncate text-xs">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                <div className="border-sidebar-border/50 border-t px-4 py-3">
+                    {replyingTo && (
+                        <div className="bg-muted/60 mb-2 flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
+                            <CornerUpLeft className="text-muted-foreground h-4 w-4 shrink-0" />
+                            <div className="min-w-0 flex-1">
+                                <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                    Replying to {replyingTo.user.id === auth.id ? 'yourself' : replyingTo.user.name}
+                                </p>
+                                <p className="text-muted-foreground truncate text-xs">{replyingTo.body ?? '📎 Attachment'}</p>
                             </div>
                             <button
                                 type="button"
-                                onClick={() => setSelectedFile(null)}
-                                className="text-muted-foreground/50 ml-2 cursor-pointer hover:text-red-500"
+                                onClick={() => setReplyingTo(null)}
+                                className="text-muted-foreground hover:text-foreground shrink-0"
                             >
-                                <X className="h-3 w-3" />
+                                <X className="h-4 w-4" />
                             </button>
                         </div>
                     )}
-                </form>
+                    <form onSubmit={sendMessage} className="flex w-full flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                            <input
+                                ref={inputRef}
+                                value={input}
+                                onChange={handleTyping}
+                                placeholder="Aa"
+                                disabled={sending}
+                                autoComplete="off"
+                                className="bg-muted/60 focus:bg-muted flex-1 rounded-full px-4 py-2.5 text-sm transition outline-none dark:bg-slate-800/60 dark:focus:bg-slate-800"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        if (input.trim() || selectedFile || replyingTo) {
+                                            sendMessage(e as unknown as React.FormEvent);
+                                        }
+                                    }
+                                }}
+                            />
+                            <label
+                                htmlFor="file-input"
+                                className="hover:text-muted-foreground/80 bg-muted/60 hover:bg-muted/80 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition-colors"
+                            >
+                                <input
+                                    ref={fileInputRef}
+                                    id="file-input"
+                                    type="file"
+                                    accept="image/*,.pdf,.doc,.docx,.txt"
+                                    onChange={(e) => {
+                                        if (e.target.files && e.target.files[0]) {
+                                            setSelectedFile(e.target.files[0]);
+                                        }
+                                    }}
+                                    className="hidden"
+                                />
+                                <Paperclip className="h-4 w-4" />
+                            </label>
+                            <button
+                                type="submit"
+                                disabled={(!input.trim() && !selectedFile && !replyingTo) || sending}
+                                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0b7ff5] text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-600 hover:shadow-blue-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <Send className="h-4 w-4" />
+                            </button>
+                        </div>
+                        {selectedFile && (
+                            <div className="bg-muted/50 flex items-center gap-2 rounded-md px-3 py-2">
+                                <div className="flex-shrink-0">
+                                    {selectedFile.type && selectedFile.type.startsWith('image/') ? (
+                                        <img src={URL.createObjectURL(selectedFile)} alt="Preview" className="h-8 w-8 rounded object-cover" />
+                                    ) : selectedFile.type === 'application/pdf' ? (
+                                        <PictureInPicture2Icon className="text-muted-foreground h-8 w-8" />
+                                    ) : (
+                                        <Paperclip className="text-muted-foreground h-8 w-8" />
+                                    )}
+                                </div>
+                                <div className="flex-1">
+                                    <p className="truncate text-sm font-medium">{selectedFile.name}</p>
+                                    <p className="text-muted-foreground truncate text-xs">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedFile(null)}
+                                    className="text-muted-foreground/50 ml-2 cursor-pointer hover:text-red-500"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </div>
+                        )}
+                    </form>
+                </div>
             </div>
-        </div>
 
             {activeConversation.is_group && (
                 <GroupMembersDialog
@@ -811,13 +930,14 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                                 <p className="text-muted-foreground text-sm">This action cannot be undone.</p>
                             </div>
                         </div>
-                        <p className="mt-4 text-sm text-muted-foreground">
-                            Are you sure you want to delete <span className="font-medium">{activeConversation.name ?? 'this group'}</span>? All messages will be permanently removed.
+                        <p className="text-muted-foreground mt-4 text-sm">
+                            Are you sure you want to delete <span className="font-medium">{activeConversation.name ?? 'this group'}</span>? All
+                            messages will be permanently removed.
                         </p>
                         <div className="mt-6 flex gap-3">
                             <button
                                 onClick={() => setShowDeleteDialog(false)}
-                                className="flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition hover:bg-muted"
+                                className="hover:bg-muted flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition"
                             >
                                 Cancel
                             </button>
@@ -833,14 +953,7 @@ export function MessageThread({ activeConversation, initialMessages, auth, onlin
                 </div>
             )}
 
-            {lightboxOpen && (
-                <ImageLightbox
-                    src={lightboxSrc}
-                    alt={lightboxAlt}
-                    open={lightboxOpen}
-                    onClose={() => setLightboxOpen(false)}
-                />
-            )}
+            {lightboxOpen && <ImageLightbox src={lightboxSrc} alt={lightboxAlt} open={lightboxOpen} onClose={() => setLightboxOpen(false)} />}
         </>
     );
 }

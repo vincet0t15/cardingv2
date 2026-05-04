@@ -82,7 +82,12 @@ function nameColor(name: string) {
     return NAME_COLORS[hash % NAME_COLORS.length];
 }
 
-export default function Messenger({ conversations: initialConversations, users: initialUsers, activeConversation, messages: initialMessages }: Props) {
+export default function Messenger({
+    conversations: initialConversations,
+    users: initialUsers,
+    activeConversation,
+    messages: initialMessages,
+}: Props) {
     const { auth } = usePage().props as unknown as { auth: { user: UserType } };
 
     const [onlineUserIds, setOnlineUserIds] = useState<number[]>([]);
@@ -106,6 +111,33 @@ export default function Messenger({ conversations: initialConversations, users: 
     const listRef = useRef<HTMLDivElement>(null);
     const usersLoadedRef = useRef(initialUsers.length > 0);
     const convsLoadedRef = useRef(initialConversations.length > 0);
+    const restoreAttemptedRef = useRef(false);
+
+    // Persist active conversation to localStorage so it's restored when returning from other pages
+    useEffect(() => {
+        if (activeConversation?.id) {
+            localStorage.setItem('messenger_active_conversation', JSON.stringify(activeConversation.id));
+        }
+    }, [activeConversation?.id]);
+
+    // Restore active conversation when returning to messenger from other pages
+    useEffect(() => {
+        if (!activeConversation && !restoreAttemptedRef.current && conversations.length > 0) {
+            restoreAttemptedRef.current = true;
+            try {
+                const saved = localStorage.getItem('messenger_active_conversation');
+                if (saved) {
+                    const conversationId = JSON.parse(saved);
+                    const exists = conversations.some((c) => c.id === conversationId);
+                    if (exists) {
+                        router.visit(`/messenger/${conversationId}`, { preserveScroll: true, preserveState: true });
+                    }
+                }
+            } catch (e) {
+                // Ignore parsing errors
+            }
+        }
+    }, [activeConversation, conversations.length]);
 
     // Presence channel — online users
     useEffect(() => {
@@ -120,45 +152,51 @@ export default function Messenger({ conversations: initialConversations, users: 
         };
     }, []);
 
-    const fetchUsers = useCallback(async (page: number) => {
-        if (loadingUsers || !usersHasMore) return;
-        setLoadingUsers(true);
-        try {
-            const res = await fetch(`/messenger/users?page=${page}`);
-            if (res.ok) {
-                const data = await res.json();
-                setAllUsers((prev) => {
-                    const existing = new Set(prev.map((u) => u.id));
-                    const newUsers = data.users.filter((u: UserType) => !existing.has(u.id));
-                    return [...prev, ...newUsers];
-                });
-                setUsersHasMore(data.has_more);
-                if (data.has_more) setUsersPage(page + 1);
+    const fetchUsers = useCallback(
+        async (page: number) => {
+            if (loadingUsers || !usersHasMore) return;
+            setLoadingUsers(true);
+            try {
+                const res = await fetch(`/messenger/users?page=${page}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setAllUsers((prev) => {
+                        const existing = new Set(prev.map((u) => u.id));
+                        const newUsers = data.users.filter((u: UserType) => !existing.has(u.id));
+                        return [...prev, ...newUsers];
+                    });
+                    setUsersHasMore(data.has_more);
+                    if (data.has_more) setUsersPage(page + 1);
+                }
+            } finally {
+                setLoadingUsers(false);
             }
-        } finally {
-            setLoadingUsers(false);
-        }
-    }, [loadingUsers, usersHasMore]);
+        },
+        [loadingUsers, usersHasMore],
+    );
 
-    const fetchConversations = useCallback(async (page: number) => {
-        if (loadingConvs || !convHasMore) return;
-        setLoadingConvs(true);
-        try {
-            const res = await fetch(`/messenger/conversations?page=${page}`);
-            if (res.ok) {
-                const data = await res.json();
-                setConversations((prev) => {
-                    const existing = new Set(prev.map((c) => c.id));
-                    const newConvs = data.conversations.filter((c: ConversationType) => !existing.has(c.id));
-                    return [...prev, ...newConvs];
-                });
-                setConvHasMore(data.has_more);
-                if (data.has_more) setConvPage(page + 1);
+    const fetchConversations = useCallback(
+        async (page: number) => {
+            if (loadingConvs || !convHasMore) return;
+            setLoadingConvs(true);
+            try {
+                const res = await fetch(`/messenger/conversations?page=${page}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setConversations((prev) => {
+                        const existing = new Set(prev.map((c) => c.id));
+                        const newConvs = data.conversations.filter((c: ConversationType) => !existing.has(c.id));
+                        return [...prev, ...newConvs];
+                    });
+                    setConvHasMore(data.has_more);
+                    if (data.has_more) setConvPage(page + 1);
+                }
+            } finally {
+                setLoadingConvs(false);
             }
-        } finally {
-            setLoadingConvs(false);
-        }
-    }, [loadingConvs, convHasMore]);
+        },
+        [loadingConvs, convHasMore],
+    );
 
     // IntersectionObserver for infinite scroll
     useEffect(() => {
@@ -205,7 +243,7 @@ export default function Messenger({ conversations: initialConversations, users: 
             setSelectedUserIds([]);
             setGroupName('');
             setNewChatSearch('');
-            router.visit(`/messenger/${id}`);
+            router.visit(`/messenger/${id}`, { preserveScroll: true, preserveState: true });
         }
 
         setCreatingChat(false);
@@ -223,7 +261,7 @@ export default function Messenger({ conversations: initialConversations, users: 
         });
         if (response.ok) {
             const { id } = await response.json();
-            router.visit(`/messenger/${id}`);
+            router.visit(`/messenger/${id}`, { preserveScroll: true, preserveState: true });
         }
     };
 
@@ -316,7 +354,7 @@ export default function Messenger({ conversations: initialConversations, users: 
                                         return (
                                             <button
                                                 key={`group-${conv.id}`}
-                                                onClick={() => router.visit(`/messenger/${conv.id}`, { preserveScroll: true })}
+                                                onClick={() => router.visit(`/messenger/${conv.id}`, { preserveScroll: true, preserveState: true })}
                                                 className={cn(
                                                     'flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition',
                                                     isActive
@@ -374,7 +412,11 @@ export default function Messenger({ conversations: initialConversations, users: 
                                     return (
                                         <button
                                             key={`user-${user.id}`}
-                                            onClick={() => (conv ? router.visit(`/messenger/${conv.id}`, { preserveScroll: true }) : startDm(user.id))}
+                                            onClick={() =>
+                                                conv
+                                                    ? router.visit(`/messenger/${conv.id}`, { preserveScroll: true, preserveState: true })
+                                                    : startDm(user.id)
+                                            }
                                             className={cn(
                                                 'flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition',
                                                 isActive
@@ -436,7 +478,7 @@ export default function Messenger({ conversations: initialConversations, users: 
 
                                 {(loadingUsers || loadingConvs) && (
                                     <div className="flex items-center justify-center py-4">
-                                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                        <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
                                     </div>
                                 )}
 
