@@ -78,7 +78,15 @@ class ConversationController extends Controller
     {
         $request->validate([
             'user_ids' => ['required', 'array', 'min:1'],
-            'user_ids.*' => ['integer', 'exists:users,id', 'different:auth.id'],
+            'user_ids.*' => [
+                'integer',
+                'exists:users,id',
+                function ($attribute, $value, $fail) {
+                    if ($value == Auth::id()) {
+                        $fail('You cannot start a conversation with yourself.');
+                    }
+                },
+            ],
             'name' => ['nullable', 'string', 'max:255'],
             'is_group' => ['boolean'],
         ]);
