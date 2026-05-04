@@ -229,7 +229,7 @@ class ManageEmployeeController extends Controller
 
             $availableYears = collect()
                 ->merge(EmployeeDeduction::where('employee_id', $employee->id)->select('pay_period_year as year')->distinct())
-                ->merge($allClaims->map(fn($c) => (object) ['year' => (int) Carbon::parse($c->claim_date)->format('Y')])->unique('year'))
+                ->merge($allClaims->map(fn($c) => (object) ['year' => (int) Carbon::parse($c->claim_date)->format('Y')])->unique('year')->values())
                 ->merge($adjustments->filter(fn($a) => $a->pay_period_year)->map(fn($a) => (object) ['year' => $a->pay_period_year]))
                 ->merge($employee->clothingAllowances->map(fn($ca) => (object) ['year' => (int) Carbon::parse($ca->start_date)->format('Y')]))
                 ->pluck('year')
