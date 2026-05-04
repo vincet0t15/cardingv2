@@ -76,32 +76,34 @@ export function GroupMembersDialog({
         }
     }, [open, conversationId]);
 
-    // Search for users to add
+    // Fetch available users when showAddMember changes
     useEffect(() => {
-        if (!showAddMember || !searchQuery.trim()) {
-            setAvailableUsers([]);
-            return;
-        }
-
-        setSearchLoading(true);
-        const timeout = setTimeout(() => {
-            fetch(`/messenger/users?page=1`)
+        if (showAddMember && conversationId) {
+            setSearchLoading(true);
+            fetch(`/messenger/${conversationId}/available-users`)
                 .then((res) => res.json())
                 .then((data) => {
-                    const filteredUsers = data.users.filter(
-                        (user: Member) =>
-                            !members.find((m) => m.id === user.id) &&
-                            (user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                user.username.toLowerCase().includes(searchQuery.toLowerCase())),
-                    );
-                    setAvailableUsers(filteredUsers.slice(0, 5));
+                    if (data.users) {
+                        setAvailableUsers(data.users);
+                    } else {
+                        setAvailableUsers([]);
+                    }
                     setSearchLoading(false);
                 })
-                .catch(() => setSearchLoading(false));
-        }, 300);
+                .catch(() => {
+                    setAvailableUsers([]);
+                    setSearchLoading(false);
+                });
+        } else {
+            setAvailableUsers([]);
+            setSearchQuery('');
+        }
+    }, [showAddMember, conversationId]);
 
-        return () => clearTimeout(timeout);
-    }, [searchQuery, showAddMember, members]);
+    // Filter available users based on search query
+    const filteredAvailableUsers = availableUsers.filter(
+        (user) => user.name.toLowerCase().includes(searchQuery.toLowerCase()) || user.username.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
 
     const handleLeave = async () => {
         setLeaving(true);
@@ -208,9 +210,15 @@ export function GroupMembersDialog({
                                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
                             </div>
                         )}
-                        {availableUsers.length > 0 && (
+                        {!searchLoading && availableUsers.length === 0 && (
+                            <div className="rounded-lg bg-slate-50 p-3 text-center dark:bg-slate-700/50">
+                                <p className="text-muted-foreground text-xs">No users available to add</p>
+                                <p className="text-muted-foreground text-xs">Everyone is already in the group</p>
+                            </div>
+                        )}
+                        {!searchLoading && filteredAvailableUsers.length > 0 && (
                             <div className="space-y-1">
-                                {availableUsers.map((user) => (
+                                {filteredAvailableUsers.map((user) => (
                                     <button
                                         key={user.id}
                                         onClick={() => handleAddMember(user.id)}
@@ -223,6 +231,11 @@ export function GroupMembersDialog({
                                         <Plus className="h-3.5 w-3.5 shrink-0 text-blue-500" />
                                     </button>
                                 ))}
+                            </div>
+                        )}
+                        {!searchLoading && searchQuery.trim() && filteredAvailableUsers.length === 0 && availableUsers.length > 0 && (
+                            <div className="rounded-lg bg-slate-50 p-3 text-center dark:bg-slate-700/50">
+                                <p className="text-muted-foreground text-xs">No users match your search</p>
                             </div>
                         )}
                     </div>

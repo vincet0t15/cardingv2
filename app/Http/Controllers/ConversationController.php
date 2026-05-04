@@ -594,4 +594,33 @@ class ConversationController extends Controller
 
         return response()->json(['online' => $online]);
     }
+
+    public function availableUsers(Request $request, Conversation $conversation)
+    {
+        // Check if user is a member of this conversation
+        if (!$conversation->participants()->where('user_id', Auth::id())->exists()) {
+            return response()->json(['error' => 'You are not a member of this group.'], 403);
+        }
+
+        // Get users already in the conversation
+        $memberIds = $conversation->participants()->pluck('user_id')->toArray();
+
+        // Get all active users except current user and existing members
+        $availableUsers = User::where('id', '!=', Auth::id())
+            ->where('is_active', true)
+            ->whereNotIn('id', $memberIds)
+            ->select('id', 'name', 'username')
+            ->orderBy('name')
+            ->get()
+            ->map(fn($u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'username' => $u->username,
+            ])
+            ->values();
+
+        return response()->json([
+            'users' => $availableUsers,
+        ]);
+    }
 }
