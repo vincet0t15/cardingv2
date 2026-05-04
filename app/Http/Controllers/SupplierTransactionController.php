@@ -7,6 +7,7 @@ use App\Models\SupplierTransaction;
 use App\Traits\HandlesDeletionRequests;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -113,7 +114,14 @@ class SupplierTransactionController extends Controller
     {
         $validated = $request->validate([
             'pr_date' => 'required|date',
-            'pr_no' => 'required|string|max:255',
+            'pr_no' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('supplier_transactions')
+                    ->where('supplier_id', $supplier->id)
+                    ->where('earmark', $request->input('earmark')),
+            ],
             'po_date' => 'nullable|date',
             'po_no' => 'nullable|string|max:255',
             'sale_invoice_date' => 'nullable|date',
@@ -150,7 +158,15 @@ class SupplierTransactionController extends Controller
     {
         $validated = $request->validate([
             'pr_date' => 'required|date',
-            'pr_no' => 'required|string|max:255',
+            'pr_no' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('supplier_transactions')
+                    ->where('supplier_id', $supplier->id)
+                    ->where('earmark', $request->input('earmark'))
+                    ->ignore($transaction->id),
+            ],
             'po_date' => 'nullable|date',
             'po_no' => 'nullable|string|max:255',
             'sale_invoice_date' => 'nullable|date',
