@@ -1,6 +1,8 @@
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { LogOut, UserCheck, Users } from 'lucide-react';
+import { LogOut, Plus, UserCheck, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -34,14 +36,31 @@ interface GroupMembersDialogProps {
     onOpenChange: (open: boolean) => void;
     conversationId: number;
     authUserId: number;
+    creatorId?: number;
     onLeaveSuccess: () => void;
+    onMemberAdded?: (member: Member) => void;
+    onMemberRemoved?: (userId: number) => void;
 }
 
-export function GroupMembersDialog({ open, onOpenChange, conversationId, authUserId, onLeaveSuccess }: GroupMembersDialogProps) {
+export function GroupMembersDialog({
+    open,
+    onOpenChange,
+    conversationId,
+    authUserId,
+    creatorId: initialCreatorId,
+    onLeaveSuccess,
+    onMemberAdded,
+    onMemberRemoved,
+}: GroupMembersDialogProps) {
     const [members, setMembers] = useState<Member[]>([]);
-    const [creatorId, setCreatorId] = useState<number | null>(null);
+    const [creatorId, setCreatorId] = useState<number | null>(initialCreatorId ?? null);
     const [loading, setLoading] = useState(false);
     const [leaving, setLeaving] = useState(false);
+    const [showAddMember, setShowAddMember] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [availableUsers, setAvailableUsers] = useState<Member[]>([]);
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [removingUserId, setRemovingUserId] = useState<number | null>(null);
 
     useEffect(() => {
         if (open && conversationId) {
@@ -56,6 +75,33 @@ export function GroupMembersDialog({ open, onOpenChange, conversationId, authUse
                 .catch(() => setLoading(false));
         }
     }, [open, conversationId]);
+
+    // Search for users to add
+    useEffect(() => {
+        if (!showAddMember || !searchQuery.trim()) {
+            setAvailableUsers([]);
+            return;
+        }
+
+        setSearchLoading(true);
+        const timeout = setTimeout(() => {
+            fetch(`/messenger/users?page=1`)
+                .then((res) => res.json())
+                .then((data) => {
+                    const filteredUsers = data.users.filter(
+                        (user: Member) =>
+                            !members.find((m) => m.id === user.id) &&
+                            (user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                user.username.toLowerCase().includes(searchQuery.toLowerCase())),
+                    );
+                    setAvailableUsers(filteredUsers.slice(0, 5));
+                    setSearchLoading(false);
+                })
+                .catch(() => setSearchLoading(false));
+        }, 300);
+
+        return () => clearTimeout(timeout);
+    }, [searchQuery, showAddMember, members]);
 
     const handleLeave = async () => {
         setLeaving(true);
@@ -79,15 +125,108 @@ export function GroupMembersDialog({ open, onOpenChange, conversationId, authUse
         }
     };
 
+    const handleAddMember = async (userId: number) => {
+        try {
+            const res = await fetch(`/messenger/${conversationId}/members/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken(),
+                },
+                body: JSON.stringify({ user_id: userId }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                const newMember = availableUsers.find((u) => u.id === userId);
+                if (newMember) {
+                    setMembers([...members, newMember]);
+                    onMemberAdded?.(newMember);
+                }
+                setSearchQuery('');
+                toast.success('Member added successfully');
+            } else {
+                toast.error(data.error ?? 'Failed to add member');
+            }
+        } catch {
+            toast.error('Failed to add member');
+        }
+    };
+
+    const handleRemoveMember = async (userId: number) => {
+        setRemovingUserId(userId);
+        try {
+            const res = await fetch(`/messenger/${conversationId}/members/remove`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken(),
+                },
+                body: JSON.stringify({ user_id: userId }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setMembers(members.filter((m) => m.id !== userId));
+                onMemberRemoved?.(userId);
+                toast.success('Member removed');
+            } else {
+                toast.error(data.error ?? 'Failed to remove member');
+            }
+        } catch {
+            toast.error('Failed to remove member');
+        } finally {
+            setRemovingUserId(null);
+        }
+    };
+
+    const isGroupAdmin = creatorId === authUserId;
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[380px]">
-                <DialogHeader>
+                <DialogHeader className="flex flex-row items-center justify-between">
                     <DialogTitle className="flex items-center gap-2">
                         <Users className="h-4 w-4" />
                         Members ({members.length})
                     </DialogTitle>
+                    {isGroupAdmin && (
+                        <Button size="sm" variant="outline" onClick={() => setShowAddMember(!showAddMember)} className="ml-auto">
+                            <Plus className="h-3 w-3" />
+                        </Button>
+                    )}
                 </DialogHeader>
+
+                {showAddMember && (
+                    <div className="space-y-2 border-b pb-3">
+                        <Input
+                            placeholder="Search users..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="text-sm"
+                        />
+                        {searchLoading && (
+                            <div className="flex justify-center py-2">
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                            </div>
+                        )}
+                        {availableUsers.length > 0 && (
+                            <div className="space-y-1">
+                                {availableUsers.map((user) => (
+                                    <button
+                                        key={user.id}
+                                        onClick={() => handleAddMember(user.id)}
+                                        className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left hover:bg-blue-50 dark:hover:bg-slate-700"
+                                    >
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-sm font-medium">{user.name}</p>
+                                            <p className="text-muted-foreground truncate text-xs">@{user.username}</p>
+                                        </div>
+                                        <Plus className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div className="max-h-[320px] overflow-y-auto">
                     {loading ? (
@@ -97,10 +236,7 @@ export function GroupMembersDialog({ open, onOpenChange, conversationId, authUse
                     ) : (
                         <div className="space-y-1">
                             {members.map((member) => (
-                                <div
-                                    key={member.id}
-                                    className="flex items-center gap-3 rounded-lg px-2 py-2"
-                                >
+                                <div key={member.id} className="flex items-center gap-3 rounded-lg px-2 py-2">
                                     <div
                                         className={cn(
                                             'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white',
@@ -113,19 +249,29 @@ export function GroupMembersDialog({ open, onOpenChange, conversationId, authUse
                                         <p className="truncate text-sm font-medium">
                                             {member.name}
                                             {member.id === creatorId && (
-                                                <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">(admin)</span>
+                                                <span className="text-muted-foreground ml-1.5 text-[10px] font-normal">(admin)</span>
                                             )}
-                                            {member.id === authUserId && (
-                                                <span className="ml-1.5 text-[10px] font-normal text-blue-500">(you)</span>
-                                            )}
+                                            {member.id === authUserId && <span className="ml-1.5 text-[10px] font-normal text-blue-500">(you)</span>}
                                         </p>
-                                        <p className="truncate text-xs text-muted-foreground">@{member.username}</p>
+                                        <p className="text-muted-foreground truncate text-xs">@{member.username}</p>
                                     </div>
-                                    {member.id === authUserId && (
-                                        <div className="flex h-5 w-5 shrink-0 items-center justify-center text-green-500">
-                                            <UserCheck className="h-3.5 w-3.5" />
-                                        </div>
-                                    )}
+                                    <div className="flex items-center gap-1">
+                                        {member.id === authUserId && (
+                                            <div className="flex h-5 w-5 shrink-0 items-center justify-center text-green-500">
+                                                <UserCheck className="h-3.5 w-3.5" />
+                                            </div>
+                                        )}
+                                        {isGroupAdmin && member.id !== authUserId && member.id !== creatorId && (
+                                            <button
+                                                onClick={() => handleRemoveMember(member.id)}
+                                                disabled={removingUserId === member.id}
+                                                className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-red-500 transition hover:bg-red-50 disabled:opacity-50 dark:hover:bg-red-900/20"
+                                                title="Remove member"
+                                            >
+                                                <X className="h-3.5 w-3.5" />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                         </div>

@@ -503,6 +503,86 @@ class ConversationController extends Controller
         ]);
     }
 
+    public function addMember(Request $request, Conversation $conversation)
+    {
+        if (!$conversation->is_group) {
+            return response()->json(['error' => 'Can only add members to group chats.'], 400);
+        }
+
+        if (!$conversation->participants()->where('user_id', Auth::id())->exists()) {
+            return response()->json(['error' => 'You are not a member of this group.'], 403);
+        }
+
+        $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        $userId = $request->user_id;
+
+        // Check if user is already in the conversation
+        if ($conversation->participants()->where('user_id', $userId)->exists()) {
+            return response()->json(['error' => 'User is already a member of this group.'], 400);
+        }
+
+        // Check if user exists and is active
+        $user = User::find($userId);
+        if (!$user || !$user->is_active) {
+            return response()->json(['error' => 'User not found or is inactive.'], 404);
+        }
+
+        // Add the user to the conversation
+        $conversation->participants()->attach($userId, ['last_read_at' => now()]);
+
+        return response()->json([
+            'success' => true,
+            'member' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'username' => $user->username,
+            ],
+        ]);
+    }
+
+    public function removeMember(Request $request, Conversation $conversation)
+    {
+        if (!$conversation->is_group) {
+            return response()->json(['error' => 'Can only remove members from group chats.'], 400);
+        }
+
+        if (!$conversation->participants()->where('user_id', Auth::id())->exists()) {
+            return response()->json(['error' => 'You are not a member of this group.'], 403);
+        }
+
+        $request->validate([
+            'user_id' => ['required', 'integer'],
+        ]);
+
+        $userId = $request->user_id;
+        $currentUser = Auth::user();
+
+        // Check if the user to be removed is part of the conversation
+        if (!$conversation->participants()->where('user_id', $userId)->exists()) {
+            return response()->json(['error' => 'User is not a member of this group.'], 404);
+        }
+
+        // Only the group creator or admin can remove members
+        $canRemove = $conversation->created_by === $currentUser->id || $currentUser->isAdmin();
+
+        if (!$canRemove) {
+            return response()->json(['error' => 'You do not have permission to remove members.'], 403);
+        }
+
+        // Prevent removing the creator
+        if ($userId === $conversation->created_by) {
+            return response()->json(['error' => 'Cannot remove the group creator.'], 400);
+        }
+
+        // Remove the user from the conversation
+        $conversation->participants()->detach($userId);
+
+        return response()->json(['success' => true]);
+    }
+
     public function isOnline($userId)
     {
         $user = \App\Models\User::find($userId);
