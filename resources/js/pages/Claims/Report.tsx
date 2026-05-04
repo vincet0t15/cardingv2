@@ -1,4 +1,5 @@
 import { CustomComboBox } from '@/components/CustomComboBox';
+import Pagination from '@/components/paginationData';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
+import type { PaginatedDataResponse } from '@/types/pagination';
 import { Head, router, useForm } from '@inertiajs/react';
 import { Briefcase, Clock, FileText, Printer, Receipt, Search, TrendingUp, Users } from 'lucide-react';
 import { useEffect } from 'react';
@@ -174,6 +176,26 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
     };
 
     const filteredSummary = getFilteredSummary();
+
+    const paginatedData: PaginatedDataResponse<typeof employees[number]> = {
+        current_page: pagination.current_page,
+        from: (pagination.current_page - 1) * 15 + 1,
+        to: Math.min(pagination.current_page * 15, pagination.total_records),
+        last_page: pagination.total_pages,
+        path: route('claims.report'),
+        per_page: 15,
+        total: pagination.total_records,
+        links: [
+            { url: pagination.current_page > 1 ? route('claims.report', { ...filters, page: pagination.current_page - 1 }) : null, label: '&laquo; Previous', active: false },
+            ...Array.from({ length: pagination.total_pages }, (_, i) => ({
+                url: route('claims.report', { ...filters, page: i + 1 }),
+                label: String(i + 1),
+                active: i + 1 === pagination.current_page,
+            })),
+            { url: pagination.current_page < pagination.total_pages ? route('claims.report', { ...filters, page: pagination.current_page + 1 }) : null, label: 'Next &raquo;', active: false },
+        ],
+        data: employees,
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -467,49 +489,7 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
                         )}
 
                         {/* Pagination */}
-                        {pagination.total_pages > 1 && (
-                            <div className="mt-4 flex items-center justify-between">
-                                <div className="text-muted-foreground text-sm">
-                                    Showing page {pagination.current_page} of {pagination.total_pages} ({pagination.total_records} employees)
-                                </div>
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={pagination.current_page === 1}
-                                        onClick={() => {
-                                            router.get(
-                                                route('claims.report'),
-                                                {
-                                                    ...filters,
-                                                    page: pagination.current_page - 1,
-                                                },
-                                                { preserveState: true, preserveScroll: true },
-                                            );
-                                        }}
-                                    >
-                                        Previous
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        disabled={pagination.current_page === pagination.total_pages}
-                                        onClick={() => {
-                                            router.get(
-                                                route('claims.report'),
-                                                {
-                                                    ...filters,
-                                                    page: pagination.current_page + 1,
-                                                },
-                                                { preserveState: true, preserveScroll: true },
-                                            );
-                                        }}
-                                    >
-                                        Next
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
+                        {pagination.total_pages > 1 && <Pagination data={paginatedData} />}
                     </CardContent>
                 </Card>
             </div>
