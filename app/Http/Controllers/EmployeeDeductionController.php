@@ -98,25 +98,6 @@ class EmployeeDeductionController extends Controller
             $q->where('is_active', true)->orderBy('name');
         }])->orderBy('name')->get();
 
-        $deductionCategories = DeductionCategory::with(['deductionTypes' => function ($q) {
-            $q->where('is_active', true)->orderBy('name');
-        }])->orderBy('name')->get();
-
-        $deductionCategories = DeductionCategory::with(['deductionTypes' => function ($q) {
-            $q->where('is_active', true)->orderBy('name');
-        }])->orderBy('name')->get();
-
-        $deductionCategories = DeductionCategory::with(['deductionTypes' => function ($q) {
-            $q->where('is_active', true)->orderBy('name');
-        }])->orderBy('name')->get();
-
-        $deductionCategories = DeductionCategory::with(['deductionTypes' => function ($q) {
-            $q->where('is_active', true)->orderBy('name');
-        }])->orderBy('name')->get();
-
-        $deductionCategories = DeductionCategory::with(['deductionTypes' => function ($q) {
-            $q->where('is_active', true)->orderBy('name');
-        }])->orderBy('name')->get();
         $offices = Office::orderBy('name')->get();
         $employmentStatuses = EmploymentStatus::orderBy('name')->get();
 
