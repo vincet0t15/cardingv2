@@ -92,7 +92,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         Gross: {formatCurrency(grossPay)}
                     </Badge>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                     <Card className="rounded-md border-blue-200 bg-blue-50 p-5 text-blue-800 shadow-sm">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Basic Salary</CardTitle>
@@ -182,7 +182,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
             </div>
 
             {/* Main Content Grid */}
-            <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
+            <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
                 <div className="space-y-6">
                     {/* Current Month Summary */}
                     <div>
@@ -192,7 +192,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                                 {currentPeriodLabel}
                             </Badge>
                         </div>
-                        <div className="grid gap-4 sm:grid-cols-3">
+                        <div className="grid gap-4 md:grid-cols-3">
                             <Card className="rounded-md border-red-200 p-5 text-red-800 shadow-sm">
                                 <CardHeader className="flex items-center justify-between pb-2">
                                     <CardTitle className="text-sm font-medium">Deductions</CardTitle>
@@ -243,7 +243,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         <CardHeader>
                             <CardTitle className="text-base">Month Overview</CardTitle>
                         </CardHeader>
-                        <CardContent className="grid gap-3 bg-transparent sm:grid-cols-4">
+                        <CardContent className="grid gap-3 bg-transparent sm:grid-cols-2 lg:grid-cols-4">
                             <div className="rounded-md border border-slate-200 bg-white p-4">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Gross Pay</p>
                                 <p className="mt-2 text-lg font-semibold text-slate-900">{formatCurrency(grossPay)}</p>
@@ -418,63 +418,6 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
 
                 {/* Sidebar */}
                 <div className="space-y-6">
-                    {/* Employment Details */}
-                    <Card className="rounded-md border-slate-200 p-5 shadow-sm">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-base">
-                                <User className="h-5 w-5 text-blue-600" />
-                                Employment Info
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3 bg-transparent">
-                            <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                <div className="flex items-center gap-2 text-sm">
-                                    <User className="text-muted-foreground h-4 w-4" />
-                                    <span className="text-muted-foreground">Position</span>
-                                </div>
-                                <span className="text-sm font-semibold">{employee.position}</span>
-                            </div>
-                            <Separator />
-                            <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                <div className="flex items-center gap-2 text-sm">
-                                    <Building2 className="text-muted-foreground h-4 w-4" />
-                                    <span className="text-muted-foreground">Office</span>
-                                </div>
-                                <span className="text-sm font-semibold">{employee.office?.name ?? '—'}</span>
-                            </div>
-                            <Separator />
-                            <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                <div className="flex items-center gap-2 text-sm">
-                                    <CalendarDays className="text-muted-foreground h-4 w-4" />
-                                    <span className="text-muted-foreground">Status</span>
-                                </div>
-                                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
-                                    {employee.employment_status?.name ?? '—'}
-                                </Badge>
-                            </div>
-                            <Separator />
-                            <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                <div className="flex items-center gap-2 text-sm">
-                                    <DollarSign className="text-muted-foreground h-4 w-4" />
-                                    <span className="text-muted-foreground">RATA Eligible</span>
-                                </div>
-                                <Badge variant={employee.is_rata_eligible ? 'default' : 'secondary'}>
-                                    {employee.is_rata_eligible ? 'Yes' : 'No'}
-                                </Badge>
-                            </div>
-                            <Separator />
-                            <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                <div className="flex items-center gap-2 text-sm">
-                                    <CoinsIcon className="text-muted-foreground h-4 w-4" />
-                                    <span className="text-muted-foreground">Source of Fund</span>
-                                </div>
-                                <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">
-                                    {employee.latest_salary?.source_of_fund_code?.code ?? 'Not Assigned'}
-                                </Badge>
-                            </div>
-                        </CardContent>
-                    </Card>
-
                     {/* Quick Stats */}
                     <Card className="rounded-md border-slate-200 p-5 shadow-sm">
                         <CardHeader>
@@ -537,6 +480,63 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                             </CardContent>
                         </Card>
                     )}
+
+                    {/* Employment Details */}
+                    <Card className="rounded-md border-slate-200 p-5 shadow-sm">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-base">
+                                <User className="h-5 w-5 text-blue-600" />
+                                Employment Info
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3 bg-transparent">
+                            <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                <div className="flex items-center gap-2 text-sm">
+                                    <User className="text-muted-foreground h-4 w-4" />
+                                    <span className="text-muted-foreground">Position</span>
+                                </div>
+                                <span className="text-sm font-semibold">{employee.position}</span>
+                            </div>
+                            <Separator />
+                            <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                <div className="flex items-center gap-2 text-sm">
+                                    <Building2 className="text-muted-foreground h-4 w-4" />
+                                    <span className="text-muted-foreground">Office</span>
+                                </div>
+                                <span className="text-sm font-semibold">{employee.office?.name ?? '—'}</span>
+                            </div>
+                            <Separator />
+                            <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                <div className="flex items-center gap-2 text-sm">
+                                    <CalendarDays className="text-muted-foreground h-4 w-4" />
+                                    <span className="text-muted-foreground">Status</span>
+                                </div>
+                                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                                    {employee.employment_status?.name ?? '—'}
+                                </Badge>
+                            </div>
+                            <Separator />
+                            <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                <div className="flex items-center gap-2 text-sm">
+                                    <DollarSign className="text-muted-foreground h-4 w-4" />
+                                    <span className="text-muted-foreground">RATA Eligible</span>
+                                </div>
+                                <Badge variant={employee.is_rata_eligible ? 'default' : 'secondary'}>
+                                    {employee.is_rata_eligible ? 'Yes' : 'No'}
+                                </Badge>
+                            </div>
+                            <Separator />
+                            <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                <div className="flex items-center gap-2 text-sm">
+                                    <CoinsIcon className="text-muted-foreground h-4 w-4" />
+                                    <span className="text-muted-foreground">Source of Fund</span>
+                                </div>
+                                <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">
+                                    {employee.latest_salary?.source_of_fund_code?.code ?? 'Not Assigned'}
+                                </Badge>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         </div>

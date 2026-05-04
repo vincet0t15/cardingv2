@@ -2,9 +2,12 @@ import { CustomComboBox } from '@/components/CustomComboBox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
-import { Head, router } from '@inertiajs/react';
-import { Clock, FileText, Printer, Receipt, TrendingUp, Users } from 'lucide-react';
+import { type BreadcrumbItem } from '@/types';
+import { Head, router, useForm } from '@inertiajs/react';
+import { Clock, FileText, Printer, Receipt, Search, TrendingUp, Users } from 'lucide-react';
+import { useEffect } from 'react';
 
 const months = [
     { value: '', label: 'All Months' },
@@ -72,6 +75,7 @@ interface ReportProps {
         year: number | null;
         type: string | null;
         office: string | null;
+        employee: string | null;
     };
     pagination: {
         current_page: number;
@@ -81,6 +85,19 @@ interface ReportProps {
 }
 
 export default function ClaimsReport({ employees, summary, offices, filters, pagination }: ReportProps) {
+    const { data: searchData, setData } = useForm({
+        search: filters.employee || '',
+    });
+
+    useEffect(() => {
+        setData('search', filters.employee || '');
+    }, [filters.employee]);
+
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Dashboard', href: '/dashboard' },
+        { title: 'Claims Report', href: '/claims-report' },
+    ];
+
     const handleFilterChange = (key: string, value: any) => {
         router.get(
             route('claims.report'),
@@ -93,6 +110,28 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
                 preserveScroll: true,
             },
         );
+    };
+
+    const handleSearch = () => {
+        router.get(
+            route('claims.report'),
+            {
+                ...filters,
+                employee: searchData.search || null,
+                page: 1,
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+            },
+        );
+    };
+
+    const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSearch();
+        }
     };
 
     // Dynamic year range: fixed start year (2020) to current year + 5
@@ -113,7 +152,7 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
     };
 
     return (
-        <AppLayout breadcrumbs={[]}>
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Claims Report" />
             <div className="p-6">
                 {/* Header */}
@@ -131,7 +170,22 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
                 {/* Filters */}
                 <Card className="mb-6">
                     <CardContent className="pt-6">
-                        <div className="grid gap-4 md:grid-cols-4">
+                        <div className="grid gap-4 md:grid-cols-5">
+                            <div>
+                                <label className="mb-2 block text-sm font-medium">Search Employee</label>
+                                <div className="relative">
+                                    <Input
+                                        id="search"
+                                        placeholder="Search employee..."
+                                        className="w-full pl-8"
+                                        value={searchData.search}
+                                        onChange={(e) => setData('search', e.target.value)}
+                                        onKeyDown={handleSearchKeyDown}
+                                    />
+                                    <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50 select-none" />
+                                </div>
+                            </div>
+
                             <div>
                                 <label className="mb-2 block text-sm font-medium">Month</label>
                                 <CustomComboBox
