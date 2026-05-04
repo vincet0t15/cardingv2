@@ -1,0 +1,273 @@
+import { CustomComboBox } from '@/components/CustomComboBox';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import AppLayout from '@/layouts/app-layout';
+import { type BreadcrumbItem } from '@/types';
+import { Head, router } from '@inertiajs/react';
+import { ArrowUpRight, FileText, Printer, Receipt } from 'lucide-react';
+
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Dashboard',
+        href: '/dashboard',
+    },
+    {
+        title: 'May Deductions',
+        href: '/may-deductions',
+    },
+];
+
+const months = [
+    { value: '', label: 'All Months' },
+    { value: '1', label: 'January' },
+    { value: '2', label: 'February' },
+    { value: '3', label: 'March' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'May' },
+    { value: '6', label: 'June' },
+    { value: '7', label: 'July' },
+    { value: '8', label: 'August' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' },
+];
+
+const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-PH', {
+        style: 'currency',
+        currency: 'PHP',
+        minimumFractionDigits: 2,
+    }).format(amount);
+};
+
+interface DeductionTypeSummary {
+    id: number;
+    name: string;
+    code: string;
+    total_amount: number;
+    deduction_count: number;
+}
+
+interface Summary {
+    total_deduction_types: number;
+    total_deductions: number;
+    total_amount: number;
+}
+
+interface MayDeductionsProps {
+    deductionTypes: DeductionTypeSummary[];
+    summary: Summary;
+    filters: {
+        month: string | null;
+        year: number | null;
+    };
+}
+
+export default function MayDeductionsIndex({ deductionTypes, summary, filters }: MayDeductionsProps) {
+    const handleFilterChange = (key: string, value: any) => {
+        router.get(
+            route('may-deductions.index'),
+            {
+                ...filters,
+                [key]: value || null,
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+            },
+        );
+    };
+
+    const currentYear = new Date().getFullYear();
+    const startYear = 2020;
+    const endYear = currentYear + 5;
+    const years = Array.from({ length: endYear - startYear + 1 }, (_, i) => ({
+        value: (startYear + i).toString(),
+        label: (startYear + i).toString(),
+    }));
+
+    const getPeriodLabel = () => {
+        const monthLabel = filters.month ? months.find((m) => m.value === filters.month)?.label : 'All Months';
+        const yearLabel = filters.year || currentYear;
+        return `${monthLabel} ${yearLabel}`;
+    };
+
+    return (
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="May Deductions" />
+            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+                <div className="rounded-lg border border-amber-200 bg-gradient-to-r from-amber-50 via-yellow-50 to-orange-50 p-4 dark:border-amber-800 dark:bg-gradient-to-r dark:from-amber-950/30 dark:via-yellow-950/20 dark:to-orange-950/30">
+                    <div className="flex items-start gap-3">
+                        <div className="mt-0.5 rounded-full bg-amber-100 p-1.5 dark:bg-amber-900/50">
+                            <Receipt className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div className="text-sm">
+                            <p className="mb-1 font-semibold text-amber-800 dark:text-amber-200">How to view employees by deduction type:</p>
+                            <p className="text-amber-700 dark:text-amber-300">
+                                Click on any <span className="font-medium text-amber-900 dark:text-amber-100">deduction type name</span> in the table below to see all employees who have that specific deduction.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">May Deductions</h1>
+                        <p className="text-muted-foreground mt-1">Overview of all deduction types with totals</p>
+                    </div>
+                    <Button onClick={() => window.open(route('may-deductions.print', filters), '_blank')}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        Print Report
+                    </Button>
+                </div>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <FileText className="h-5 w-5" />
+                            Filter Deductions
+                        </CardTitle>
+                        <CardDescription>Filter by month and year to view deduction totals</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div>
+                                <label className="mb-2 block text-sm font-medium">Month</label>
+                                <CustomComboBox
+                                    items={months}
+                                    placeholder="Select month"
+                                    value={filters.month || null}
+                                    onSelect={(value) => handleFilterChange('month', value ?? '')}
+                                    showClear={true}
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-2 block text-sm font-medium">Year</label>
+                                <CustomComboBox
+                                    items={years}
+                                    placeholder="Select year"
+                                    value={(filters.year || currentYear).toString()}
+                                    onSelect={(value) => handleFilterChange('year', value ?? '')}
+                                    showClear={true}
+                                />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Deduction Types</CardTitle>
+                            <FileText className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{summary.total_deduction_types}</div>
+                            <p className="text-muted-foreground text-xs">Distinct types</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Deductions</CardTitle>
+                            <Receipt className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{summary.total_deductions}</div>
+                            <p className="text-muted-foreground text-xs">For {getPeriodLabel()}</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Amount</CardTitle>
+                            <FileText className="text-muted-foreground h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatCurrency(summary.total_amount)}</div>
+                            <p className="text-muted-foreground text-xs">Total deductions value</p>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Receipt className="h-5 w-5" />
+                            Deductions by Type
+                        </CardTitle>
+                        <CardDescription>Click on a deduction type to view employees with deductions</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {deductionTypes.length > 0 ? (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[50px] text-center">#</TableHead>
+                                        <TableHead>Deduction Type</TableHead>
+                                        <TableHead>Code</TableHead>
+                                        <TableHead className="text-right">Number of Deductions</TableHead>
+                                        <TableHead className="text-right">Total Amount</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {deductionTypes.map((deductionType, index) => (
+                                        <TableRow key={deductionType.id} className="hover:bg-muted/50">
+                                            <TableCell className="text-center">
+                                                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                                    {index + 1}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell>
+                                                <button
+                                                    type="button"
+                                                    className="group flex items-center gap-1 text-left hover:underline"
+                                                    onClick={() => {
+                                                        router.get(
+                                                            route('may-deductions.employees', deductionType.id),
+                                                            {
+                                                                month: filters.month,
+                                                                year: filters.year,
+                                                            },
+                                                            { preserveState: true, preserveScroll: true }
+                                                        );
+                                                    }}
+                                                >
+                                                    <span className="text-primary font-medium text-blue-600 group-hover:text-blue-800 dark:text-blue-400 dark:group-hover:text-blue-300">{deductionType.name}</span>
+                                                    <ArrowUpRight className="h-3 w-3 text-blue-400 opacity-0 transition-opacity group-hover:opacity-100" />
+                                                </button>
+                                            </TableCell>
+                                            <TableCell>
+                                                <span className="bg-muted rounded px-2 py-1 text-xs font-mono">{deductionType.code}</span>
+                                            </TableCell>
+                                            <TableCell className="text-right font-semibold">{deductionType.deduction_count}</TableCell>
+                                            <TableCell className="text-right font-semibold">{formatCurrency(deductionType.total_amount)}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                                <tfoot>
+                                    <TableRow className="bg-muted/50 font-bold">
+                                        <TableCell className="text-right" colSpan={3}>
+                                            TOTAL:
+                                        </TableCell>
+                                        <TableCell className="text-right">{summary.total_deductions}</TableCell>
+                                        <TableCell className="text-right">{formatCurrency(summary.total_amount)}</TableCell>
+                                    </TableRow>
+                                </tfoot>
+                            </Table>
+                        ) : (
+                            <div className="py-12 text-center">
+                                <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                                    <FileText className="h-6 w-6 text-slate-400" />
+                                </div>
+                                <p className="text-muted-foreground text-sm">No deductions data found for the selected filters</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+        </AppLayout>
+    );
+}

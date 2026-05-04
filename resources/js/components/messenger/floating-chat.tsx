@@ -72,11 +72,18 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
 
     const bottomRef = useRef<HTMLDivElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
     const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isNearBottom = useRef(true);
     const initializedConversationIdsRef = useRef<Set<number>>(new Set());
-    const hasScrolledRef = useRef<Set<number>>(new Set()); // Track if we've scrolled for each conversation
+    const hasScrolledRef = useRef<Set<number>>(new Set());
+
+    useEffect(() => {
+        if (inputRef.current) {
+            inputRef.current.style.height = 'auto';
+            inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 96) + 'px';
+        }
+    }, [input]); // Track if we've scrolled for each conversation
 
     useEffect(() => {
         if (chat.minimized) return;
@@ -366,15 +373,21 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                 setSelectedFile(null);
                 setReplyingTo(null);
                 if (fileInputRef.current) fileInputRef.current.value = '';
-                // Refocus on input after sending
-                inputRef.current?.focus();
+                // Reset textarea height
+                if (inputRef.current) {
+                    inputRef.current.style.height = 'auto';
+                }
+                // Refocus on input after sending - use requestAnimationFrame to ensure it happens after re-render
+                requestAnimationFrame(() => {
+                    inputRef.current?.focus();
+                });
             } else {
                 const error = await res.json().catch(() => null);
                 console.error('Send message error:', res.status, error);
             }
             setSending(false);
         },
-        [input, selectedFile, replyingTo, conversationId, hasMore, updateMessagesCache],
+        [input, selectedFile, replyingTo, conversationId, hasMore, updateMessagesCache, inputRef],
     );
 
     const deleteMessage = useCallback(
@@ -394,7 +407,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
     );
 
     const handleTyping = useCallback(
-        (e: React.ChangeEvent<HTMLInputElement>) => {
+        (e: React.ChangeEvent<HTMLTextAreaElement>) => {
             setInput(e.target.value);
             if (!conversationId) return;
             (echo() as any).private(`conversation.${conversationId}`).whisper('typing', {
@@ -475,11 +488,17 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                     [style*="--chat-height"] {
                         right: var(--right-offset, 20px);
                         height: var(--desktop-height);
+                        left: auto;
+                        bottom: 0;
                     }
                 }
                 @media (max-width: 767px) {
                     [style*="--chat-height"] {
-                        height: var(--mobile-height);
+                        top: 80px;
+                        height: calc(100vh - 100px);
+                        right: 4px;
+                        left: 4px;
+                        bottom: 4px;
                     }
                 }
             `}</style>
@@ -645,8 +664,8 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                                             </button>
                                         </div>
                                     )}
-                                    <div className="flex items-center gap-2 px-3 py-2">
-                                        <input
+                                    <div className="flex items-end gap-2 px-3 py-2">
+                                        <textarea
                                             ref={inputRef}
                                             value={input}
                                             onChange={handleTyping}
@@ -661,7 +680,8 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                                                 }
                                             }}
                                             placeholder="Aa"
-                                            className="flex-1 rounded-full bg-zinc-100 px-3 py-1.5 text-sm outline-none placeholder:text-zinc-400 dark:bg-zinc-800 dark:text-zinc-100"
+                                            rows={1}
+                                            className="flex-1 max-h-24 rounded-2xl bg-zinc-100 px-3 py-2 text-sm outline-none placeholder:text-zinc-400 resize-none dark:bg-zinc-800 dark:text-zinc-100 overflow-y-auto"
                                             disabled={sending}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -669,6 +689,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                                                     if (input.trim() || selectedFile || replyingTo) sendMessage(e as unknown as React.FormEvent);
                                                 }
                                             }}
+                                            style={{}}
                                         />
                                         <label className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800">
                                             <input

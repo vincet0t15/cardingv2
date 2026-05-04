@@ -38,6 +38,8 @@ use App\Http\Controllers\SalaryController;
 use App\Http\Controllers\SourceOfFundCodeController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierTransactionController;
+use App\Http\Controllers\TotalClaimsController;
+use App\Http\Controllers\MayDeductionsController;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -60,6 +62,22 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
         // EMPLOYEE DETAIL - View individual employee claims with filters and print
         Route::get('/employee/{employee}', [ClaimController::class, 'employeeDetail'])->name('claims.employee.detail');
         Route::get('/employee/{employee}/print', [ClaimController::class, 'employeeDetailPrint'])->name('claims.employee.detail.print');
+    });
+
+    // TOTAL CLAIMS - Claims by type with totals
+    Route::prefix('total-claims')->group(function () {
+        Route::get('/', [TotalClaimsController::class, 'index'])->name('total-claims.index');
+        Route::get('/print', [TotalClaimsController::class, 'print'])->name('total-claims.print');
+        Route::get('/{claimType}', [TotalClaimsController::class, 'employees'])->name('total-claims.employees');
+        Route::get('/{claimType}/print', [TotalClaimsController::class, 'employeesPrint'])->name('total-claims.employees.print');
+    });
+
+    // MAY DEDUCTIONS - Deductions by type with totals
+    Route::prefix('may-deductions')->group(function () {
+        Route::get('/', [MayDeductionsController::class, 'index'])->name('may-deductions.index');
+        Route::get('/print', [MayDeductionsController::class, 'print'])->name('may-deductions.print');
+        Route::get('/{deductionType}', [MayDeductionsController::class, 'employees'])->name('may-deductions.employees');
+        Route::get('/{deductionType}/print', [MayDeductionsController::class, 'employeesPrint'])->name('may-deductions.employees.print');
     });
 
     // REPORTS - View and print reports (requires employees.source_of_fund.view permission)

@@ -9,7 +9,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import type { Employee } from '@/types/employee';
 import type { Office } from '@/types/office';
-import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     ArrowUpRight,
     BarChart3,
@@ -245,6 +245,7 @@ export default function Dashboard({
             icon: Users,
             color: 'bg-blue-500',
             trend: stats.employeeGrowth > 0 ? `+${stats.employeeGrowth}%` : stats.employeeGrowth < 0 ? `${stats.employeeGrowth}%` : 'No change',
+            route: null,
         },
         {
             title: 'Total Offices',
@@ -253,6 +254,7 @@ export default function Dashboard({
             icon: Building2,
             color: 'bg-emerald-500',
             trend: `+${formatNumber(stats.officesThisYear)} this year`,
+            route: null,
         },
         {
             title: `${currentPeriod.monthName} Deductions`,
@@ -260,7 +262,8 @@ export default function Dashboard({
             description: `${formatNumber(stats.monthlyDeductionsCount)} entries • ${formatNumber(stats.employeesWithDeductions)} employees`,
             icon: MinusCircle,
             color: 'bg-amber-500',
-            trend: 'This month',
+            trend: 'Click to view',
+            route: 'may-deductions.index',
         },
         {
             title: 'Total Claims',
@@ -268,7 +271,8 @@ export default function Dashboard({
             description: `${formatNumber(stats.totalClaims)} total claims`,
             icon: Receipt,
             color: 'bg-violet-500',
-            trend: `+${formatNumber(stats.claimsThisWeek)} this week`,
+            trend: 'Click to view',
+            route: 'total-claims.index',
         },
     ];
 
@@ -325,13 +329,21 @@ export default function Dashboard({
                     {statCards.map((card, index) => (
                         <Card
                             key={index}
-                            className="group relative overflow-hidden border-0 bg-gradient-to-br from-white to-slate-50 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg dark:from-slate-900 dark:to-slate-800"
+                            className={`group relative overflow-hidden border-0 bg-gradient-to-br from-white to-slate-50 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg dark:from-slate-900 dark:to-slate-800 ${card.route ? 'cursor-pointer' : ''}`}
+                            onClick={() => card.route && router.get(route(card.route))}
                         >
                             <div
                                 className={`absolute top-0 right-0 h-24 w-24 ${card.color} opacity-10 blur-2xl transition-all group-hover:opacity-20`}
                             />
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">{card.title}</CardTitle>
+                                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                                    <Link
+                                        href={card.route ? route(card.route) : '#'}
+                                        className={`inline-flex items-center gap-1 transition-colors hover:text-blue-600 dark:hover:text-blue-400 ${card.route ? 'hover:underline' : ''}`}
+                                    >
+                                        {card.title}
+                                    </Link>
+                                </CardTitle>
                                 <div className={`${card.color} rounded-lg p-2 shadow-sm transition-transform group-hover:scale-110`}>
                                     <card.icon className="h-4 w-4 text-white" />
                                 </div>
@@ -340,9 +352,16 @@ export default function Dashboard({
                                 <div className="text-3xl font-bold text-slate-900 dark:text-white">{card.value}</div>
                                 <div className="mt-2 flex items-center justify-between">
                                     <p className="text-muted-foreground text-xs">{card.description}</p>
-                                    <span className="rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:from-blue-900/30 dark:to-indigo-900/30 dark:text-blue-300">
-                                        {card.trend}
-                                    </span>
+                                    {card.route ? (
+                                        <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-violet-50 to-indigo-50 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:from-violet-900/30 dark:to-indigo-900/30 dark:text-violet-300">
+                                            View
+                                            <ArrowUpRight className="h-3 w-3" />
+                                        </span>
+                                    ) : (
+                                        <span className="rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:from-blue-900/30 dark:to-indigo-900/30 dark:text-blue-300">
+                                            {card.trend}
+                                        </span>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
