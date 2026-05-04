@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { LogOut, Plus, UserCheck, Users, X } from 'lucide-react';
@@ -185,17 +185,17 @@ export function GroupMembersDialog({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[380px]">
-                <DialogHeader className="flex flex-row items-center justify-between">
+                <div className="flex items-center justify-between">
                     <DialogTitle className="flex items-center gap-2">
                         <Users className="h-4 w-4" />
                         Members ({members.length})
                     </DialogTitle>
                     {isGroupAdmin && (
-                        <Button size="sm" variant="outline" onClick={() => setShowAddMember(!showAddMember)} className="ml-auto">
-                            <Plus className="h-3 w-3" />
+                        <Button size="sm" variant="outline" onClick={() => setShowAddMember(!showAddMember)} className="h-9 w-9 p-0">
+                            <Plus className="h-4 w-4" />
                         </Button>
                     )}
-                </DialogHeader>
+                </div>
 
                 {showAddMember && (
                     <div className="space-y-2 border-b pb-3">
