@@ -3,10 +3,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm } from '@inertiajs/react';
-import { Clock, FileText, Printer, Receipt, Search, TrendingUp, Users } from 'lucide-react';
+import { Briefcase, Clock, FileText, Printer, Receipt, Search, TrendingUp, Users } from 'lucide-react';
 import { useEffect } from 'react';
 
 const months = [
@@ -23,12 +24,6 @@ const months = [
     { value: '10', label: 'October' },
     { value: '11', label: 'November' },
     { value: '12', label: 'December' },
-];
-
-const claimTypes = [
-    { value: '', label: 'All Claims' },
-    { value: 'travel', label: 'Travel Claims Only' },
-    { value: 'overtime', label: 'Overtime Claims Only' },
 ];
 
 const formatCurrency = (amount: number) => {
@@ -151,17 +146,77 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
         return `${monthLabel} ${yearLabel}`;
     };
 
+    const selectedType = filters.type || 'all';
+
+    const filteredEmployees = employees.filter((emp) => {
+        if (selectedType === 'travel') return emp.travel_count > 0;
+        if (selectedType === 'overtime') return emp.overtime_count > 0;
+        return true;
+    });
+
+    const getFilteredSummary = () => {
+        if (selectedType === 'travel') {
+            return {
+                count: summary.total_travel_claims,
+                amount: summary.total_travel_amount,
+            };
+        }
+        if (selectedType === 'overtime') {
+            return {
+                count: summary.total_overtime_claims,
+                amount: summary.total_overtime_amount,
+            };
+        }
+        return {
+            count: summary.total_claims,
+            amount: summary.total_amount,
+        };
+    };
+
+    const filteredSummary = getFilteredSummary();
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Claims Report" />
             <div className="p-6">
                 {/* Header */}
-                <div className="mb-6 flex items-center justify-between">
+                <div className="mb-4 flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight">Claims Report</h1>
                         <p className="text-muted-foreground mt-1">Comprehensive view of all employee claims with travel and overtime breakdown</p>
                     </div>
-                    <Button onClick={() => window.open(route('claims.report.print', filters), '_blank')}>
+                </div>
+
+                {/* Tabs */}
+                <div className="mb-4 flex items-center justify-between gap-4">
+                    <Tabs
+                        value={filters.type || 'all'}
+                        onValueChange={(value) => {
+                            handleFilterChange('type', value === 'all' ? '' : value);
+                        }}
+                    >
+                        <TabsList>
+                            <TabsTrigger value="all">All Claims</TabsTrigger>
+                            <TabsTrigger value="travel">
+                                <Briefcase className="mr-1.5 h-4 w-4" />
+                                Travel
+                            </TabsTrigger>
+                            <TabsTrigger value="overtime">
+                                <Clock className="mr-1.5 h-4 w-4" />
+                                Overtime
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+
+                    <Button
+                        onClick={() => {
+                            const printFilters = {
+                                ...filters,
+                                type: selectedType === 'all' ? null : selectedType,
+                            };
+                            window.open(route('claims.report.print', printFilters), '_blank');
+                        }}
+                    >
                         <Printer className="mr-2 h-4 w-4" />
                         Print Report
                     </Button>
@@ -170,7 +225,7 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
                 {/* Filters */}
                 <Card className="mb-6">
                     <CardContent className="pt-6">
-                        <div className="grid gap-4 md:grid-cols-5">
+                        <div className="grid gap-4 md:grid-cols-4">
                             <div>
                                 <label className="mb-2 block text-sm font-medium">Search Employee</label>
                                 <div className="relative">
@@ -216,16 +271,6 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
                                     showClear={true}
                                 />
                             </div>
-                            <div>
-                                <label className="mb-2 block text-sm font-medium">Claim Type</label>
-                                <CustomComboBox
-                                    items={claimTypes}
-                                    placeholder="Select type"
-                                    value={filters.type || null}
-                                    onSelect={(value) => handleFilterChange('type', value ?? '')}
-                                    showClear={true}
-                                />
-                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -238,7 +283,7 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
                             <Users className="text-muted-foreground h-4 w-4" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{summary.total_employees}</div>
+                            <div className="text-2xl font-bold">{filteredEmployees.length}</div>
                             <p className="text-muted-foreground text-xs">With claims in {getPeriodLabel()}</p>
                         </CardContent>
                     </Card>
@@ -249,8 +294,8 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
                             <FileText className="text-muted-foreground h-4 w-4" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{summary.total_claims}</div>
-                            <p className="text-muted-foreground text-xs">{formatCurrency(summary.total_amount)} total</p>
+                            <div className="text-2xl font-bold">{filteredSummary.count}</div>
+                            <p className="text-muted-foreground text-xs">{formatCurrency(filteredSummary.amount)} total</p>
                         </CardContent>
                     </Card>
 
@@ -287,7 +332,7 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
                         <CardDescription>Detailed breakdown of claims by employee for {getPeriodLabel()}</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {employees.length > 0 ? (
+                        {filteredEmployees.length > 0 ? (
                             <div className="w-full overflow-hidden rounded-sm border">
                                 <table className="w-full border-collapse">
                                     <thead>
@@ -296,17 +341,29 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
                                             <th className="border px-3 py-2 text-left text-xs font-semibold tracking-wide uppercase">Employee</th>
                                             <th className="border px-3 py-2 text-left text-xs font-semibold tracking-wide uppercase">Office</th>
                                             <th className="border px-3 py-2 text-right text-xs font-semibold tracking-wide uppercase">
-                                                Total Claims
+                                                {selectedType === 'all'
+                                                    ? 'Total Claims'
+                                                    : selectedType === 'travel'
+                                                      ? 'Travel Claims'
+                                                      : 'Overtime Claims'}
                                             </th>
                                             <th className="border px-3 py-2 text-right text-xs font-semibold tracking-wide uppercase">
-                                                Total Amount
+                                                {selectedType === 'all' ? 'Total Amount' : 'Amount'}
                                             </th>
-                                            <th className="border px-3 py-2 text-right text-xs font-semibold tracking-wide uppercase">Travel</th>
-                                            <th className="border px-3 py-2 text-right text-xs font-semibold tracking-wide uppercase">Overtime</th>
+                                            {selectedType === 'all' && (
+                                                <>
+                                                    <th className="border px-3 py-2 text-right text-xs font-semibold tracking-wide uppercase">
+                                                        Travel
+                                                    </th>
+                                                    <th className="border px-3 py-2 text-right text-xs font-semibold tracking-wide uppercase">
+                                                        Overtime
+                                                    </th>
+                                                </>
+                                            )}
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {employees.map((employee, index) => (
+                                        {filteredEmployees.map((employee, index) => (
                                             <tr key={employee.id} className="hover:bg-muted/30 transition-colors">
                                                 <td className="border px-3 py-2 text-center">
                                                     <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
@@ -329,7 +386,6 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
                                                         }}
                                                     >
                                                         <span className="text-primary font-medium hover:underline">{employee.name}</span>
-                                                        <span className="text-muted-foreground text-xs">{employee.claim_count} claims</span>
                                                     </button>
                                                 </td>
                                                 <td className="border px-3 py-2">
@@ -338,27 +394,45 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
                                                     </p>
                                                 </td>
                                                 <td className="border px-3 py-2 text-right">
-                                                    <span className="text-sm font-semibold">{employee.claim_count}</span>
+                                                    <span className="text-sm font-semibold">
+                                                        {selectedType === 'travel'
+                                                            ? employee.travel_count
+                                                            : selectedType === 'overtime'
+                                                              ? employee.overtime_count
+                                                              : employee.claim_count}
+                                                    </span>
                                                 </td>
                                                 <td className="border px-3 py-2 text-right">
-                                                    <span className="text-sm font-semibold">{formatCurrency(employee.total_amount)}</span>
+                                                    <span className="text-sm font-semibold">
+                                                        {formatCurrency(
+                                                            selectedType === 'travel'
+                                                                ? employee.travel_amount
+                                                                : selectedType === 'overtime'
+                                                                  ? employee.overtime_amount
+                                                                  : employee.total_amount,
+                                                        )}
+                                                    </span>
                                                 </td>
-                                                <td className="border px-3 py-2 text-right">
-                                                    <Badge
-                                                        variant="outline"
-                                                        className="border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900 dark:text-blue-300"
-                                                    >
-                                                        {employee.travel_count} • {formatCurrency(employee.travel_amount)}
-                                                    </Badge>
-                                                </td>
-                                                <td className="border px-3 py-2 text-right">
-                                                    <Badge
-                                                        variant="outline"
-                                                        className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900 dark:text-emerald-300"
-                                                    >
-                                                        {employee.overtime_count} • {formatCurrency(employee.overtime_amount)}
-                                                    </Badge>
-                                                </td>
+                                                {selectedType === 'all' && (
+                                                    <>
+                                                        <td className="border px-3 py-2 text-right">
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900 dark:text-blue-300"
+                                                            >
+                                                                {employee.travel_count} • {formatCurrency(employee.travel_amount)}
+                                                            </Badge>
+                                                        </td>
+                                                        <td className="border px-3 py-2 text-right">
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900 dark:text-emerald-300"
+                                                            >
+                                                                {employee.overtime_count} • {formatCurrency(employee.overtime_amount)}
+                                                            </Badge>
+                                                        </td>
+                                                    </>
+                                                )}
                                             </tr>
                                         ))}
                                     </tbody>
@@ -367,14 +441,18 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
                                             <td className="border px-3 py-2 text-right" colSpan={3}>
                                                 TOTALS:
                                             </td>
-                                            <td className="border px-3 py-2 text-right">{summary.total_claims}</td>
-                                            <td className="border px-3 py-2 text-right">{formatCurrency(summary.total_amount)}</td>
-                                            <td className="border px-3 py-2 text-right">
-                                                {summary.total_travel_claims} • {formatCurrency(summary.total_travel_amount)}
-                                            </td>
-                                            <td className="border px-3 py-2 text-right">
-                                                {summary.total_overtime_claims} • {formatCurrency(summary.total_overtime_amount)}
-                                            </td>
+                                            <td className="border px-3 py-2 text-right">{filteredSummary.count}</td>
+                                            <td className="border px-3 py-2 text-right">{formatCurrency(filteredSummary.amount)}</td>
+                                            {selectedType === 'all' && (
+                                                <>
+                                                    <td className="border px-3 py-2 text-right">
+                                                        {summary.total_travel_claims} • {formatCurrency(summary.total_travel_amount)}
+                                                    </td>
+                                                    <td className="border px-3 py-2 text-right">
+                                                        {summary.total_overtime_claims} • {formatCurrency(summary.total_overtime_amount)}
+                                                    </td>
+                                                </>
+                                            )}
                                         </tr>
                                     </tfoot>
                                 </table>
