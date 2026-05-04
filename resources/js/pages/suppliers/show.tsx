@@ -315,7 +315,9 @@ export default function SupplierShow({ supplier, transactions, search: initialSe
                                         <TableRow key={txn.id} className="border-t">
                                             <TableCell className="w-28 px-3 py-2 align-top">{formatDate(txn.pr_date)}</TableCell>
                                             <TableCell className="px-3 py-2 align-top">#{txn.pr_no}</TableCell>
-                                            <TableCell className="max-w-xl truncate px-3 py-2 align-top">{txn.particulars || '—'}</TableCell>
+                                            <TableCell className="max-w-sm px-3 py-2 align-top break-words whitespace-normal">
+                                                {txn.particulars || '—'}
+                                            </TableCell>
                                             <TableCell className="px-3 py-2 text-right align-top tabular-nums">{formatCurrency(txn.gross)}</TableCell>
                                             <TableCell className="text-muted-foreground px-3 py-2 text-right align-top tabular-nums">
                                                 - {formatCurrency(txn.ewt)}
