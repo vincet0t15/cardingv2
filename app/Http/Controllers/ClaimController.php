@@ -107,6 +107,7 @@ class ClaimController extends Controller
         $filterYear = $request->input('year', now()->year);
         $filterType = $request->input('type');
         $filterOffice = $request->input('office');
+        $filterEmployee = $request->input('employee');
 
         $offices = Office::orderBy('name')->get();
 
@@ -116,6 +117,13 @@ class ClaimController extends Controller
 
         if ($filterOffice) {
             $summaryQuery->where('office_id', $filterOffice);
+        }
+
+        if ($filterEmployee) {
+            $summaryQuery->where(function ($q) use ($filterEmployee) {
+                $q->where('first_name', 'like', '%' . $filterEmployee . '%')
+                    ->orWhere('last_name', 'like', '%' . $filterEmployee . '%');
+            });
         }
 
         if ($filterMonth) {
@@ -196,14 +204,78 @@ class ClaimController extends Controller
             'total_overtime_amount' => $employees->sum('overtime_amount'),
         ];
 
-        // Paginate manually
-        $perPage = 20;
+        // Pagination with per_page support
+        $perPage = $request->input('per_page', 25);
         $currentPage = $request->input('page', 1);
-        $totalPages = ceil($employees->count() / $perPage);
-        $paginatedEmployees = $employees->forPage($currentPage, $perPage)->values();
+
+        if ($perPage === 'all') {
+            $perPage = $employees->count();
+        } else {
+            $perPage = (int) $perPage;
+        }
+
+        $totalPages = $perPage > 0 ? ceil($employees->count() / $perPage) : 1;
+        $paginatedEmployees = $perPage > 0 ? $employees->forPage($currentPage, $perPage)->values() : $employees;
+
+        // Build pagination links
+        $baseUrl = url()->current();
+        $queryParams = array_filter([
+            'month' => $filterMonth,
+            'year' => $filterYear,
+            'type' => $filterType,
+            'office' => $filterOffice,
+            'employee' => $filterEmployee,
+            'per_page' => $request->input('per_page'),
+        ], fn($v) => $v !== null && $v !== '' && $v !== 'all');
+
+        $links = [];
+        if ($totalPages >= 1) {
+            // Previous link
+            if ($totalPages > 1) {
+                $prevParams = array_merge($queryParams, ['page' => $currentPage - 1]);
+                $links[] = [
+                    'url' => $currentPage > 1 ? $baseUrl . '?' . http_build_query($prevParams) : null,
+                    'label' => '&laquo; Previous',
+                    'active' => false,
+                ];
+            }
+
+            // Page numbers
+            for ($i = 1; $i <= $totalPages; $i++) {
+                $pageParams = array_merge($queryParams, ['page' => $i]);
+                $links[] = [
+                    'url' => $totalPages > 1 ? $baseUrl . '?' . http_build_query($pageParams) : null,
+                    'label' => (string) $i,
+                    'active' => $i === (int) $currentPage,
+                ];
+            }
+
+            // Next link
+            if ($totalPages > 1) {
+                $nextParams = array_merge($queryParams, ['page' => $currentPage + 1]);
+                $links[] = [
+                    'url' => $currentPage < $totalPages ? $baseUrl . '?' . http_build_query($nextParams) : null,
+                    'label' => 'Next &raquo;',
+                    'active' => false,
+                ];
+            }
+        }
+
+        $from = $totalPages > 1 ? (($currentPage - 1) * $perPage) + 1 : 1;
+        $to = $totalPages > 1 ? min($currentPage * $perPage, $employees->count()) : $employees->count();
 
         return Inertia::render('Claims/Report', [
-            'employees' => $paginatedEmployees,
+            'employees' => [
+                'data' => $paginatedEmployees->values(),
+                'current_page' => (int) $currentPage,
+                'from' => $from,
+                'to' => $to,
+                'last_page' => $totalPages,
+                'per_page' => $perPage,
+                'total' => $employees->count(),
+                'path' => $baseUrl,
+                'links' => $links,
+            ],
             'summary' => $summary,
             'offices' => $offices,
             'filters' => [
@@ -211,11 +283,14 @@ class ClaimController extends Controller
                 'year' => $filterYear,
                 'type' => $filterType,
                 'office' => $filterOffice,
+                'employee' => $filterEmployee,
+                'per_page' => $request->input('per_page') === 'all' ? null : ($request->input('per_page') ? (int) $request->input('per_page') : 25),
             ],
             'pagination' => [
                 'current_page' => (int) $currentPage,
                 'total_pages' => $totalPages,
                 'total_records' => $employees->count(),
+                'per_page' => $perPage,
             ],
         ]);
     }

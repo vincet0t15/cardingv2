@@ -1,9 +1,11 @@
 import { CustomComboBox } from '@/components/CustomComboBox';
+import Pagination from '@/components/paginationData';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
+import type { PaginatedDataResponse } from '@/types/pagination';
 import { Head, router } from '@inertiajs/react';
 import { ArrowUpRight, FileText, Printer, Receipt } from 'lucide-react';
 
@@ -62,6 +64,13 @@ interface TotalClaimsProps {
     filters: {
         month: string | null;
         year: number | null;
+        per_page: number | null;
+    };
+    pagination: {
+        current_page: number;
+        total_pages: number;
+        total_records: number;
+        per_page: number;
     };
 }
 
@@ -92,6 +101,32 @@ export default function TotalClaimsIndex({ claimTypes, summary, filters }: Total
         const monthLabel = filters.month ? months.find((m) => m.value === filters.month)?.label : 'All Months';
         const yearLabel = filters.year || currentYear;
         return `${monthLabel} ${yearLabel}`;
+    };
+
+    const perPage = filters.per_page || pagination.per_page;
+    const isAll = filters.per_page === null || (filters.per_page === undefined && pagination.total_pages === 1);
+    const currentPerPage = isAll ? pagination.total_records : perPage;
+
+    const paginatedData: PaginatedDataResponse<ClaimTypeSummary> = {
+        current_page: isAll ? 1 : pagination.current_page,
+        from: isAll ? 1 : (pagination.current_page - 1) * currentPerPage + 1,
+        to: isAll ? pagination.total_records : Math.min(pagination.current_page * currentPerPage, pagination.total_records),
+        last_page: isAll ? 1 : pagination.total_pages,
+        path: route('total-claims.index'),
+        per_page: currentPerPage,
+        total: pagination.total_records,
+        links: isAll
+            ? [{ url: null, label: '1', active: true }]
+            : [
+                { url: pagination.current_page > 1 ? route('total-claims.index', { ...filters, page: pagination.current_page - 1 }) : null, label: '&laquo; Previous', active: false },
+                ...Array.from({ length: pagination.total_pages }, (_, i) => ({
+                    url: route('total-claims.index', { ...filters, page: i + 1 }),
+                    label: String(i + 1),
+                    active: i + 1 === pagination.current_page,
+                })),
+                { url: pagination.current_page < pagination.total_pages ? route('total-claims.index', { ...filters, page: pagination.current_page + 1 }) : null, label: 'Next &raquo;', active: false },
+            ],
+        data: claimTypes,
     };
 
     return (
@@ -132,7 +167,7 @@ export default function TotalClaimsIndex({ claimTypes, summary, filters }: Total
                         <CardDescription>Filter by month and year to view claim totals</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-4 md:grid-cols-3">
                             <div>
                                 <label className="mb-2 block text-sm font-medium">Month</label>
                                 <CustomComboBox
@@ -151,6 +186,21 @@ export default function TotalClaimsIndex({ claimTypes, summary, filters }: Total
                                     value={(filters.year || currentYear).toString()}
                                     onSelect={(value) => handleFilterChange('year', value ?? '')}
                                     showClear={true}
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-2 block text-sm font-medium">Show</label>
+                                <CustomComboBox
+                                    items={[
+                                        { value: '25', label: '25 rows' },
+                                        { value: '50', label: '50 rows' },
+                                        { value: '100', label: '100 rows' },
+                                        { value: 'all', label: 'All' },
+                                    ]}
+                                    placeholder="Select"
+                                    value={filters.per_page ? filters.per_page.toString() : '25'}
+                                    onSelect={(value) => handleFilterChange('per_page', value === 'all' ? null : (value ?? '25'))}
+                                    showClear={false}
                                 />
                             </div>
                         </div>
@@ -265,6 +315,8 @@ export default function TotalClaimsIndex({ claimTypes, summary, filters }: Total
                                 <p className="text-muted-foreground text-sm">No claims data found for the selected filters</p>
                             </div>
                         )}
+
+                        <Pagination data={paginatedData} />
                     </CardContent>
                 </Card>
             </div>

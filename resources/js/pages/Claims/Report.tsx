@@ -61,7 +61,7 @@ interface Summary {
 }
 
 interface ReportProps {
-    employees: EmployeeClaims[];
+    employees: PaginatedDataResponse<EmployeeClaims>;
     summary: Summary;
     offices: {
         id: number;
@@ -73,11 +73,13 @@ interface ReportProps {
         type: string | null;
         office: string | null;
         employee: string | null;
+        per_page: number | null;
     };
     pagination: {
         current_page: number;
         total_pages: number;
         total_records: number;
+        per_page: number;
     };
 }
 
@@ -100,10 +102,11 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
             route('claims.report'),
             {
                 ...filters,
-                [key]: value || null,
+                [key]: value,
+                page: 1,
             },
             {
-                preserveState: true,
+                preserveState: false,
                 preserveScroll: true,
             },
         );
@@ -150,7 +153,7 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
 
     const selectedType = filters.type || 'all';
 
-    const filteredEmployees = employees.filter((emp) => {
+    const filteredEmployees = employees.data.filter((emp) => {
         if (selectedType === 'travel') return emp.travel_count > 0;
         if (selectedType === 'overtime') return emp.overtime_count > 0;
         return true;
@@ -176,26 +179,6 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
     };
 
     const filteredSummary = getFilteredSummary();
-
-    const paginatedData: PaginatedDataResponse<typeof employees[number]> = {
-        current_page: pagination.current_page,
-        from: (pagination.current_page - 1) * 15 + 1,
-        to: Math.min(pagination.current_page * 15, pagination.total_records),
-        last_page: pagination.total_pages,
-        path: route('claims.report'),
-        per_page: 15,
-        total: pagination.total_records,
-        links: [
-            { url: pagination.current_page > 1 ? route('claims.report', { ...filters, page: pagination.current_page - 1 }) : null, label: '&laquo; Previous', active: false },
-            ...Array.from({ length: pagination.total_pages }, (_, i) => ({
-                url: route('claims.report', { ...filters, page: i + 1 }),
-                label: String(i + 1),
-                active: i + 1 === pagination.current_page,
-            })),
-            { url: pagination.current_page < pagination.total_pages ? route('claims.report', { ...filters, page: pagination.current_page + 1 }) : null, label: 'Next &raquo;', active: false },
-        ],
-        data: employees,
-    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -247,7 +230,7 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
                 {/* Filters */}
                 <Card className="mb-6">
                     <CardContent className="pt-6">
-                        <div className="grid gap-4 md:grid-cols-4">
+                        <div className="grid gap-4 md:grid-cols-5">
                             <div>
                                 <label className="mb-2 block text-sm font-medium">Search Employee</label>
                                 <div className="relative">
@@ -291,6 +274,21 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
                                     value={filters.office || null}
                                     onSelect={(value) => handleFilterChange('office', value ?? '')}
                                     showClear={true}
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-2 block text-sm font-medium">Show</label>
+                                <CustomComboBox
+                                    items={[
+                                        { value: '25', label: '25 rows' },
+                                        { value: '50', label: '50 rows' },
+                                        { value: '100', label: '100 rows' },
+                                        { value: 'all', label: 'All' },
+                                    ]}
+                                    placeholder="Select"
+                                    value={filters.per_page ? filters.per_page.toString() : '25'}
+                                    onSelect={(value) => handleFilterChange('per_page', value === 'all' ? 'all' : (value ?? '25'))}
+                                    showClear={false}
                                 />
                             </div>
                         </div>
@@ -489,7 +487,7 @@ export default function ClaimsReport({ employees, summary, offices, filters, pag
                         )}
 
                         {/* Pagination */}
-                        {pagination.total_pages > 1 && <Pagination data={paginatedData} />}
+                        <Pagination data={employees} />
                     </CardContent>
                 </Card>
             </div>

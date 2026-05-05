@@ -70,6 +70,35 @@ export default function ClaimsReportPrint({ employees, summary, filters }: Repor
         return 'All Claim Types';
     };
 
+    const selectedType = filters.type || 'all';
+
+    const filteredEmployees = employees.filter((emp) => {
+        if (selectedType === 'travel') return emp.travel_count > 0;
+        if (selectedType === 'overtime') return emp.overtime_count > 0;
+        return true;
+    });
+
+    const getFilteredSummary = () => {
+        if (selectedType === 'travel') {
+            return {
+                count: summary.total_travel_claims,
+                amount: summary.total_travel_amount,
+            };
+        }
+        if (selectedType === 'overtime') {
+            return {
+                count: summary.total_overtime_claims,
+                amount: summary.total_overtime_amount,
+            };
+        }
+        return {
+            count: summary.total_claims,
+            amount: summary.total_amount,
+        };
+    };
+
+    const filteredSummary = getFilteredSummary();
+
     const getOfficeLabel = () => {
         // Since we don't have the offices list in print, we'll just show if filtered
         if (filters.office) return `Office #${filters.office}`;
@@ -144,62 +173,78 @@ export default function ClaimsReportPrint({ employees, summary, filters }: Repor
                                                 Total Amount
                                             </td>
                                             <td className="border border-black p-2 text-right font-bold text-green-600" colSpan={2}>
-                                                {formatCurrency(summary.total_amount)}
+                                                {formatCurrency(filteredSummary.amount)}
                                             </td>
                                         </tr>
                                     </tbody>
                                 </table>
 
                                 {/* Employee Claims Table */}
-                                {employees.length > 0 ? (
+                                {filteredEmployees.length > 0 ? (
                                     <table className="w-full border-collapse border border-black">
                                         <thead>
                                             <tr className="bg-gray-100">
                                                 <th className="w-10 border border-black px-2 py-1 text-left text-[10px] font-semibold">#</th>
                                                 <th className="border border-black px-2 py-1 text-left text-[10px] font-semibold">Employee</th>
                                                 <th className="border border-black px-2 py-1 text-left text-[10px] font-semibold">Office</th>
-                                                <th className="w-20 border border-black px-2 py-1 text-right text-[10px] font-semibold">Claims</th>
-                                                <th className="w-32 border border-black px-2 py-1 text-right text-[10px] font-semibold">
-                                                    Total Amount
+                                                <th className="w-20 border border-black px-2 py-1 text-right text-[10px] font-semibold">
+                                                    {selectedType === 'all' ? 'Claims' : selectedType === 'travel' ? 'Travel Claims' : 'Overtime Claims'}
                                                 </th>
-                                                <th className="w-28 border border-black px-2 py-1 text-right text-[10px] font-semibold">Travel</th>
-                                                <th className="w-28 border border-black px-2 py-1 text-right text-[10px] font-semibold">Overtime</th>
+                                                <th className="w-32 border border-black px-2 py-1 text-right text-[10px] font-semibold">
+                                                    {selectedType === 'all' ? 'Total Amount' : 'Amount'}
+                                                </th>
+                                                {selectedType === 'all' && (
+                                                    <>
+                                                        <th className="w-28 border border-black px-2 py-1 text-right text-[10px] font-semibold">Travel</th>
+                                                        <th className="w-28 border border-black px-2 py-1 text-right text-[10px] font-semibold">Overtime</th>
+                                                    </>
+                                                )}
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {employees.map((employee, index) => (
+                                            {filteredEmployees.map((employee, index) => (
                                                 <tr key={employee.id}>
                                                     <td className="border border-black px-2 py-1 text-center text-[10px]">{index + 1}</td>
                                                     <td className="border border-black px-2 py-1 text-[10px] font-medium uppercase">
                                                         {employee.name}
                                                     </td>
                                                     <td className="border border-black px-2 py-1 text-[10px] uppercase">{employee.office}</td>
-                                                    <td className="border border-black px-2 py-1 text-right text-[10px]">{employee.claim_count}</td>
+                                                    <td className="border border-black px-2 py-1 text-right text-[10px]">
+                                                        {selectedType === 'travel' ? employee.travel_count : selectedType === 'overtime' ? employee.overtime_count : employee.claim_count}
+                                                    </td>
                                                     <td className="border border-black px-2 py-1 text-right text-[10px] font-medium">
-                                                        {formatCurrency(employee.total_amount)}
+                                                        {formatCurrency(selectedType === 'travel' ? employee.travel_amount : selectedType === 'overtime' ? employee.overtime_amount : employee.total_amount)}
                                                     </td>
-                                                    <td className="border border-black px-2 py-1 text-right text-[10px] text-blue-600">
-                                                        {employee.travel_count} • {formatCurrency(employee.travel_amount)}
-                                                    </td>
-                                                    <td className="border border-black px-2 py-1 text-right text-[10px] text-green-600">
-                                                        {employee.overtime_count} • {formatCurrency(employee.overtime_amount)}
-                                                    </td>
+                                                    {selectedType === 'all' && (
+                                                        <>
+                                                            <td className="border border-black px-2 py-1 text-right text-[10px] text-blue-600">
+                                                                {employee.travel_count} • {formatCurrency(employee.travel_amount)}
+                                                            </td>
+                                                            <td className="border border-black px-2 py-1 text-right text-[10px] text-green-600">
+                                                                {employee.overtime_count} • {formatCurrency(employee.overtime_amount)}
+                                                            </td>
+                                                        </>
+                                                    )}
                                                 </tr>
                                             ))}
                                             <tr className="bg-gray-100 font-bold">
                                                 <td className="border border-black px-2 py-1 text-[10px] uppercase" colSpan={3}>
                                                     GRAND TOTAL
                                                 </td>
-                                                <td className="border border-black px-2 py-1 text-right text-[10px]">{summary.total_claims}</td>
+                                                <td className="border border-black px-2 py-1 text-right text-[10px]">{filteredSummary.count}</td>
                                                 <td className="border border-black px-2 py-1 text-right text-[10px] text-green-600">
-                                                    {formatCurrency(summary.total_amount)}
+                                                    {formatCurrency(filteredSummary.amount)}
                                                 </td>
-                                                <td className="border border-black px-2 py-1 text-right text-[10px] text-blue-600">
-                                                    {summary.total_travel_claims} • {formatCurrency(summary.total_travel_amount)}
-                                                </td>
-                                                <td className="border border-black px-2 py-1 text-right text-[10px] text-green-600">
-                                                    {summary.total_overtime_claims} • {formatCurrency(summary.total_overtime_amount)}
-                                                </td>
+                                                {selectedType === 'all' && (
+                                                    <>
+                                                        <td className="border border-black px-2 py-1 text-right text-[10px] text-blue-600">
+                                                            {summary.total_travel_claims} • {formatCurrency(summary.total_travel_amount)}
+                                                        </td>
+                                                        <td className="border border-black px-2 py-1 text-right text-[10px] text-green-600">
+                                                            {summary.total_overtime_claims} • {formatCurrency(summary.total_overtime_amount)}
+                                                        </td>
+                                                    </>
+                                                )}
                                             </tr>
                                         </tbody>
                                     </table>
