@@ -74,13 +74,13 @@ interface TotalClaimsProps {
     };
 }
 
-export default function TotalClaimsIndex({ claimTypes, summary, filters }: TotalClaimsProps) {
-    const handleFilterChange = (key: string, value: any) => {
+export default function TotalClaimsIndex({ claimTypes, summary, filters, pagination }: TotalClaimsProps) {
+    const handleFilterChange = (key: string, value: string | number | null) => {
         router.get(
             route('total-claims.index'),
             {
                 ...filters,
-                [key]: value || null,
+                [key]: value,
             },
             {
                 preserveState: true,
@@ -115,17 +115,23 @@ export default function TotalClaimsIndex({ claimTypes, summary, filters }: Total
         path: route('total-claims.index'),
         per_page: currentPerPage,
         total: pagination.total_records,
-        links: isAll
-            ? [{ url: null, label: '1', active: true }]
-            : [
-                { url: pagination.current_page > 1 ? route('total-claims.index', { ...filters, page: pagination.current_page - 1 }) : null, label: '&laquo; Previous', active: false },
-                ...Array.from({ length: pagination.total_pages }, (_, i) => ({
-                    url: route('total-claims.index', { ...filters, page: i + 1 }),
-                    label: String(i + 1),
-                    active: i + 1 === pagination.current_page,
-                })),
-                { url: pagination.current_page < pagination.total_pages ? route('total-claims.index', { ...filters, page: pagination.current_page + 1 }) : null, label: 'Next &raquo;', active: false },
-            ],
+        links: [
+            {
+                url: pagination.current_page > 1 ? route('total-claims.index', { ...filters, page: pagination.current_page - 1 }) : null,
+                label: '&laquo; Previous',
+                active: false,
+            },
+            ...Array.from({ length: pagination.total_pages }, (_, i) => ({
+                url: route('total-claims.index', { ...filters, page: i + 1 }),
+                label: String(i + 1),
+                active: i + 1 === pagination.current_page,
+            })),
+            {
+                url: pagination.current_page < pagination.total_pages ? route('total-claims.index', { ...filters, page: pagination.current_page + 1 }) : null,
+                label: 'Next &raquo;',
+                active: false,
+            },
+        ],
         data: claimTypes,
     };
 
@@ -141,7 +147,8 @@ export default function TotalClaimsIndex({ claimTypes, summary, filters }: Total
                         <div className="text-sm">
                             <p className="mb-1 font-semibold text-violet-800 dark:text-violet-200">How to view employees by claim type:</p>
                             <p className="text-violet-700 dark:text-violet-300">
-                                Click on any <span className="font-medium text-violet-900 dark:text-violet-100">claim type name</span> in the table below to see all employees who have that specific claim.
+                                Click on any <span className="font-medium text-violet-900 dark:text-violet-100">claim type name</span> in the table
+                                below to see all employees who have that specific claim.
                             </p>
                         </div>
                     </div>
@@ -199,7 +206,7 @@ export default function TotalClaimsIndex({ claimTypes, summary, filters }: Total
                                     ]}
                                     placeholder="Select"
                                     value={filters.per_page ? filters.per_page.toString() : '25'}
-                                    onSelect={(value) => handleFilterChange('per_page', value === 'all' ? null : (value ?? '25'))}
+                                    onSelect={(value) => handleFilterChange('per_page', value === 'all' ? 'all' : (value ?? '25'))}
                                     showClear={false}
                                 />
                             </div>
@@ -281,16 +288,18 @@ export default function TotalClaimsIndex({ claimTypes, summary, filters }: Total
                                                                 month: filters.month,
                                                                 year: filters.year,
                                                             },
-                                                            { preserveState: true, preserveScroll: true }
+                                                            { preserveState: true, preserveScroll: true },
                                                         );
                                                     }}
                                                 >
-                                                    <span className="text-primary font-medium text-blue-600 group-hover:text-blue-800 dark:text-blue-400 dark:group-hover:text-blue-300">{claimType.name}</span>
+                                                    <span className="text-primary font-medium text-blue-600 group-hover:text-blue-800 dark:text-blue-400 dark:group-hover:text-blue-300">
+                                                        {claimType.name}
+                                                    </span>
                                                     <ArrowUpRight className="h-3 w-3 text-blue-400 opacity-0 transition-opacity group-hover:opacity-100" />
                                                 </button>
                                             </TableCell>
                                             <TableCell>
-                                                <span className="bg-muted rounded px-2 py-1 text-xs font-mono">{claimType.code}</span>
+                                                <span className="bg-muted rounded px-2 py-1 font-mono text-xs">{claimType.code}</span>
                                             </TableCell>
                                             <TableCell className="text-right font-semibold">{claimType.claim_count}</TableCell>
                                             <TableCell className="text-right font-semibold">{formatCurrency(claimType.total_amount)}</TableCell>

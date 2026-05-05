@@ -98,7 +98,7 @@ export default function EmployeesByClaimType({
 }: EmployeesByClaimTypeProps) {
     const [searchValue, setSearchValue] = useState(filters.search || '');
 
-    const handleFilterChange = (key: string, value: any) => {
+    const handleFilterChange = (key: string, value: string | number | null) => {
         router.get(
             route('total-claims.employees', claim_type.id),
             {

@@ -231,34 +231,30 @@ class ClaimController extends Controller
         $links = [];
         if ($totalPages >= 1) {
             // Previous link
-            if ($totalPages > 1) {
-                $prevParams = array_merge($queryParams, ['page' => $currentPage - 1]);
-                $links[] = [
-                    'url' => $currentPage > 1 ? $baseUrl . '?' . http_build_query($prevParams) : null,
-                    'label' => '&laquo; Previous',
-                    'active' => false,
-                ];
-            }
+            $prevParams = array_merge($queryParams, ['page' => max(1, $currentPage - 1)]);
+            $links[] = [
+                'url' => $currentPage > 1 ? $baseUrl . '?' . http_build_query($prevParams) : null,
+                'label' => '&laquo; Previous',
+                'active' => false,
+            ];
 
             // Page numbers
             for ($i = 1; $i <= $totalPages; $i++) {
                 $pageParams = array_merge($queryParams, ['page' => $i]);
                 $links[] = [
-                    'url' => $totalPages > 1 ? $baseUrl . '?' . http_build_query($pageParams) : null,
+                    'url' => $baseUrl . '?' . http_build_query($pageParams),
                     'label' => (string) $i,
                     'active' => $i === (int) $currentPage,
                 ];
             }
 
             // Next link
-            if ($totalPages > 1) {
-                $nextParams = array_merge($queryParams, ['page' => $currentPage + 1]);
-                $links[] = [
-                    'url' => $currentPage < $totalPages ? $baseUrl . '?' . http_build_query($nextParams) : null,
-                    'label' => 'Next &raquo;',
-                    'active' => false,
-                ];
-            }
+            $nextParams = array_merge($queryParams, ['page' => min($totalPages, $currentPage + 1)]);
+            $links[] = [
+                'url' => $currentPage < $totalPages ? $baseUrl . '?' . http_build_query($nextParams) : null,
+                'label' => 'Next &raquo;',
+                'active' => false,
+            ];
         }
 
         $from = $totalPages > 1 ? (($currentPage - 1) * $perPage) + 1 : 1;

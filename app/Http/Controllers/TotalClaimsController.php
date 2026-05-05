@@ -16,6 +16,7 @@ class TotalClaimsController extends Controller
     {
         $filterMonth = $request->input('month');
         $filterYear = $request->input('year', now()->year);
+        $filterPerPage = $request->input('per_page', 25);
 
         $claimTypesQuery = ClaimType::query()->where('is_active', true);
 
@@ -55,12 +56,75 @@ class TotalClaimsController extends Controller
             'total_amount' => $claimTypes->sum('total_amount'),
         ];
 
+        // Pagination
+        $perPage = $filterPerPage === 'all' ? $claimTypes->count() : (int) $filterPerPage;
+        $currentPage = (int) $request->input('page', 1);
+        $totalPages = $perPage > 0 ? ceil($claimTypes->count() / $perPage) : 1;
+        $paginatedClaimTypes = $perPage > 0 ? $claimTypes->forPage($currentPage, $perPage)->values() : $claimTypes;
+
+        // Build pagination links
+        $baseUrl = url()->current();
+        $queryParams = array_filter([
+            'month' => $filterMonth,
+            'year' => $filterYear,
+            'per_page' => $request->input('per_page'),
+        ], fn($v) => $v !== null && $v !== '' && $v !== 'all');
+
+        $links = [];
+        if ($totalPages >= 1) {
+            // Previous link
+            $prevParams = array_merge($queryParams, ['page' => max(1, $currentPage - 1)]);
+            $links[] = [
+                'url' => $currentPage > 1 ? $baseUrl . '?' . http_build_query($prevParams) : null,
+                'label' => '&laquo; Previous',
+                'active' => false,
+            ];
+
+            // Page numbers
+            for ($i = 1; $i <= $totalPages; $i++) {
+                $pageParams = array_merge($queryParams, ['page' => $i]);
+                $links[] = [
+                    'url' => $baseUrl . '?' . http_build_query($pageParams),
+                    'label' => (string) $i,
+                    'active' => $i === (int) $currentPage,
+                ];
+            }
+
+            // Next link
+            $nextParams = array_merge($queryParams, ['page' => min($totalPages, $currentPage + 1)]);
+            $links[] = [
+                'url' => $currentPage < $totalPages ? $baseUrl . '?' . http_build_query($nextParams) : null,
+                'label' => 'Next &raquo;',
+                'active' => false,
+            ];
+        }
+
+        $from = $totalPages > 1 ? (($currentPage - 1) * $perPage) + 1 : 1;
+        $to = $totalPages > 1 ? min($currentPage * $perPage, $claimTypes->count()) : $claimTypes->count();
+
         return Inertia::render('TotalClaims/Index', [
-            'claimTypes' => $claimTypes,
+            'claimTypes' => [
+                'data' => $paginatedClaimTypes->values(),
+                'current_page' => (int) $currentPage,
+                'from' => $from,
+                'to' => $to,
+                'last_page' => $totalPages,
+                'per_page' => $perPage,
+                'total' => $claimTypes->count(),
+                'path' => $baseUrl,
+                'links' => $links,
+            ],
             'summary' => $summary,
             'filters' => [
                 'month' => $filterMonth,
                 'year' => $filterYear,
+                'per_page' => $filterPerPage === 'all' ? null : ($filterPerPage ? (int) $filterPerPage : 25),
+            ],
+            'pagination' => [
+                'current_page' => (int) $currentPage,
+                'total_pages' => $totalPages,
+                'total_records' => $claimTypes->count(),
+                'per_page' => $perPage,
             ],
         ]);
     }
