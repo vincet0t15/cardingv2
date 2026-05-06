@@ -178,7 +178,7 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                                                 {data.code} - {data.description || '-'}
                                             </span>
                                         </div>
-                                        <div className={`${color} rounded-lg p-2 shadow-sm transition-transform group-hover:scale-110`}>
+                                        <div className={`bg-gradient-to-br ${color} rounded-lg p-2 shadow-sm transition-transform group-hover:scale-110`}>
                                             <Users className="h-4 w-4 text-white" />
                                         </div>
                                     </CardHeader>
@@ -200,10 +200,10 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                             className={`group relative overflow-hidden border-0 bg-gradient-to-br from-white to-slate-50 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg dark:from-slate-900 dark:to-slate-800 cursor-pointer`}
                             onClick={() => openEmployeeDialog('Unfunded')}
                         >
-                            <div className="absolute top-0 right-0 h-24 w-24 from-slate-500 to-slate-600 opacity-10 blur-2xl transition-all group-hover:opacity-20" />
+                            <div className="absolute top-0 right-0 h-24 w-24 bg-gradient-to-br from-slate-500 to-slate-600 opacity-10 blur-2xl transition-all group-hover:opacity-20" />
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
                                 <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">Unfunded</CardTitle>
-                                <div className="from-slate-500 to-slate-600 rounded-lg bg-gradient-to-br p-2 shadow-sm transition-transform group-hover:scale-110">
+                                <div className="bg-gradient-to-br from-slate-500 to-slate-600 rounded-lg p-2 shadow-sm transition-transform group-hover:scale-110">
                                     <FileText className="h-4 w-4 text-white" />
                                 </div>
                             </CardHeader>
