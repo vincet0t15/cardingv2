@@ -1,7 +1,6 @@
 import { CustomComboBox } from '@/components/CustomComboBox';
 import Heading from '@/components/heading';
 import Pagination from '@/components/paginationData';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -235,27 +234,22 @@ export default function EmployeesBySourceOfFund({ sourceOfFundCodes, employees, 
                                 employees.data.map((employee) => (
                                     <TableRow key={employee.id} className="hover:bg-muted/30">
                                         <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="h-10 w-10 border-2 border-slate-200 shadow-sm dark:border-slate-700">
-                                                    <AvatarFallback className="bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300">
-                                                        {employee.first_name?.[0]}{employee.last_name?.[0]}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold uppercase">
-                                                        {employee.last_name}, {employee.first_name} {employee.middle_name} {employee.suffix}
-                                                    </span>
-                                                    <span className="text-muted-foreground text-xs">
-                                                        ID: {employee.id}
-                                                    </span>
-                                                </div>
+                                            <div className="flex flex-col">
+                                                <span className="font-bold uppercase">
+                                                    {employee.last_name}, {employee.first_name} {employee.middle_name} {employee.suffix}
+                                                </span>
+                                                <span className="text-muted-foreground text-xs font-medium">
+                                                    #{employee.id}
+                                                </span>
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-sm">{employee.position || '—'}</TableCell>
                                         <TableCell>
-                                            <Badge variant="outline" className="font-normal">
-                                                {employee.office?.name || '—'}
-                                            </Badge>
+                                            <div className="flex flex-col">
+                                                <span className="text-sm">{employee.position || '—'}</span>
+                                                <span className="text-muted-foreground text-xs">
+                                                    {employee.office?.name || '—'}
+                                                </span>
+                                            </div>
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant="secondary" className="font-normal">
