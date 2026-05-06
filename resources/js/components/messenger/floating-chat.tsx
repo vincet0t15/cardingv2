@@ -1,4 +1,4 @@
-import { type OpenChat, useChatContext } from '@/contexts/chat-context';
+import { type OpenChat, useChatContext, initializedConversations } from '@/contexts/chat-context';
 import { cn } from '@/lib/utils';
 import { usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
@@ -42,6 +42,29 @@ function csrfToken() {
     return document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '';
 }
 
+const WINDOW_WIDTH = 320;
+const GAP = 12;
+const BASE_RIGHT = 20;
+
+const CHAT_STYLE = `
+@media (min-width: 768px) {
+    [style*="--chat-height"] {
+        right: var(--right-offset, 20px);
+        height: var(--desktop-height);
+        left: auto;
+        bottom: 0;
+    }
+}
+@media (max-width: 767px) {
+    [style*="--chat-height"] {
+        top: 80px;
+        height: calc(100vh - 100px);
+        right: 4px;
+        left: 4px;
+        bottom: 4px;
+    }
+}`;
+
 interface Props {
     chat: OpenChat;
     index: number;
@@ -51,8 +74,6 @@ interface Props {
 export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
     const { auth } = usePage().props as unknown as { auth: { user: { id: number; name: string } } };
     const { closeChat, toggleMinimize, setConversation } = useChatContext();
-    const displayName = chat.isGroup ? (chat.conversation?.name ?? 'Group Chat') : (chat.user?.name ?? chat.user?.username ?? 'Unknown');
-    const displayId = chat.isGroup ? (chat.conversation?.id ?? 0) : (chat.user?.id ?? 0);
 
     const [messages, setMessages] = useState<MessageType[]>([]);
     const [input, setInput] = useState('');
@@ -75,8 +96,17 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isNearBottom = useRef(true);
-    const initializedConversationIdsRef = useRef<Set<number>>(new Set());
     const hasScrolledRef = useRef<Set<number>>(new Set());
+    const isLoadingMoreRef = useRef(false);
+
+    const displayName = useMemo(
+        () => (chat.isGroup ? chat.conversation?.name ?? 'Group Chat' : chat.user?.name ?? chat.user?.username ?? 'Unknown'),
+        [chat.isGroup, chat.conversation?.name, chat.user?.name, chat.user?.username],
+    );
+    const displayId = useMemo(() => (chat.isGroup ? chat.conversation?.id ?? 0 : chat.user?.id ?? 0), [chat.isGroup, chat.conversation?.id, chat.user?.id]);
+    const rightOffset = useMemo(() => BASE_RIGHT + extraRight + index * (WINDOW_WIDTH + GAP), [extraRight, index]);
+
+    const typingDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         if (inputRef.current) {
@@ -92,6 +122,10 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             let convId = conversationId;
 
             if (!convId && !chat.isGroup) {
+                if (initializedConversations.has(chat.user!.id)) {
+                    setLoading(false);
+                    return;
+                }
                 const res = await fetch('/messenger/conversations', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
@@ -110,12 +144,9 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                     is_group: false,
                     participants: [chat.user!],
                 });
-            }
-
-            // Don't reinitialize if already done for this conversation
-            if (initializedConversationIdsRef.current.has(convId!)) {
-                setLoading(false);
-                return;
+                initializedConversations.add(chat.user!.id);
+            } else if (convId) {
+                initializedConversations.add(convId);
             }
 
             // Clear scroll tracking for new conversation
@@ -128,7 +159,6 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                 setHasMore(data.messages.length === 50);
             }
             setLoading(false);
-            initializedConversationIdsRef.current.add(convId!);
         };
 
         init();
@@ -175,7 +205,6 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
         return () => container.removeEventListener('scroll', handleScroll);
     }, [loading]);
 
-    const isLoadingMoreRef = useRef(false);
     useEffect(() => {
         // Only scroll to bottom on initial load (first time messages are loaded)
         if (!chat.minimized && conversationId && messages.length > 0 && !hasScrolledRef.current.has(conversationId) && !isLoadingMoreRef.current) {
@@ -279,9 +308,16 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
         });
 
         return () => {
+            if (typingTimer.current) clearTimeout(typingTimer.current);
             (echo() as any).leave(`conversation.${conversationId}`);
         };
-    }, [conversationId, auth.user.id, hasMore]);
+    }, [conversationId, auth.user.id]);
+
+    useEffect(() => {
+        return () => {
+            if (typingDebounceTimer.current) clearTimeout(typingDebounceTimer.current);
+        };
+    }, []);
 
     const sendMessage = useCallback(
         async (e?: React.FormEvent) => {
@@ -353,10 +389,13 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
         (e: React.ChangeEvent<HTMLTextAreaElement>) => {
             setInput(e.target.value);
             if (!conversationId) return;
-            (echo() as any).private(`conversation.${conversationId}`).whisper('typing', {
-                userId: auth.user.id,
-                name: auth.user.name,
-            });
+            if (typingDebounceTimer.current) clearTimeout(typingDebounceTimer.current);
+            typingDebounceTimer.current = setTimeout(() => {
+                (echo() as any).private(`conversation.${conversationId}`).whisper('typing', {
+                    userId: auth.user.id,
+                    name: auth.user.name,
+                });
+            }, 300);
         },
         [conversationId, auth.user.id],
     );
@@ -382,11 +421,6 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             setSelectedFile(files[0]);
         }
     }, []);
-
-    const WINDOW_WIDTH = 320;
-    const GAP = 12;
-    const BASE_RIGHT = 20;
-    const rightOffset = BASE_RIGHT + extraRight + index * (WINDOW_WIDTH + GAP);
 
     const messageItems = useMemo(
         () =>
@@ -426,25 +460,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                     } as React.CSSProperties
                 }
             >
-                <style>{`
-                @media (min-width: 768px) {
-                    [style*="--chat-height"] {
-                        right: var(--right-offset, 20px);
-                        height: var(--desktop-height);
-                        left: auto;
-                        bottom: 0;
-                    }
-                }
-                @media (max-width: 767px) {
-                    [style*="--chat-height"] {
-                        top: 80px;
-                        height: calc(100vh - 100px);
-                        right: 4px;
-                        left: 4px;
-                        bottom: 4px;
-                    }
-                }
-            `}</style>
+                <style>{CHAT_STYLE}</style>
                 <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                     <button
                         onClick={() => toggleMinimize(chat.chatId)}

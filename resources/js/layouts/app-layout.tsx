@@ -23,7 +23,9 @@ export default ({ children, breadcrumbs, ...props }: AppLayoutProps) => {
                     {children}
                     <Toaster position="top-right" />
                 </AppLayoutTemplate>
-                {!hideFloatingChat && <ChatManager />}
+                <div className={hideFloatingChat ? 'hidden' : ''}>
+                    <ChatManager />
+                </div>
             </TooltipProvider>
         </ChatProvider>
     );

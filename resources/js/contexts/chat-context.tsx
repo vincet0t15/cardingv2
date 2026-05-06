@@ -67,6 +67,8 @@ function markConversationAsRead(conversationId: number) {
 
 const ChatContext = createContext<ChatContextType | null>(null);
 
+export const initializedConversations = new Set<number>();
+
 export function ChatProvider({ children }: { children: React.ReactNode }) {
     const [openChats, setOpenChats] = useState<OpenChat[]>(() => loadFromStorage());
 
