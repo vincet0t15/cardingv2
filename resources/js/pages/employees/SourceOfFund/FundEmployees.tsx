@@ -1,4 +1,5 @@
 import { CustomComboBox } from '@/components/CustomComboBox';
+import Pagination from '@/components/paginationData';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -6,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, FileText, Filter, Printer, Search, Users, X } from 'lucide-react';
+import { ArrowLeft, FileText, Filter, Printer, Search, X } from 'lucide-react';
 import { useState } from 'react';
 
 interface EmployeeRow {
@@ -30,6 +31,7 @@ interface FundInfo {
 }
 
 interface Props {
+    [key: string]: any;
     fundCode: string;
     fundInfo: FundInfo;
     employees: {
@@ -111,13 +113,14 @@ export default function FundSourceEmployees() {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Employees - ${fundInfo.general_fund_name || fundCode}`} />
+
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
+                <Button variant="outline" size="sm" onClick={goBack} className="w-max">
+                    <ArrowLeft className="mr-1 h-4 w-4" />
+                    Back
+                </Button>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={goBack}>
-                            <ArrowLeft className="mr-1 h-4 w-4" />
-                            Back
-                        </Button>
                         <FileText className="text-muted-foreground h-5 w-5" />
                         <div>
                             <h2 className="text-lg font-semibold">{fundInfo.general_fund_name || 'Unfunded'}</h2>
@@ -130,19 +133,6 @@ export default function FundSourceEmployees() {
                         <Printer className="mr-1 h-4 w-4" />
                         Print
                     </Button>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <Card className="border-0 bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg text-white">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium text-emerald-100">Total Employees</CardTitle>
-                            <Users className="h-4 w-4 text-emerald-100" />
-                        </CardHeader>
-                        <CardContent className="bg-transparent">
-                            <div className="text-3xl font-bold text-white">{fundInfo.count}</div>
-                            <p className="text-xs text-white">{formatCurrency(fundInfo.total)} total</p>
-                        </CardContent>
-                    </Card>
                 </div>
 
                 <Card>
@@ -259,26 +249,7 @@ export default function FundSourceEmployees() {
                             </Table>
                         </div>
 
-                        {employees.last_page > 1 && (
-                            <div className="mt-4 flex items-center justify-between">
-                                <div className="text-muted-foreground text-sm">
-                                    Showing {employees.data.length} of {employees.total} employees
-                                </div>
-                                <div className="flex gap-2">
-                                    {employees.links.map((link, index) => (
-                                        <Button
-                                            key={index}
-                                            variant={link.active ? 'default' : 'outline'}
-                                            size="sm"
-                                            disabled={!link.url}
-                                            onClick={() => link.url && router.get(link.url)}
-                                        >
-                                            {link.label === '&laquo; Previous' ? 'Previous' : link.label === 'Next &raquo;' ? 'Next' : link.label}
-                                        </Button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                        <Pagination data={employees} />
                     </CardContent>
                 </Card>
             </div>
@@ -326,7 +297,9 @@ export default function FundSourceEmployees() {
                             </tbody>
                             <tfoot>
                                 <tr className="font-bold">
-                                    <td colSpan={3} className="border p-2 text-right">Total:</td>
+                                    <td colSpan={3} className="border p-2 text-right">
+                                        Total:
+                                    </td>
                                     <td className="border p-2 text-right">{formatCurrency(fundInfo.total)}</td>
                                 </tr>
                             </tfoot>

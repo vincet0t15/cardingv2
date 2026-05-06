@@ -403,21 +403,60 @@ class EmployeeSourceOfFundController extends Controller
         }
 
         $employeesCollection = collect($fundEmployees);
+        $perPage = 50;
+        $currentPage = $employees->currentPage();
+        $total = count($fundEmployees);
+        $items = $employeesCollection
+            ->slice(($currentPage - 1) * $perPage, $perPage)
+            ->values()
+            ->all();
+
+        $lastPage = (int) ceil($total / $perPage);
+        $from = $total > 0 ? (($currentPage - 1) * $perPage) + 1 : null;
+        $to = $currentPage < $lastPage ? $from + $perPage - 1 : $total;
+
+        $links = [];
+        $baseUrl = url()->current() . '?' . http_build_query(array_filter([
+            'year' => $year,
+            'month' => $month,
+            'office_id' => $officeId,
+            'search' => $search,
+        ]));
+
+        if ($lastPage > 1) {
+            $links[] = [
+                'url' => $currentPage > 1 ? $baseUrl . '&page=' . ($currentPage - 1) : null,
+                'label' => '&laquo; Previous',
+                'active' => false,
+            ];
+
+            for ($i = 1; $i <= $lastPage; $i++) {
+                $links[] = [
+                    'url' => $baseUrl . '&page=' . $i,
+                    'label' => (string) $i,
+                    'active' => $i === $currentPage,
+                ];
+            }
+
+            $links[] = [
+                'url' => $currentPage < $lastPage ? $baseUrl . '&page=' . ($currentPage + 1) : null,
+                'label' => 'Next &raquo;',
+                'active' => false,
+            ];
+        }
 
         return Inertia::render('employees/SourceOfFund/FundEmployees', [
             'fundCode' => $fundCode,
             'fundInfo' => $fundInfo,
             'employees' => [
-                'data' => $employeesCollection
-                    ->skip(($employees->currentPage() - 1) * $employees->perPage())
-                    ->take($employees->perPage())
-                    ->values()
-                    ->all(),
-                'current_page' => $employees->currentPage(),
-                'last_page' => $employees->lastPage(),
-                'per_page' => $employees->perPage(),
-                'total' => count($fundEmployees),
-                'links' => [],
+                'data' => $items,
+                'current_page' => $currentPage,
+                'last_page' => $lastPage,
+                'per_page' => $perPage,
+                'total' => $total,
+                'from' => $from,
+                'to' => $to,
+                'links' => $links,
             ],
             'offices' => $offices,
             'filters' => [
