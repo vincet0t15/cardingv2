@@ -116,11 +116,11 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
         setShowEmployeeDialog(true);
     };
 
-    const dialogEmployees = selectedFundCode ? (employeesByFund[selectedFundCode] || []) : [];
+    const dialogEmployees = selectedFundCode ? employeesByFund[selectedFundCode] || [] : [];
     const filteredDialogEmployees = dialogSearch
-        ? dialogEmployees.filter(emp =>
-            `${emp.last_name}, ${emp.first_name} ${emp.middle_name || ''}`.toLowerCase().includes(dialogSearch.toLowerCase())
-        )
+        ? dialogEmployees.filter((emp) =>
+              `${emp.last_name}, ${emp.first_name} ${emp.middle_name || ''}`.toLowerCase().includes(dialogSearch.toLowerCase()),
+          )
         : dialogEmployees;
 
     const selectedFundData = selectedFundCode ? summary.by_fund[selectedFundCode] : null;
@@ -140,7 +140,10 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <Card className="cursor-pointer hover:bg-muted/50" onClick={() => openEmployeeDialog('ALL')}>
+                    <Card
+                        className="cursor-pointer border-0 bg-gradient-to-br from-slate-50 to-white shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg dark:from-slate-900 dark:to-slate-800"
+                        onClick={() => openEmployeeDialog('ALL')}
+                    >
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
                             <Users className="text-muted-foreground h-4 w-4" />
@@ -151,7 +154,10 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                         </CardContent>
                     </Card>
 
-                    <Card className="cursor-pointer hover:bg-muted/50" onClick={() => openEmployeeDialog('Unfunded')}>
+                    <Card
+                        className="cursor-pointer border-0 bg-gradient-to-br from-amber-50 to-orange-50 shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg dark:from-amber-900/20 dark:to-orange-900/20"
+                        onClick={() => openEmployeeDialog('Unfunded')}
+                    >
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Unfunded</CardTitle>
                             <FileText className="text-muted-foreground h-4 w-4" />
@@ -165,7 +171,11 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                     {Object.entries(summary.by_fund)
                         .filter(([code]) => code !== 'Unfunded')
                         .map(([fundCode, data]) => (
-                            <Card key={fundCode} className="cursor-pointer hover:bg-muted/50" onClick={() => openEmployeeDialog(fundCode)}>
+                            <Card
+                                key={fundCode}
+                                className="cursor-pointer border-0 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20"
+                                onClick={() => openEmployeeDialog(fundCode)}
+                            >
                                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                                     <CardTitle className="text-sm font-medium">{fundCode}</CardTitle>
                                     <Users className="text-muted-foreground h-4 w-4" />
@@ -269,12 +279,8 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                                                         <span className="font-bold uppercase">
                                                             {employee.last_name}, {employee.first_name} {employee.middle_name}
                                                         </span>
-                                                        <span className="text-muted-foreground text-xs">
-                                                            {employee.position || '-'}
-                                                        </span>
-                                                        <span className="text-muted-foreground text-xs">
-                                                            {employee.office?.name || '-'}
-                                                        </span>
+                                                        <span className="text-muted-foreground text-xs">{employee.position || '-'}</span>
+                                                        <span className="text-muted-foreground text-xs">{employee.office?.name || '-'}</span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right">
@@ -341,18 +347,18 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
             </div>
 
             <Dialog open={showEmployeeDialog} onOpenChange={setShowEmployeeDialog}>
-                <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+                <DialogContent className="flex max-h-[80vh] min-w-[100vh] flex-col overflow-hidden">
                     <DialogHeader>
-                        <DialogTitle>
-                            {selectedFundCode === 'ALL' ? 'All Employees' : `Employees - ${selectedFundCode}`}
-                        </DialogTitle>
+                        <DialogTitle>{selectedFundCode === 'ALL' ? 'All Employees' : `Employees - ${selectedFundCode}`}</DialogTitle>
                         <p className="text-muted-foreground text-sm">
-                            {selectedFundData ? `${selectedFundData.count} employees • ${formatCurrency(selectedFundData.total)}` : `${dialogEmployees.length} employees`}
+                            {selectedFundData
+                                ? `${selectedFundData.count} employees • ${formatCurrency(selectedFundData.total)}`
+                                : `${dialogEmployees.length} employees`}
                         </p>
                     </DialogHeader>
 
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                         <Input
                             placeholder="Search employee..."
                             value={dialogSearch}
@@ -366,9 +372,7 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                             <TableHeader className="bg-muted/50 sticky top-0">
                                 <TableRow>
                                     <TableHead>Employee</TableHead>
-                                    <TableHead>Position</TableHead>
-                                    <TableHead>Office</TableHead>
-                                    <TableHead>Status</TableHead>
+
                                     <TableHead className="text-right">Total Compensation</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -379,22 +383,13 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                                             <TableCell>
                                                 <div className="flex flex-col">
                                                     <span className="font-bold uppercase">
-                                                        {employee.last_name}, {employee.first_name} {employee.middle_name} {employee.suffix}
+                                                        {employee.last_name}, {employee.first_name} {employee.middle_name}
                                                     </span>
-                                                    <span className="text-muted-foreground text-xs">#{employee.id}</span>
+                                                    <span className="text-muted-foreground text-xs">{employee.position || '-'}</span>
+                                                    <span className="text-muted-foreground text-xs">{employee.office?.name || '-'}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell>
-                                                <span className="text-sm">{employee.position || '-'}</span>
-                                            </TableCell>
-                                            <TableCell>
-                                                <span className="text-sm">{employee.office?.name || '-'}</span>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="secondary" className="text-xs">
-                                                    {employee.employment_status?.name || '-'}
-                                                </Badge>
-                                            </TableCell>
+
                                             <TableCell className="text-right font-medium text-green-600">
                                                 {formatCurrency(employee.total_compensation)}
                                             </TableCell>
