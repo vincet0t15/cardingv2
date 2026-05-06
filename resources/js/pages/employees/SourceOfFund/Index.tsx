@@ -1,13 +1,15 @@
 import { CustomComboBox } from '@/components/CustomComboBox';
+import Pagination from '@/components/paginationData';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Employee as EmployeeType } from '@/types/employee';
 import { Head, router } from '@inertiajs/react';
-import { FileText, Filter, Search, Users, X, ArrowUpRight } from 'lucide-react';
+import { FileText, Filter, Printer, Search, Users, X, ArrowUpRight, HelpCircle } from 'lucide-react';
 import { useState } from 'react';
 
 interface SourceOfFundCode {
@@ -117,6 +119,22 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                             <p className="text-muted-foreground text-sm">Track employee compensation funding sources for government accountability</p>
                         </div>
                     </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            const params = new URLSearchParams();
+                            if (filters.year) params.append('year', filters.year.toString());
+                            if (filters.month) params.append('month', filters.month.toString());
+                            if (filters.office_id) params.append('office_id', filters.office_id.toString());
+                            if (filters.source_of_fund_code_id) params.append('source_of_fund_code_id', filters.source_of_fund_code_id.toString());
+                            if (filters.search) params.append('search', filters.search);
+                            window.open(route('employees.source-of-fund.print') + '?' + params.toString(), '_blank');
+                        }}
+                    >
+                        <Printer className="mr-1 h-4 w-4" />
+                        Print
+                    </Button>
                 </div>
 
 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -192,6 +210,29 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                         </Card>
                     )}
                 </div>
+
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center gap-2">
+                            <HelpCircle className="text-muted-foreground h-4 w-4" />
+                            <CardTitle className="text-sm">Frequently Asked Questions</CardTitle>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <Collapsible className="w-full">
+                            <CollapsibleTrigger asChild>
+                                <Button variant="ghost" className="w-full justify-between text-sm font-medium">
+                                    How do I view employees for a specific funding code?
+                                    <ArrowUpRight className="h-4 w-4" />
+                                </Button>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-2 text-sm text-muted-foreground">
+                                Click on any funding source card above to view the list of employees funded by that specific funding code.
+                                This will show you detailed information about each employee, their position, office assignment, and compensation details.
+                            </CollapsibleContent>
+                        </Collapsible>
+                    </CardContent>
+                </Card>
 
                 <Card>
                     <CardHeader>
@@ -358,24 +399,7 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                         </div>
 
                         {employees.last_page > 1 && (
-                            <div className="mt-4 flex items-center justify-between">
-                                <div className="text-muted-foreground text-sm">
-                                    Showing {employees.data.length} of {employees.total} employees
-                                </div>
-                                <div className="flex gap-2">
-                                    {employees.links.map((link, index) => (
-                                        <Button
-                                            key={index}
-                                            variant={link.active ? 'default' : 'outline'}
-                                            size="sm"
-                                            disabled={!link.url}
-                                            onClick={() => link.url && router.get(link.url)}
-                                        >
-                                            {link.label === '&laquo; Previous' ? 'Previous' : link.label === 'Next &raquo;' ? 'Next' : link.label}
-                                        </Button>
-                                    ))}
-                                </div>
-                            </div>
+                            <Pagination data={employees} />
                         )}
                     </CardContent>
                 </Card>
