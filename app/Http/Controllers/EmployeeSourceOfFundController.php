@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\GeneralFund;
 use App\Models\Office;
 use App\Models\SourceOfFundCode;
 use Illuminate\Http\Request;
@@ -26,6 +27,16 @@ class EmployeeSourceOfFundController extends Controller
             ->with('generalFund:id,code,description,status')
             ->orderBy('code')
             ->get();
+
+        // Build a lookup map for general funds
+        $generalFundsLookup = GeneralFund::where('status', true)
+            ->get()
+            ->keyBy('id')
+            ->map(fn ($gf) => [
+                'name' => $gf->description, // Using description as the name
+                'code' => $gf->code,
+                'description' => $gf->description,
+            ]);
 
         // Get offices for filter dropdown
         $offices = Office::orderBy('name')->get();
@@ -76,7 +87,7 @@ class EmployeeSourceOfFundController extends Controller
 
         $periodEnd = $month ? now()->setDate($year, $month, 1)->endOfMonth() : now()->setDate($year, 12, 31);
 
-        $employees->getCollection()->transform(function ($employee) use ($periodEnd) {
+        $employees->getCollection()->transform(function ($employee) use ($periodEnd, $generalFundsLookup) {
             $salary = $employee->salaries
                 ->where('effective_date', '<=', $periodEnd)
                 ->sortByDesc('effective_date')
@@ -113,14 +124,16 @@ class EmployeeSourceOfFundController extends Controller
             $fundingSources = [];
             $totalCompensation = 0;
 
-            $processFund = function ($record, $type) use (&$fundingSources, &$totalCompensation) {
+            $processFund = function ($record, $type) use (&$fundingSources, &$totalCompensation, $generalFundsLookup) {
                 if (!$record) return;
 
                 $amount = (float) $record->amount;
                 $totalCompensation += $amount;
 
                 $fundCode = $record->sourceOfFundCode?->code;
-                $generalFundName = $record->sourceOfFundCode?->generalFund?->name;
+                $generalFundId = $record->sourceOfFundCode?->general_fund_id;
+                $generalFundData = $generalFundsLookup->get($generalFundId);
+                $generalFundName = $generalFundData['name'] ?? null;
 
                 if ($fundCode) {
                     $fundDisplayName = $generalFundName ? "{$generalFundName} - {$fundCode}" : $fundCode;
