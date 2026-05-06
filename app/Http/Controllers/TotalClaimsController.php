@@ -46,8 +46,6 @@ class TotalClaimsController extends Controller
                 'claim_count' => $type->claim_count ?? 0,
                 'total_amount' => $type->total_amount ?? 0,
             ];
-        })->filter(function ($type) {
-            return $type['claim_count'] > 0;
         })->sortByDesc('total_amount')->values();
 
         $summary = [
@@ -103,17 +101,7 @@ class TotalClaimsController extends Controller
         $to = $totalPages > 1 ? min($currentPage * $perPage, $claimTypes->count()) : $claimTypes->count();
 
         return Inertia::render('TotalClaims/Index', [
-            'claimTypes' => [
-                'data' => $paginatedClaimTypes->values(),
-                'current_page' => (int) $currentPage,
-                'from' => $from,
-                'to' => $to,
-                'last_page' => $totalPages,
-                'per_page' => $perPage,
-                'total' => $claimTypes->count(),
-                'path' => $baseUrl,
-                'links' => $links,
-            ],
+            'claimTypes' => $paginatedClaimTypes->values(),
             'summary' => $summary,
             'filters' => [
                 'month' => $filterMonth,
@@ -256,8 +244,6 @@ class TotalClaimsController extends Controller
                     'claim_count' => $type->claim_count ?? 0,
                     'total_amount' => $type->total_amount ?? 0,
                 ];
-            })->filter(function ($type) {
-                return $type['claim_count'] > 0;
             })->sortByDesc('total_amount')->values();
 
         $summary = [
