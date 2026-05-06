@@ -1,7 +1,6 @@
 import { CustomComboBox } from '@/components/CustomComboBox';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
@@ -41,18 +40,6 @@ interface EmployeeWithFunding extends EmployeeType {
     total_compensation: number;
 }
 
-interface EmployeeRow {
-    id: number;
-    first_name: string;
-    middle_name: string | null;
-    last_name: string;
-    suffix: string | null;
-    position: string | null;
-    office: { name: string } | null;
-    employment_status: { name: string } | null;
-    total_compensation: number;
-}
-
 interface Props {
     employees: {
         data: EmployeeWithFunding[];
@@ -76,7 +63,6 @@ interface Props {
         total_compensation: number;
         by_fund: Record<string, { count: number; total: number; code: string; general_fund_name: string | null; description: string | null }>;
     };
-    employeesByFund: Record<string, EmployeeRow[]>;
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -92,10 +78,7 @@ function formatCurrency(amount: number) {
     return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(amount);
 }
 
-export default function Index({ employees, sourceOfFundCodes, offices, filters, summary, employeesByFund }: Props) {
-    const [showEmployeeDialog, setShowEmployeeDialog] = useState(false);
-    const [selectedFundCode, setSelectedFundCode] = useState<string | null>(null);
-    const [dialogSearch, setDialogSearch] = useState('');
+export default function Index({ employees, sourceOfFundCodes, offices, filters, summary }: Props) {
     const [search, setSearch] = useState(filters.search || '');
 
     const handleFilterChange = (key: string, value: any) => {
@@ -118,20 +101,9 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
 
     const hasActiveFilters = filters.month || filters.office_id || filters.source_of_fund_code_id || filters.search;
 
-    const openEmployeeDialog = (fundCode: string) => {
-        setSelectedFundCode(fundCode);
-        setDialogSearch('');
-        setShowEmployeeDialog(true);
+    const viewFundEmployees = (fundCode: string) => {
+        router.get(route('employees.source-of-fund.employees', { fundCode: fundCode }));
     };
-
-    const dialogEmployees = selectedFundCode ? employeesByFund[selectedFundCode] || [] : [];
-    const filteredDialogEmployees = dialogSearch
-        ? dialogEmployees.filter((emp) =>
-              `${emp.last_name}, ${emp.first_name} ${emp.middle_name || ''}`.toLowerCase().includes(dialogSearch.toLowerCase()),
-          )
-        : dialogEmployees;
-
-    const selectedFundData = selectedFundCode ? summary.by_fund[selectedFundCode] : null;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -166,9 +138,9 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                                 <Card
                                     key={fundDisplayName}
                                     className={`group relative overflow-hidden border-0 bg-gradient-to-br from-white to-slate-50 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg dark:from-slate-900 dark:to-slate-800 cursor-pointer`}
-                                    onClick={() => openEmployeeDialog(fundDisplayName)}
+                                    onClick={() => viewFundEmployees(fundDisplayName)}
                                 >
-                                    <div className={`absolute top-0 right-0 h-24 w-24 ${color} opacity-10 blur-2xl transition-all group-hover:opacity-20`} />
+                                    <div className={`absolute top-0 right-0 h-24 w-24 bg-gradient-to-br ${color} opacity-10 blur-2xl transition-all group-hover:opacity-20`} />
                                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                                         <div className="flex flex-col">
                                             <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">
@@ -198,7 +170,7 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                     {summary.by_fund['Unfunded']?.count > 0 && (
                         <Card
                             className={`group relative overflow-hidden border-0 bg-gradient-to-br from-white to-slate-50 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg dark:from-slate-900 dark:to-slate-800 cursor-pointer`}
-                            onClick={() => openEmployeeDialog('Unfunded')}
+                            onClick={() => viewFundEmployees('Unfunded')}
                         >
                             <div className="absolute top-0 right-0 h-24 w-24 bg-gradient-to-br from-slate-500 to-slate-600 opacity-10 blur-2xl transition-all group-hover:opacity-20" />
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -408,68 +380,6 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                     </CardContent>
                 </Card>
             </div>
-
-            <Dialog open={showEmployeeDialog} onOpenChange={setShowEmployeeDialog}>
-                <DialogContent className="flex max-h-[80vh] min-w-[100vh] flex-col overflow-hidden">
-                    <DialogHeader>
-                        <DialogTitle>{selectedFundCode === 'ALL' ? 'All Employees' : `Employees - ${selectedFundCode}`}</DialogTitle>
-                        <p className="text-muted-foreground text-sm">
-                            {selectedFundData
-                                ? `${selectedFundData.count} employees • ${formatCurrency(selectedFundData.total)}`
-                                : `${dialogEmployees.length} employees`}
-                        </p>
-                    </DialogHeader>
-
-                    <div className="relative">
-                        <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-                        <Input
-                            placeholder="Search employee..."
-                            value={dialogSearch}
-                            onChange={(e) => setDialogSearch(e.target.value)}
-                            className="pl-9"
-                        />
-                    </div>
-
-                    <div className="flex-1 overflow-auto rounded-md border">
-                        <Table>
-                            <TableHeader className="bg-muted/50 sticky top-0">
-                                <TableRow>
-                                    <TableHead>Employee</TableHead>
-
-                                    <TableHead className="text-right">Total Compensation</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredDialogEmployees.length > 0 ? (
-                                    filteredDialogEmployees.map((employee) => (
-                                        <TableRow key={employee.id}>
-                                            <TableCell>
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold uppercase">
-                                                        {employee.last_name}, {employee.first_name} {employee.middle_name}
-                                                    </span>
-                                                    <span className="text-muted-foreground text-xs">{employee.position || '-'}</span>
-                                                    <span className="text-muted-foreground text-xs">{employee.office?.name || '-'}</span>
-                                                </div>
-                                            </TableCell>
-
-                                            <TableCell className="text-right font-medium text-green-600">
-                                                {formatCurrency(employee.total_compensation)}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="py-8 text-center text-gray-500">
-                                            No employees found
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </DialogContent>
-            </Dialog>
         </AppLayout>
     );
 }
