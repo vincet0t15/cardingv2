@@ -66,7 +66,6 @@ export default function FundSourceEmployees() {
     const { fundCode, fundInfo, employees, offices, filters } = props;
 
     const [search, setSearch] = useState(filters.search || '');
-    const [showPrintPreview, setShowPrintPreview] = useState(false);
 
     const handleFilterChange = (key: string, value: any) => {
         router.get(
@@ -129,7 +128,17 @@ export default function FundSourceEmployees() {
                             </p>
                         </div>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => setShowPrintPreview(true)}>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            const params = new URLSearchParams({
+                                ...filters,
+                                year: filters.year.toString(),
+                            });
+                            window.open(route('employees.source-of-fund.print', { fundCode: fundCode }) + '?' + params.toString(), '_blank');
+                        }}
+                    >
                         <Printer className="mr-1 h-4 w-4" />
                         Print
                     </Button>
@@ -253,70 +262,6 @@ export default function FundSourceEmployees() {
                     </CardContent>
                 </Card>
             </div>
-
-            {showPrintPreview && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="max-h-[90vh] min-w-[800px] overflow-auto rounded-lg bg-white p-8 shadow-xl">
-                        <div className="mb-6 flex items-center justify-between">
-                            <div>
-                                <h1 className="text-2xl font-bold">Employees by Source of Fund</h1>
-                                <h2 className="text-lg font-semibold">
-                                    {fundInfo.general_fund_name || 'Unfunded'} - {fundInfo.code}
-                                </h2>
-                                <p className="text-muted-foreground text-sm">{fundInfo.description}</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-sm">Total Employees: {fundInfo.count}</p>
-                                <p className="text-sm">Total Amount: {formatCurrency(fundInfo.total)}</p>
-                                <p className="text-muted-foreground text-xs">
-                                    {MONTHS[filters.month ? filters.month - 1 : 0]} {filters.year}
-                                </p>
-                            </div>
-                        </div>
-
-                        <table className="w-full border-collapse border">
-                            <thead>
-                                <tr className="bg-muted">
-                                    <th className="border p-2 text-left">Employee</th>
-                                    <th className="border p-2 text-left">Position</th>
-                                    <th className="border p-2 text-left">Office</th>
-                                    <th className="border p-2 text-right">Total Compensation</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredEmployees.map((employee) => (
-                                    <tr key={employee.id}>
-                                        <td className="border p-2">
-                                            {employee.last_name}, {employee.first_name} {employee.middle_name}
-                                        </td>
-                                        <td className="border p-2">{employee.position || '-'}</td>
-                                        <td className="border p-2">{employee.office?.name || '-'}</td>
-                                        <td className="border p-2 text-right">{formatCurrency(employee.total_compensation)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                            <tfoot>
-                                <tr className="font-bold">
-                                    <td colSpan={3} className="border p-2 text-right">
-                                        Total:
-                                    </td>
-                                    <td className="border p-2 text-right">{formatCurrency(fundInfo.total)}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-
-                        <div className="mt-6 flex justify-end gap-2">
-                            <Button variant="outline" onClick={() => setShowPrintPreview(false)}>
-                                Close
-                            </Button>
-                            <Button onClick={() => window.print()}>
-                                <Printer className="mr-1 h-4 w-4" />
-                                Print
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </AppLayout>
     );
 }

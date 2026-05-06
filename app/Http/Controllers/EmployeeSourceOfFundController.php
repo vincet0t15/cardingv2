@@ -85,7 +85,7 @@ class EmployeeSourceOfFundController extends Controller
 
         $employees = $employeesQuery->paginate(50)->withQueryString();
 
-        $periodEnd = $month ? now()->setDate($year, $month, 1)->endOfMonth() : now()->setDate($year, 12, 31);
+        $periodEnd = $month ? now()->setDate($year, (int) $month, 1)->endOfMonth() : now()->setDate($year, 12, 31);
 
         $employees->getCollection()->transform(function ($employee) use ($periodEnd, $generalFundsLookup) {
             $salary = $employee->salaries
@@ -272,7 +272,7 @@ class EmployeeSourceOfFundController extends Controller
 
         $employees = $employeesQuery->paginate(50)->withQueryString();
 
-        $periodEnd = $month ? now()->setDate($year, $month, 1)->endOfMonth() : now()->setDate($year, 12, 31);
+        $periodEnd = $month ? now()->setDate($year, (int) $month, 1)->endOfMonth() : now()->setDate($year, 12, 31);
 
         $fundEmployees = [];
         $fundTotal = 0;
@@ -459,6 +459,197 @@ class EmployeeSourceOfFundController extends Controller
                 'links' => $links,
             ],
             'offices' => $offices,
+            'filters' => [
+                'year' => (int) $year,
+                'month' => $month ? (int) $month : null,
+                'office_id' => $officeId,
+                'search' => $search,
+            ],
+        ]);
+    }
+
+    public function fundEmployeesPrint(Request $request, string $fundCode)
+    {
+        $year = $request->input('year', now()->year);
+        $month = $request->input('month');
+        $officeId = $request->input('office_id');
+        $search = $request->input('search');
+
+        $employeesQuery = Employee::query()
+            ->with([
+                'employmentStatus',
+                'office',
+                'salaries.sourceOfFundCode.generalFund',
+                'hazardPays.sourceOfFundCode.generalFund',
+                'clothingAllowances.sourceOfFundCode.generalFund',
+                'peras',
+                'ratas',
+            ])
+            ->when($officeId, function ($query, $officeId) {
+                $query->where('office_id', $officeId);
+            })
+            ->when($search, function ($query, $search) {
+                $searchTerms = explode(' ', $search);
+                $query->where(function ($q) use ($searchTerms) {
+                    foreach ($searchTerms as $term) {
+                        $term = trim($term);
+                        if (strlen($term) >= 2) {
+                            $q->where(function ($inner) use ($term) {
+                                $inner->where('first_name', 'like', "%{$term}%")
+                                    ->orWhere('middle_name', 'like', "%{$term}%")
+                                    ->orWhere('last_name', 'like', "%{$term}%")
+                                    ->orWhere('position', 'like', "%{$term}%");
+                            });
+                        }
+                    }
+                });
+            })
+            ->orderBy('last_name', 'asc');
+
+        $employees = $employeesQuery->get();
+
+        $periodEnd = $month ? now()->setDate($year, (int) $month, 1)->endOfMonth() : now()->setDate($year, 12, 31);
+
+        $fundEmployees = [];
+        $fundTotal = 0;
+
+        foreach ($employees as $employee) {
+            $salary = $employee->salaries
+                ->where('effective_date', '<=', $periodEnd)
+                ->sortByDesc('effective_date')
+                ->first();
+
+            $hazardPay = $employee->hazardPays
+                ->where('start_date', '<=', $periodEnd)
+                ->where(function ($query) use ($periodEnd) {
+                    $query->whereNull('end_date')->orWhere('end_date', '>=', $periodEnd);
+                })
+                ->sortByDesc('start_date')
+                ->first();
+
+            $clothingAllowance = $employee->clothingAllowances
+                ->where('start_date', '<=', $periodEnd)
+                ->where(function ($query) use ($periodEnd) {
+                    $query->whereNull('end_date')->orWhere('end_date', '>=', $periodEnd);
+                })
+                ->sortByDesc('start_date')
+                ->first();
+
+            $pera = $employee->peras
+                ->where('effective_date', '<=', $periodEnd)
+                ->sortByDesc('effective_date')
+                ->first();
+
+            $rata = $employee->is_rata_eligible
+                ? $employee->ratas
+                ->where('effective_date', '<=', $periodEnd)
+                ->sortByDesc('effective_date')
+                ->first()
+                : null;
+
+            $totalCompensation = 0;
+            $hasFund = false;
+            $salaryAmount = 0;
+            $hazardPayAmount = 0;
+            $clothingAmount = 0;
+
+            if ($salary) {
+                $sfc = $salary->sourceOfFundCode;
+                if ($sfc) {
+                    $displayName = $sfc->generalFund?->description
+                        ? "{$sfc->generalFund->description} - {$sfc->code}"
+                        : $sfc->code;
+
+                    if ($displayName === $fundCode || ($fundCode === 'Unfunded' && !$sfc->generalFund)) {
+                        $hasFund = true;
+                        $salaryAmount = (float) $salary->amount;
+                        $totalCompensation += $salaryAmount;
+                    }
+                }
+            }
+
+            if ($hazardPay) {
+                $sfc = $hazardPay->sourceOfFundCode;
+                if ($sfc) {
+                    $displayName = $sfc->generalFund?->description
+                        ? "{$sfc->generalFund->description} - {$sfc->code}"
+                        : $sfc->code;
+
+                    if ($displayName === $fundCode || ($fundCode === 'Unfunded' && !$sfc->generalFund)) {
+                        $hasFund = true;
+                        $hazardPayAmount = (float) $hazardPay->amount;
+                        $totalCompensation += $hazardPayAmount;
+                    }
+                }
+            }
+
+            if ($clothingAllowance) {
+                $sfc = $clothingAllowance->sourceOfFundCode;
+                if ($sfc) {
+                    $displayName = $sfc->generalFund?->description
+                        ? "{$sfc->generalFund->description} - {$sfc->code}"
+                        : $sfc->code;
+
+                    if ($displayName === $fundCode || ($fundCode === 'Unfunded' && !$sfc->generalFund)) {
+                        $hasFund = true;
+                        $clothingAmount = (float) $clothingAllowance->amount;
+                        $totalCompensation += $clothingAmount;
+                    }
+                }
+            }
+
+            if ($pera) {
+                $totalCompensation += (float) $pera->amount;
+            }
+
+            if ($rata) {
+                $totalCompensation += (float) $rata->amount;
+            }
+
+            if ($hasFund && $totalCompensation > 0) {
+                $fundEmployees[] = [
+                    'id' => $employee->id,
+                    'first_name' => $employee->first_name,
+                    'middle_name' => $employee->middle_name,
+                    'last_name' => $employee->last_name,
+                    'suffix' => $employee->suffix,
+                    'position' => $employee->position,
+                    'office' => $employee->office ? ['name' => $employee->office->name] : null,
+                    'salary' => $salaryAmount,
+                    'hazard_pay' => $hazardPayAmount,
+                    'clothing_allowance' => $clothingAmount,
+                    'pera' => $pera ? (float) $pera->amount : 0,
+                    'rata' => $rata ? (float) $rata->amount : 0,
+                    'total_compensation' => $totalCompensation,
+                ];
+                $fundTotal += $totalCompensation;
+            }
+        }
+
+        $fundInfo = [
+            'code' => $fundCode,
+            'general_fund_name' => null,
+            'description' => null,
+            'count' => count($fundEmployees),
+            'total' => $fundTotal,
+        ];
+
+        if ($fundCode !== 'Unfunded') {
+            $parts = explode(' - ', $fundCode);
+            if (count($parts) === 2) {
+                $fundInfo['general_fund_name'] = $parts[0];
+                $fundInfo['code'] = $parts[1];
+
+                $sourceCode = SourceOfFundCode::where('code', $parts[1])->first();
+                if ($sourceCode) {
+                    $fundInfo['description'] = $sourceCode->description;
+                }
+            }
+        }
+
+        return Inertia::render('employees/SourceOfFund/FundEmployeesPrint', [
+            'fundInfo' => $fundInfo,
+            'employees' => $fundEmployees,
             'filters' => [
                 'year' => (int) $year,
                 'month' => $month ? (int) $month : null,
