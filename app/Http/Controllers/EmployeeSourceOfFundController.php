@@ -456,6 +456,7 @@ class EmployeeSourceOfFundController extends Controller
                 'total' => $total,
                 'from' => $from,
                 'to' => $to,
+                'path' => url()->current(),
                 'links' => $links,
             ],
             'offices' => $offices,

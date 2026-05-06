@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
+import { type LinkProps } from '@/types/pagination';
 import { Head, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, FileText, Filter, Printer, Search, X } from 'lucide-react';
 import { useState } from 'react';
@@ -30,18 +31,23 @@ interface FundInfo {
     total: number;
 }
 
+interface EmployeesPaginated {
+    data: EmployeeRow[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number;
+    to: number;
+    path: string;
+    links: LinkProps[];
+}
+
 interface Props {
     [key: string]: any;
     fundCode: string;
     fundInfo: FundInfo;
-    employees: {
-        data: EmployeeRow[];
-        current_page: number;
-        last_page: number;
-        per_page: number;
-        total: number;
-        links: { url: string | null; label: string; active: boolean }[];
-    };
+    employees: EmployeesPaginated;
     offices: { id: number; name: string }[];
     filters: {
         year: number;
@@ -67,19 +73,23 @@ export default function FundSourceEmployees() {
 
     const [search, setSearch] = useState(filters.search || '');
 
-    const handleFilterChange = (key: string, value: any) => {
+    const handleFilterChange = (key: string, value: string | number | null) => {
+        const params = new URLSearchParams(window.location.search);
+        if (value !== null && value !== undefined && value !== '') {
+            params.set(key, String(value));
+        } else {
+            params.delete(key);
+        }
+
         router.get(
-            route('employees.source-of-fund.employees', { fundCode: fundCode }),
-            {
-                ...filters,
-                [key]: value,
-            },
-            { preserveState: true },
+            route('employees.source-of-fund.employees', { fundCode: fundCode }) + '?' + params.toString(),
+            undefined,
+            { preserveState: true, preserveScroll: true },
         );
     };
 
     const clearFilters = () => {
-        router.get(route('employees.source-of-fund.employees', { fundCode: fundCode }));
+        router.get(route('employees.source-of-fund.employees', { fundCode: fundCode }), undefined, { preserveState: true, preserveScroll: true });
     };
 
     const hasActiveFilters = filters.month || filters.office_id || filters.search;
@@ -132,10 +142,11 @@ export default function FundSourceEmployees() {
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                            const params = new URLSearchParams({
-                                ...filters,
-                                year: filters.year.toString(),
-                            });
+                            const params = new URLSearchParams();
+                            if (filters.year) params.append('year', filters.year.toString());
+                            if (filters.month) params.append('month', filters.month.toString());
+                            if (filters.office_id) params.append('office_id', filters.office_id.toString());
+                            if (filters.search) params.append('search', filters.search);
                             window.open(route('employees.source-of-fund.print', { fundCode: fundCode }) + '?' + params.toString(), '_blank');
                         }}
                     >
@@ -205,7 +216,7 @@ export default function FundSourceEmployees() {
                                         onChange={(e) => setSearch(e.target.value)}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter') {
-                                                handleFilterChange('search', search);
+                                                handleFilterChange('search', e.target.value);
                                             }
                                         }}
                                         className="pl-9"
