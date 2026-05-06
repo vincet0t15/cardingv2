@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
+use App\Models\EmployeeStatus;
+use App\Models\EmploymentStatus;
+use App\Models\Office;
 use App\Models\Salary;
 use App\Models\SourceOfFundCode;
 use Illuminate\Http\Request;
@@ -21,10 +24,10 @@ class ReportController extends Controller
 
         $sourceOfFundCodes = SourceOfFundCode::where('status', true)->orderBy('code')->get();
         $offices = Office::orderBy('name')->get();
-        $employmentStatuses = EmploymentStatus::orderBy('name')->get();
+        $employmentStatuses = EmployeeStatus::orderBy('name')->get();
 
         $employeesQuery = Employee::query()
-            ->with(['office', 'employmentStatus', 'latestSalary|sourceOfFundCode'])
+            ->with(['office', 'employmentStatus', 'latestSalary.sourceOfFundCode'])
             ->when($filterSourceOfFund, function ($query) use ($filterSourceOfFund, $filterYear) {
                 $query->whereHas('salaries', function ($q) use ($filterSourceOfFund, $filterYear) {
                     $q->where('source_of_fund_code_id', $filterSourceOfFund);
@@ -104,7 +107,7 @@ class ReportController extends Controller
         $sourceOfFundCode = $sourceOfFundCodeId ? SourceOfFundCode::findOrFail($sourceOfFundCodeId) : null;
 
         $employeesQuery = Employee::query()
-            ->with(['office', 'employmentStatus', 'latestSalary|sourceOfFundCode'])
+            ->with(['office', 'employmentStatus', 'latestSalary.sourceOfFundCode'])
             ->when($sourceOfFundCodeId, function ($query) use ($sourceOfFundCodeId, $year) {
                 $query->whereHas('salaries', function ($q) use ($sourceOfFundCodeId, $year) {
                     $q->where('source_of_fund_code_id', $sourceOfFundCodeId);

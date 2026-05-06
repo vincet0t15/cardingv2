@@ -9,6 +9,7 @@ interface Employee {
     position: string | null;
     office: { name: string } | null;
     employment_status: { name: string } | null;
+    source_of_fund_code: { code: string; description: string | null } | null;
     salary_amount: number | null;
 }
 
@@ -20,10 +21,9 @@ interface SourceOfFundCode {
 
 interface Props {
     employees: Employee[];
-    sourceOfFundCode: SourceOfFundCode;
+    sourceOfFundCode: SourceOfFundCode | null;
     totalSalary: number;
     filters: {
-        month: string | null;
         year: string | null;
     };
 }
@@ -49,20 +49,16 @@ export default function EmployeesBySourceOfFundPrint({ employees, sourceOfFundCo
         day: 'numeric',
     });
 
-    const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
     const getFilterDescription = () => {
-        if (filters.month && filters.year) {
-            return `${MONTHS[parseInt(filters.month) - 1]} ${filters.year}`;
-        } else if (filters.year) {
+        if (filters.year) {
             return `Year ${filters.year}`;
         }
-        return 'All Months';
+        return 'All Years';
     };
 
     return (
         <div className="mx-auto min-h-screen bg-white p-4 font-sans text-[11px] leading-[1.3] text-black print:max-w-none print:p-0">
-            <Head title={`Employee List - ${sourceOfFundCode.code}`} />
+            <Head title={`Employee List by Source of Fund`} />
 
             <div className="mb-4 flex justify-end print:hidden">
                 <button onClick={() => window.print()} className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
@@ -82,7 +78,6 @@ export default function EmployeesBySourceOfFundPrint({ employees, sourceOfFundCo
                     <tbody>
                         <tr>
                             <td>
-                                {/* Header */}
                                 <div className="mb-5 text-center">
                                     <h2
                                         className="m-0 text-[16px] font-bold uppercase"
@@ -92,14 +87,19 @@ export default function EmployeesBySourceOfFundPrint({ employees, sourceOfFundCo
                                     >
                                         EMPLOYEE LIST BY SOURCE OF FUND
                                     </h2>
-                                    <p className="m-[5px_0] text-[14px] font-bold">{sourceOfFundCode.code}</p>
-                                    {sourceOfFundCode.description && <p className="m-0 text-[12px]">{sourceOfFundCode.description}</p>}
+                                    {sourceOfFundCode ? (
+                                        <>
+                                            <p className="m-[5px_0] text-[14px] font-bold">{sourceOfFundCode.code}</p>
+                                            {sourceOfFundCode.description && <p className="m-0 text-[12px]">{sourceOfFundCode.description}</p>}
+                                        </>
+                                    ) : (
+                                        <p className="m-[5px_0] text-[14px] font-bold">ALL SOURCE OF FUNDS</p>
+                                    )}
                                     <p className="m-0 text-[10px] text-gray-500">
-                                        Period: {getFilterDescription()} • Generated: {currentDate}
+                                        {getFilterDescription()} • Generated: {currentDate}
                                     </p>
                                 </div>
 
-                                {/* Employee Table */}
                                 <table className="w-full border-collapse border border-black">
                                     <thead>
                                         <tr className="bg-gray-100">
@@ -112,7 +112,8 @@ export default function EmployeesBySourceOfFundPrint({ employees, sourceOfFundCo
                                             <th className="border border-black px-2 py-1 text-left text-[10px] font-semibold">Employee Name</th>
                                             <th className="border border-black px-2 py-1 text-left text-[10px] font-semibold">Position</th>
                                             <th className="border border-black px-2 py-1 text-left text-[10px] font-semibold">Office</th>
-                                            <th className="border border-black px-2 py-1 text-left text-[10px] font-semibold">Employment Status</th>
+                                            <th className="border border-black px-2 py-1 text-left text-[10px] font-semibold">Status</th>
+                                            <th className="border border-black px-2 py-1 text-left text-[10px] font-semibold">Source of Fund</th>
                                             <th className="border border-black px-2 py-1 text-right text-[10px] font-semibold">Monthly Salary</th>
                                         </tr>
                                     </thead>
@@ -127,6 +128,9 @@ export default function EmployeesBySourceOfFundPrint({ employees, sourceOfFundCo
                                                     <td className="border border-black px-2 py-1 text-[10px]">
                                                         {employee.employment_status?.name || '—'}
                                                     </td>
+                                                    <td className="border border-black px-2 py-1 text-[10px]">
+                                                        {employee.source_of_fund_code?.code || '—'}
+                                                    </td>
                                                     <td className="border border-black px-2 py-1 text-right text-[10px]">
                                                         {formatCurrency(employee.salary_amount)}
                                                     </td>
@@ -134,7 +138,7 @@ export default function EmployeesBySourceOfFundPrint({ employees, sourceOfFundCo
                                             ))
                                         ) : (
                                             <tr>
-                                                <td colSpan={6} className="border border-black px-2 py-4 text-center text-[10px] text-gray-500">
+                                                <td colSpan={7} className="border border-black px-2 py-4 text-center text-[10px] text-gray-500">
                                                     No employees found
                                                 </td>
                                             </tr>
@@ -142,7 +146,7 @@ export default function EmployeesBySourceOfFundPrint({ employees, sourceOfFundCo
                                         {employees.length > 0 && (
                                             <>
                                                 <tr className="bg-gray-100 font-bold">
-                                                    <td className="border border-black px-2 py-1 text-[10px]" colSpan={5}>
+                                                    <td className="border border-black px-2 py-1 text-[10px]" colSpan={6}>
                                                         TOTAL EMPLOYEES: {employees.length}
                                                     </td>
                                                     <td className="border border-black px-2 py-1 text-right text-[10px]">
@@ -150,7 +154,7 @@ export default function EmployeesBySourceOfFundPrint({ employees, sourceOfFundCo
                                                     </td>
                                                 </tr>
                                                 <tr className="bg-gray-200 font-bold">
-                                                    <td className="border border-black px-2 py-2 text-[11px]" colSpan={5}>
+                                                    <td className="border border-black px-2 py-2 text-[11px]" colSpan={6}>
                                                         GRAND TOTAL MONTHLY SALARY
                                                     </td>
                                                     <td className="border border-black px-2 py-2 text-right text-[11px]">
@@ -162,7 +166,6 @@ export default function EmployeesBySourceOfFundPrint({ employees, sourceOfFundCo
                                     </tbody>
                                 </table>
 
-                                {/* Footer */}
                                 <div className="mt-8 text-center text-[9px] text-gray-500">
                                     <p>This is a computer-generated report and does not require a signature.</p>
                                 </div>
