@@ -121,39 +121,11 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             // Clear scroll tracking for new conversation
             hasScrolledRef.current.delete(convId!);
 
-            // Try to load from localStorage first
-            const storageKey = `floating_chat_messages_${convId}`;
-            try {
-                const cached = localStorage.getItem(storageKey);
-                if (cached) {
-                    const data = JSON.parse(cached);
-                    setMessages(data.messages);
-                    setHasMore(data.hasMore);
-                    setLoading(false);
-                    initializedConversationIdsRef.current.add(convId!);
-                    // Still fetch fresh messages in background
-                    const res = await fetch(`/messenger/${convId}/messages`);
-                    if (res.ok) {
-                        const freshData = await res.json();
-                        // Deduplicate and merge
-                        const merged = deduplicateMessages([...freshData.messages, ...data.messages]);
-                        setMessages(merged);
-                        setHasMore(freshData.messages.length === 50);
-                        localStorage.setItem(storageKey, JSON.stringify({ messages: merged, hasMore: freshData.messages.length === 50 }));
-                    }
-                    return;
-                }
-            } catch (e) {
-                // Continue with fetch if cache fails
-            }
-
             const res = await fetch(`/messenger/${convId}/messages`);
             if (res.ok) {
                 const data = await res.json();
                 setMessages(data.messages);
                 setHasMore(data.messages.length === 50);
-                // Save to localStorage
-                localStorage.setItem(storageKey, JSON.stringify({ messages: data.messages, hasMore: data.messages.length === 50 }));
             }
             setLoading(false);
             initializedConversationIdsRef.current.add(convId!);
@@ -248,7 +220,6 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                     // Only add new messages that don't already exist
                     const newMessages = data.messages.filter((m: MessageType) => !existingIds.has(m.id));
                     const updated = [...newMessages, ...prev];
-                    updateMessagesCache(updated, newHasMore);
                     return updated;
                 });
                 setHasMore(newHasMore);
@@ -274,30 +245,6 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
         }
     };
 
-    // Helper to update messages cache
-    const updateMessagesCache = useCallback(
-        (newMessages: MessageType[], newHasMore: boolean) => {
-            if (!conversationId) return;
-            const storageKey = `floating_chat_messages_${conversationId}`;
-            try {
-                localStorage.setItem(storageKey, JSON.stringify({ messages: newMessages, hasMore: newHasMore }));
-            } catch (e) {
-                // Ignore cache write errors
-            }
-        },
-        [conversationId],
-    );
-
-    // Helper to deduplicate messages by ID
-    const deduplicateMessages = useCallback((msgs: MessageType[]): MessageType[] => {
-        const seen = new Set<number>();
-        return msgs.filter((msg) => {
-            if (seen.has(msg.id)) return false;
-            seen.add(msg.id);
-            return true;
-        });
-    }, []);
-
     useEffect(() => {
         if (!conversationId) return;
 
@@ -306,7 +253,6 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
         ch.listen('ConversationMessageSent', (event: { message: MessageType }) => {
             setMessages((prev) => {
                 const updated = prev.some((m) => m.id === event.message.id) ? prev : [...prev, event.message];
-                updateMessagesCache(updated, hasMore);
                 return updated;
             });
             if (event.message.user.id !== auth.user.id && conversationId) {
@@ -320,7 +266,6 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
         ch.listen('ConversationMessageDeleted', (event: { message_id: number }) => {
             setMessages((prev) => {
                 const updated = prev.filter((m) => m.id !== event.message_id);
-                updateMessagesCache(updated, hasMore);
                 return updated;
             });
         });
@@ -336,7 +281,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
         return () => {
             (echo() as any).leave(`conversation.${conversationId}`);
         };
-    }, [conversationId, auth.user.id, hasMore, updateMessagesCache]);
+    }, [conversationId, auth.user.id, hasMore]);
 
     const sendMessage = useCallback(
         async (e?: React.FormEvent) => {
@@ -366,7 +311,6 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                     // Avoid duplicate if message already exists
                     const hasDuplicate = prev.some((m) => m.id === json.message.id);
                     const updated = hasDuplicate ? prev : [...prev, json.message];
-                    updateMessagesCache(updated, hasMore);
                     return updated;
                 });
                 setInput('');
@@ -387,7 +331,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             }
             setSending(false);
         },
-        [input, selectedFile, replyingTo, conversationId, hasMore, updateMessagesCache, inputRef],
+        [input, selectedFile, replyingTo, conversationId, hasMore, inputRef],
     );
 
     const deleteMessage = useCallback(
@@ -395,7 +339,6 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             if (!conversationId) return;
             setMessages((prev) => {
                 const updated = prev.filter((m) => m.id !== msgId);
-                updateMessagesCache(updated, hasMore);
                 return updated;
             });
             await fetch(`/messenger/${conversationId}/messages/${msgId}`, {
@@ -403,7 +346,7 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
                 headers: { 'X-CSRF-TOKEN': csrfToken() },
             });
         },
-        [conversationId, hasMore, updateMessagesCache],
+        [conversationId, hasMore],
     );
 
     const handleTyping = useCallback(
