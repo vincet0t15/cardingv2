@@ -4,7 +4,9 @@ export type Appearance = 'light';
 
 // Always remove dark mode
 const applyTheme = () => {
-    document.documentElement.classList.remove('dark');
+    if (typeof document !== 'undefined') {
+        document.documentElement.classList.remove('dark');
+    }
 };
 
 // Initialize theme (call this once in app start)
@@ -17,7 +19,7 @@ export function useAppearance() {
     const [appearance, setAppearance] = useState<Appearance>('light');
 
     const updateAppearance = () => {
-        // force light only
+        if (typeof document === 'undefined') return;
         setAppearance('light');
         localStorage.setItem('appearance', 'light');
         applyTheme();
