@@ -1,5 +1,4 @@
 import { CustomComboBox } from '@/components/CustomComboBox';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -9,7 +8,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Employee as EmployeeType } from '@/types/employee';
 import { Head, router } from '@inertiajs/react';
-import { FileText, Filter, Search, Users, X } from 'lucide-react';
+import { FileText, Filter, Search, Users, X, ArrowUpRight } from 'lucide-react';
 import { useState } from 'react';
 
 interface SourceOfFundCode {
@@ -17,6 +16,7 @@ interface SourceOfFundCode {
     code: string;
     description: string | null;
     status: boolean;
+    general_fund?: { id: number; name: string } | null;
 }
 
 interface Office {
@@ -26,9 +26,14 @@ interface Office {
 
 interface FundingSource {
     salary: number;
+    hazard_pay: number;
+    clothing_allowance: number;
     pera: number;
     rata: number;
     total: number;
+    code: string;
+    general_fund_name: string | null;
+    description: string | null;
 }
 
 interface EmployeeWithFunding extends EmployeeType {
@@ -64,11 +69,12 @@ interface Props {
         month: number | null;
         office_id: number | null;
         source_of_fund_code_id: number | null;
+        search: string | null;
     };
     summary: {
         total_employees: number;
         total_compensation: number;
-        by_fund: Record<string, { count: number; total: number }>;
+        by_fund: Record<string, { count: number; total: number; code: string; general_fund_name: string | null; description: string | null }>;
     };
     employeesByFund: Record<string, EmployeeRow[]>;
 }
@@ -90,6 +96,7 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
     const [showEmployeeDialog, setShowEmployeeDialog] = useState(false);
     const [selectedFundCode, setSelectedFundCode] = useState<string | null>(null);
     const [dialogSearch, setDialogSearch] = useState('');
+    const [search, setSearch] = useState(filters.search || '');
 
     const handleFilterChange = (key: string, value: any) => {
         router.get(
@@ -105,10 +112,11 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
     };
 
     const clearFilters = () => {
+        setSearch('');
         router.get(route('employees.source-of-fund.index'));
     };
 
-    const hasActiveFilters = filters.month || filters.office_id || filters.source_of_fund_code_id;
+    const hasActiveFilters = filters.month || filters.office_id || filters.source_of_fund_code_id || filters.search;
 
     const openEmployeeDialog = (fundCode: string) => {
         setSelectedFundCode(fundCode);
@@ -139,53 +147,78 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                     </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <Card
-                        className="cursor-pointer border-0 bg-gradient-to-br from-slate-50 to-white shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg dark:from-slate-900 dark:to-slate-800"
-                        onClick={() => openEmployeeDialog('ALL')}
-                    >
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
-                            <Users className="text-muted-foreground h-4 w-4" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{summary.total_employees}</div>
-                            <p className="text-muted-foreground text-xs">Click to view all</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card
-                        className="cursor-pointer border-0 bg-gradient-to-br from-amber-50 to-orange-50 shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg dark:from-amber-900/20 dark:to-orange-900/20"
-                        onClick={() => openEmployeeDialog('Unfunded')}
-                    >
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium">Unfunded</CardTitle>
-                            <FileText className="text-muted-foreground h-4 w-4" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{summary.by_fund['Unfunded']?.count || 0}</div>
-                            <p className="text-muted-foreground text-xs">{formatCurrency(summary.by_fund['Unfunded']?.total || 0)}</p>
-                        </CardContent>
-                    </Card>
-
+<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {Object.entries(summary.by_fund)
                         .filter(([code]) => code !== 'Unfunded')
-                        .map(([fundCode, data]) => (
-                            <Card
-                                key={fundCode}
-                                className="cursor-pointer border-0 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20"
-                                onClick={() => openEmployeeDialog(fundCode)}
-                            >
-                                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                    <CardTitle className="text-sm font-medium">{fundCode}</CardTitle>
-                                    <Users className="text-muted-foreground h-4 w-4" />
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-2xl font-bold">{data.count}</div>
-                                    <p className="text-muted-foreground text-xs">{formatCurrency(data.total)}</p>
-                                </CardContent>
-                            </Card>
-                        ))}
+                        .map(([fundDisplayName, data], index) => {
+                            const colors = [
+                                'from-emerald-500 to-emerald-600',
+                                'from-sky-500 to-blue-600',
+                                'from-orange-500 to-amber-600',
+                                'from-violet-500 to-fuchsia-600',
+                                'from-rose-500 to-pink-600',
+                                'from-cyan-500 to-sky-600',
+                                'from-amber-500 to-orange-600',
+                                'from-indigo-500 to-purple-600',
+                            ];
+                            const color = colors[index % colors.length];
+                            return (
+                                <Card
+                                    key={fundDisplayName}
+                                    className={`group relative overflow-hidden border-0 bg-gradient-to-br from-white to-slate-50 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg dark:from-slate-900 dark:to-slate-800 cursor-pointer`}
+                                    onClick={() => openEmployeeDialog(fundDisplayName)}
+                                >
+                                    <div className={`absolute top-0 right-0 h-24 w-24 ${color} opacity-10 blur-2xl transition-all group-hover:opacity-20`} />
+                                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                        <div className="flex flex-col">
+                                            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                                                {data.general_fund_name || '-'}
+                                            </CardTitle>
+                                            <span className="text-muted-foreground text-xs">
+                                                {data.code} - {data.description || '-'}
+                                            </span>
+                                        </div>
+                                        <div className={`${color} rounded-lg p-2 shadow-sm transition-transform group-hover:scale-110`}>
+                                            <Users className="h-4 w-4 text-white" />
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="text-3xl font-bold text-slate-900 dark:text-white">{data.count}</div>
+                                        <div className="mt-2 flex items-center justify-between">
+                                            <p className="text-muted-foreground text-xs">{formatCurrency(data.total)}</p>
+                                            <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-violet-50 to-indigo-50 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:from-violet-900/30 dark:to-indigo-900/30 dark:text-violet-300">
+                                                View
+                                                <ArrowUpRight className="h-3 w-3" />
+                                            </span>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
+                    {summary.by_fund['Unfunded']?.count > 0 && (
+                        <Card
+                            className={`group relative overflow-hidden border-0 bg-gradient-to-br from-white to-slate-50 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg dark:from-slate-900 dark:to-slate-800 cursor-pointer`}
+                            onClick={() => openEmployeeDialog('Unfunded')}
+                        >
+                            <div className="absolute top-0 right-0 h-24 w-24 from-slate-500 to-slate-600 opacity-10 blur-2xl transition-all group-hover:opacity-20" />
+                            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">Unfunded</CardTitle>
+                                <div className="from-slate-500 to-slate-600 rounded-lg bg-gradient-to-br p-2 shadow-sm transition-transform group-hover:scale-110">
+                                    <FileText className="h-4 w-4 text-white" />
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-3xl font-bold text-slate-900 dark:text-white">{summary.by_fund['Unfunded']?.count || 0}</div>
+                                <div className="mt-2 flex items-center justify-between">
+                                    <p className="text-muted-foreground text-xs">{formatCurrency(summary.by_fund['Unfunded']?.total || 0)}</p>
+                                    <span className="flex items-center gap-1 rounded-full bg-gradient-to-r from-violet-50 to-indigo-50 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:from-violet-900/30 dark:to-indigo-900/30 dark:text-violet-300">
+                                        View
+                                        <ArrowUpRight className="h-3 w-3" />
+                                    </span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
 
                 <Card>
@@ -204,7 +237,7 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                             <div>
                                 <label className="mb-1 block text-sm font-medium">Year</label>
                                 <input
@@ -242,12 +275,32 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                                 <CustomComboBox
                                     items={sourceOfFundCodes.map((fund) => ({
                                         value: String(fund.id),
-                                        label: `${fund.code} - ${fund.description || ''}`,
+                                        label: fund.general_fund
+                                            ? `${fund.general_fund.name} - ${fund.code}`
+                                            : `${fund.code} - ${fund.description || ''}`,
                                     }))}
                                     placeholder="All Funds"
                                     value={filters.source_of_fund_code_id?.toString() || null}
                                     onSelect={(value) => handleFilterChange('source_of_fund_code_id', value ? parseInt(value) : null)}
                                 />
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block text-sm font-medium">Search</label>
+                                <div className="relative">
+                                    <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+                                    <Input
+                                        placeholder="Employee name..."
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                handleFilterChange('search', search);
+                                            }
+                                        }}
+                                        className="pl-9"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </CardContent>
@@ -272,45 +325,55 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                                 </TableHeader>
                                 <TableBody className="divide-y divide-slate-200 dark:divide-slate-700">
                                     {employees.data.length > 0 ? (
-                                        employees.data.map((employee) => (
-                                            <TableRow key={employee.id} className="hover:bg-muted/30">
-                                                <TableCell>
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold uppercase">
-                                                            {employee.last_name}, {employee.first_name} {employee.middle_name}
-                                                        </span>
-                                                        <span className="text-muted-foreground text-xs">{employee.position || '-'}</span>
-                                                        <span className="text-muted-foreground text-xs">{employee.office?.name || '-'}</span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    {formatCurrency(employee.funding_sources['Unfunded']?.salary || 0)}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    {formatCurrency(employee.funding_sources['Unfunded']?.pera || 0)}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    {formatCurrency(employee.funding_sources['Unfunded']?.rata || 0)}
-                                                </TableCell>
-                                                <TableCell className="text-right font-medium text-green-600">
-                                                    {formatCurrency(employee.total_compensation)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {Object.keys(employee.funding_sources)
-                                                            .filter((code) => code !== 'Unfunded')
-                                                            .map((code) => (
-                                                                <Badge key={code} variant="secondary" className="text-xs">
-                                                                    {code}
-                                                                </Badge>
-                                                            ))}
-                                                        {Object.keys(employee.funding_sources).length === 0 && (
-                                                            <span className="text-muted-foreground text-xs">No funding source</span>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
+                                        employees.data.map((employee) => {
+                                            const totalSalary = Object.values(employee.funding_sources).reduce(
+                                                (sum, src) => sum + (src.salary || 0),
+                                                0,
+                                            );
+                                            const totalPero = Object.values(employee.funding_sources).reduce((sum, src) => sum + (src.pera || 0), 0);
+                                            const totalRata = Object.values(employee.funding_sources).reduce((sum, src) => sum + (src.rata || 0), 0);
+
+                                            return (
+                                                <TableRow key={employee.id} className="hover:bg-muted/30">
+                                                    <TableCell>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold uppercase">
+                                                                {employee.last_name}, {employee.first_name} {employee.middle_name}
+                                                            </span>
+                                                            <span className="text-muted-foreground text-xs">{employee.position || '-'}</span>
+                                                            <span className="text-muted-foreground text-xs">{employee.office?.name || '-'}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">{formatCurrency(totalSalary)}</TableCell>
+                                                    <TableCell className="text-right">{formatCurrency(totalPero)}</TableCell>
+                                                    <TableCell className="text-right">{formatCurrency(totalRata)}</TableCell>
+                                                    <TableCell className="text-right font-medium text-green-600">
+                                                        {formatCurrency(employee.total_compensation)}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex flex-col gap-1">
+                                                            {Object.keys(employee.funding_sources)
+                                                                .filter((key) => key !== 'Unfunded')
+                                                                .map((key) => {
+                                                                    const source = employee.funding_sources[key];
+                                                                    return (
+                                                                        <div key={key} className="flex flex-col">
+                                                                            <span className="text-xs font-medium">
+                                                                                {source.general_fund_name || '-'}
+                                                                            </span>
+                                                                            <span className="text-muted-foreground text-xs">
+                                                                                {source.code} - {source.description || '-'}
+                                                                            </span>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            {Object.keys(employee.funding_sources).filter((key) => key !== 'Unfunded').length ===
+                                                                0 && <span className="text-muted-foreground text-xs">No funding source</span>}
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
                                     ) : (
                                         <TableRow>
                                             <TableCell colSpan={6} className="py-3 text-center text-gray-500">

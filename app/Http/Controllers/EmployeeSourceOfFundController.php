@@ -19,9 +19,11 @@ class EmployeeSourceOfFundController extends Controller
         $month = $request->input('month');
         $officeId = $request->input('office_id');
         $sourceOfFundCodeId = $request->input('source_of_fund_code_id');
+        $search = $request->input('search');
 
-        // Get all active source of fund codes
+        // Get all active source of fund codes with general fund
         $sourceOfFundCodes = SourceOfFundCode::where('status', true)
+            ->with('generalFund:id,code,description,status')
             ->orderBy('code')
             ->get();
 
@@ -30,9 +32,33 @@ class EmployeeSourceOfFundController extends Controller
 
         // Get employees with their compensation and source of fund
         $employeesQuery = Employee::query()
-            ->with(['employmentStatus', 'office', 'salaries', 'peras', 'ratas'])
+            ->with([
+                'employmentStatus',
+                'office',
+                'salaries.sourceOfFundCode.generalFund',
+                'hazardPays.sourceOfFundCode.generalFund',
+                'clothingAllowances.sourceOfFundCode.generalFund',
+                'peras',
+                'ratas',
+            ])
             ->when($officeId, function ($query, $officeId) {
                 $query->where('office_id', $officeId);
+            })
+            ->when($search, function ($query, $search) {
+                $searchTerms = explode(' ', $search);
+                $query->where(function ($q) use ($searchTerms) {
+                    foreach ($searchTerms as $term) {
+                        $term = trim($term);
+                        if (strlen($term) >= 2) {
+                            $q->where(function ($inner) use ($term) {
+                                $inner->where('first_name', 'like', "%{$term}%")
+                                    ->orWhere('middle_name', 'like', "%{$term}%")
+                                    ->orWhere('last_name', 'like', "%{$term}%")
+                                    ->orWhere('position', 'like', "%{$term}%");
+                            });
+                        }
+                    }
+                });
             })
             ->orderBy('last_name', 'asc');
 
@@ -56,6 +82,22 @@ class EmployeeSourceOfFundController extends Controller
                 ->sortByDesc('effective_date')
                 ->first();
 
+            $hazardPay = $employee->hazardPays
+                ->where('start_date', '<=', $periodEnd)
+                ->where(function ($query) use ($periodEnd) {
+                    $query->whereNull('end_date')->orWhere('end_date', '>=', $periodEnd);
+                })
+                ->sortByDesc('start_date')
+                ->first();
+
+            $clothingAllowance = $employee->clothingAllowances
+                ->where('start_date', '<=', $periodEnd)
+                ->where(function ($query) use ($periodEnd) {
+                    $query->whereNull('end_date')->orWhere('end_date', '>=', $periodEnd);
+                })
+                ->sortByDesc('start_date')
+                ->first();
+
             $pera = $employee->peras
                 ->where('effective_date', '<=', $periodEnd)
                 ->sortByDesc('effective_date')
@@ -69,49 +111,59 @@ class EmployeeSourceOfFundController extends Controller
                 : null;
 
             $fundingSources = [];
+            $totalCompensation = 0;
 
-            if ($salary) {
-                $fundCode = $salary->sourceOfFundCode?->code ?? 'Unfunded';
-                if (! isset($fundingSources[$fundCode])) {
-                    $fundingSources[$fundCode] = [
+            $processFund = function ($record, $type) use (&$fundingSources, &$totalCompensation) {
+                if (!$record) return;
+
+                $amount = (float) $record->amount;
+                $totalCompensation += $amount;
+
+                $fundCode = $record->sourceOfFundCode?->code;
+                $generalFundName = $record->sourceOfFundCode?->generalFund?->name;
+
+                if ($fundCode) {
+                    $fundDisplayName = $generalFundName ? "{$generalFundName} - {$fundCode}" : $fundCode;
+                } else {
+                    $fundDisplayName = 'Unfunded';
+                    $fundCode = 'Unfunded';
+                    $generalFundName = null;
+                }
+
+                if (!isset($fundingSources[$fundDisplayName])) {
+                    $fundingSources[$fundDisplayName] = [
                         'salary' => 0,
+                        'hazard_pay' => 0,
+                        'clothing_allowance' => 0,
                         'pera' => 0,
                         'rata' => 0,
                         'total' => 0,
+                        'code' => $fundCode,
+                        'general_fund_name' => $generalFundName,
+                        'description' => $record->sourceOfFundCode?->description,
                     ];
                 }
-                $fundingSources[$fundCode]['salary'] += (float) $salary->amount;
-                $fundingSources[$fundCode]['total'] += (float) $salary->amount;
-            }
+
+                $fundingSources[$fundDisplayName][$type] += $amount;
+                $fundingSources[$fundDisplayName]['total'] += $amount;
+            };
+
+            $processFund($salary, 'salary');
+            $processFund($hazardPay, 'hazard_pay');
+            $processFund($clothingAllowance, 'clothing_allowance');
 
             if ($pera) {
-                if (! isset($fundingSources['Unfunded'])) {
-                    $fundingSources['Unfunded'] = [
-                        'salary' => 0,
-                        'pera' => 0,
-                        'rata' => 0,
-                        'total' => 0,
-                    ];
-                }
-                $fundingSources['Unfunded']['pera'] += (float) $pera->amount;
-                $fundingSources['Unfunded']['total'] += (float) $pera->amount;
+                $peraAmount = (float) $pera->amount;
+                $totalCompensation += $peraAmount;
             }
 
             if ($rata) {
-                if (! isset($fundingSources['Unfunded'])) {
-                    $fundingSources['Unfunded'] = [
-                        'salary' => 0,
-                        'pera' => 0,
-                        'rata' => 0,
-                        'total' => 0,
-                    ];
-                }
-                $fundingSources['Unfunded']['rata'] += (float) $rata->amount;
-                $fundingSources['Unfunded']['total'] += (float) $rata->amount;
+                $rataAmount = (float) $rata->amount;
+                $totalCompensation += $rataAmount;
             }
 
             $employee->funding_sources = $fundingSources;
-            $employee->total_compensation = array_sum(array_column($fundingSources, 'total'));
+            $employee->total_compensation = $totalCompensation;
 
             return $employee;
         });
@@ -119,20 +171,23 @@ class EmployeeSourceOfFundController extends Controller
         // Calculate summary statistics
         $employeesByFund = [];
         foreach ($employees as $employee) {
-            foreach ($employee->funding_sources as $fundCode => $amounts) {
-                if (! isset($summary['by_fund'][$fundCode])) {
-                    $summary['by_fund'][$fundCode] = [
+            foreach ($employee->funding_sources as $fundDisplayName => $amounts) {
+                if (!isset($summary['by_fund'][$fundDisplayName])) {
+                    $summary['by_fund'][$fundDisplayName] = [
                         'count' => 0,
                         'total' => 0,
+                        'code' => $amounts['code'],
+                        'general_fund_name' => $amounts['general_fund_name'],
+                        'description' => $amounts['description'],
                     ];
                 }
-                $summary['by_fund'][$fundCode]['count']++;
-                $summary['by_fund'][$fundCode]['total'] += $amounts['total'];
+                $summary['by_fund'][$fundDisplayName]['count']++;
+                $summary['by_fund'][$fundDisplayName]['total'] += $amounts['total'];
 
-                if (! isset($employeesByFund[$fundCode])) {
-                    $employeesByFund[$fundCode] = [];
+                if (!isset($employeesByFund[$fundDisplayName])) {
+                    $employeesByFund[$fundDisplayName] = [];
                 }
-                $employeesByFund[$fundCode][] = [
+                $employeesByFund[$fundDisplayName][] = [
                     'id' => $employee->id,
                     'first_name' => $employee->first_name,
                     'middle_name' => $employee->middle_name,
@@ -155,6 +210,7 @@ class EmployeeSourceOfFundController extends Controller
                 'month' => $month ? (int) $month : null,
                 'office_id' => $officeId,
                 'source_of_fund_code_id' => $sourceOfFundCodeId,
+                'search' => $search,
             ],
             'summary' => $summary,
             'employeesByFund' => $employeesByFund,
