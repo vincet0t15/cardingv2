@@ -117,12 +117,7 @@ class EmployeeSourceOfFundController extends Controller
         });
 
         // Calculate summary statistics
-        $summary = [
-            'total_employees' => $employees->total(),
-            'total_compensation' => $employees->sum('total_compensation'),
-            'by_fund' => [],
-        ];
-
+        $employeesByFund = [];
         foreach ($employees as $employee) {
             foreach ($employee->funding_sources as $fundCode => $amounts) {
                 if (! isset($summary['by_fund'][$fundCode])) {
@@ -133,6 +128,21 @@ class EmployeeSourceOfFundController extends Controller
                 }
                 $summary['by_fund'][$fundCode]['count']++;
                 $summary['by_fund'][$fundCode]['total'] += $amounts['total'];
+
+                if (! isset($employeesByFund[$fundCode])) {
+                    $employeesByFund[$fundCode] = [];
+                }
+                $employeesByFund[$fundCode][] = [
+                    'id' => $employee->id,
+                    'first_name' => $employee->first_name,
+                    'middle_name' => $employee->middle_name,
+                    'last_name' => $employee->last_name,
+                    'suffix' => $employee->suffix,
+                    'position' => $employee->position,
+                    'office' => $employee->office ? ['name' => $employee->office->name] : null,
+                    'employment_status' => $employee->employmentStatus ? ['name' => $employee->employmentStatus->name] : null,
+                    'total_compensation' => $employee->total_compensation,
+                ];
             }
         }
 
@@ -147,6 +157,7 @@ class EmployeeSourceOfFundController extends Controller
                 'source_of_fund_code_id' => $sourceOfFundCodeId,
             ],
             'summary' => $summary,
+            'employeesByFund' => $employeesByFund,
         ]);
     }
 }

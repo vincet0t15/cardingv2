@@ -2,12 +2,15 @@ import { CustomComboBox } from '@/components/CustomComboBox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Employee as EmployeeType } from '@/types/employee';
 import { Head, router } from '@inertiajs/react';
-import { FileText, Filter, Users, X } from 'lucide-react';
+import { FileText, Filter, Search, Users, X } from 'lucide-react';
+import { useState } from 'react';
 
 interface SourceOfFundCode {
     id: number;
@@ -33,6 +36,18 @@ interface EmployeeWithFunding extends EmployeeType {
     total_compensation: number;
 }
 
+interface EmployeeRow {
+    id: number;
+    first_name: string;
+    middle_name: string | null;
+    last_name: string;
+    suffix: string | null;
+    position: string | null;
+    office: { name: string } | null;
+    employment_status: { name: string } | null;
+    total_compensation: number;
+}
+
 interface Props {
     employees: {
         data: EmployeeWithFunding[];
@@ -55,6 +70,7 @@ interface Props {
         total_compensation: number;
         by_fund: Record<string, { count: number; total: number }>;
     };
+    employeesByFund: Record<string, EmployeeRow[]>;
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -70,7 +86,11 @@ function formatCurrency(amount: number) {
     return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(amount);
 }
 
-export default function Index({ employees, sourceOfFundCodes, offices, filters, summary }: Props) {
+export default function Index({ employees, sourceOfFundCodes, offices, filters, summary, employeesByFund }: Props) {
+    const [showEmployeeDialog, setShowEmployeeDialog] = useState(false);
+    const [selectedFundCode, setSelectedFundCode] = useState<string | null>(null);
+    const [dialogSearch, setDialogSearch] = useState('');
+
     const handleFilterChange = (key: string, value: any) => {
         router.get(
             route('employees.source-of-fund.index'),
@@ -90,11 +110,25 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
 
     const hasActiveFilters = filters.month || filters.office_id || filters.source_of_fund_code_id;
 
+    const openEmployeeDialog = (fundCode: string) => {
+        setSelectedFundCode(fundCode);
+        setDialogSearch('');
+        setShowEmployeeDialog(true);
+    };
+
+    const dialogEmployees = selectedFundCode ? (employeesByFund[selectedFundCode] || []) : [];
+    const filteredDialogEmployees = dialogSearch
+        ? dialogEmployees.filter(emp =>
+            `${emp.last_name}, ${emp.first_name} ${emp.middle_name || ''}`.toLowerCase().includes(dialogSearch.toLowerCase())
+        )
+        : dialogEmployees;
+
+    const selectedFundData = selectedFundCode ? summary.by_fund[selectedFundCode] : null;
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Employees by Source of Fund" />
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-                {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <FileText className="text-muted-foreground h-5 w-5" />
@@ -105,45 +139,45 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                     </div>
                 </div>
 
-                {/* Summary Cards */}
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <Card>
+                    <Card className="cursor-pointer hover:bg-muted/50" onClick={() => openEmployeeDialog('ALL')}>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                             <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
                             <Users className="text-muted-foreground h-4 w-4" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{summary.total_employees}</div>
+                            <p className="text-muted-foreground text-xs">Click to view all</p>
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="cursor-pointer hover:bg-muted/50" onClick={() => openEmployeeDialog('Unfunded')}>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium">Total Compensation</CardTitle>
+                            <CardTitle className="text-sm font-medium">Unfunded</CardTitle>
                             <FileText className="text-muted-foreground h-4 w-4" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{formatCurrency(summary.total_compensation)}</div>
+                            <div className="text-2xl font-bold">{summary.by_fund['Unfunded']?.count || 0}</div>
+                            <p className="text-muted-foreground text-xs">{formatCurrency(summary.by_fund['Unfunded']?.total || 0)}</p>
                         </CardContent>
                     </Card>
 
-                    {Object.entries(summary.by_fund).map(([fundCode, data]) => (
-                        <Card key={fundCode} className="border-blue-200 bg-blue-50">
-                            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium text-blue-800">{fundCode}</CardTitle>
-                                <Users className="h-4 w-4 text-blue-500" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-blue-700">{formatCurrency(data.total)}</div>
-                                <p className="mt-1 text-xs text-blue-600">
-                                    {data.count} employee{data.count !== 1 ? 's' : ''}
-                                </p>
-                            </CardContent>
-                        </Card>
-                    ))}
+                    {Object.entries(summary.by_fund)
+                        .filter(([code]) => code !== 'Unfunded')
+                        .map(([fundCode, data]) => (
+                            <Card key={fundCode} className="cursor-pointer hover:bg-muted/50" onClick={() => openEmployeeDialog(fundCode)}>
+                                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                    <CardTitle className="text-sm font-medium">{fundCode}</CardTitle>
+                                    <Users className="text-muted-foreground h-4 w-4" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">{data.count}</div>
+                                    <p className="text-muted-foreground text-xs">{formatCurrency(data.total)}</p>
+                                </CardContent>
+                            </Card>
+                        ))}
                 </div>
 
-                {/* Filters */}
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">
@@ -209,7 +243,6 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                     </CardContent>
                 </Card>
 
-                {/* Employees Table */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Employee Funding Details</CardTitle>
@@ -220,8 +253,6 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                                 <TableHeader className="bg-muted/50">
                                     <TableRow>
                                         <TableHead>Employee</TableHead>
-                                        <TableHead>Position</TableHead>
-                                        <TableHead>Office</TableHead>
                                         <TableHead className="text-right">Salary</TableHead>
                                         <TableHead className="text-right">PERA</TableHead>
                                         <TableHead className="text-right">RATA</TableHead>
@@ -233,11 +264,19 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                                     {employees.data.length > 0 ? (
                                         employees.data.map((employee) => (
                                             <TableRow key={employee.id} className="hover:bg-muted/30">
-                                                <TableCell className="font-medium">
-                                                    {employee.last_name}, {employee.first_name} {employee.middle_name}
+                                                <TableCell>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold uppercase">
+                                                            {employee.last_name}, {employee.first_name} {employee.middle_name}
+                                                        </span>
+                                                        <span className="text-muted-foreground text-xs">
+                                                            {employee.position || '-'}
+                                                        </span>
+                                                        <span className="text-muted-foreground text-xs">
+                                                            {employee.office?.name || '-'}
+                                                        </span>
+                                                    </div>
                                                 </TableCell>
-                                                <TableCell>{employee.position}</TableCell>
-                                                <TableCell>{employee.office?.name || '-'}</TableCell>
                                                 <TableCell className="text-right">
                                                     {formatCurrency(employee.funding_sources['Unfunded']?.salary || 0)}
                                                 </TableCell>
@@ -268,7 +307,7 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                                         ))
                                     ) : (
                                         <TableRow>
-                                            <TableCell colSpan={8} className="py-3 text-center text-gray-500">
+                                            <TableCell colSpan={6} className="py-3 text-center text-gray-500">
                                                 No employees found.
                                             </TableCell>
                                         </TableRow>
@@ -277,7 +316,6 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                             </Table>
                         </div>
 
-                        {/* Pagination */}
                         {employees.last_page > 1 && (
                             <div className="mt-4 flex items-center justify-between">
                                 <div className="text-muted-foreground text-sm">
@@ -301,6 +339,79 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                     </CardContent>
                 </Card>
             </div>
+
+            <Dialog open={showEmployeeDialog} onOpenChange={setShowEmployeeDialog}>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {selectedFundCode === 'ALL' ? 'All Employees' : `Employees - ${selectedFundCode}`}
+                        </DialogTitle>
+                        <p className="text-muted-foreground text-sm">
+                            {selectedFundData ? `${selectedFundData.count} employees • ${formatCurrency(selectedFundData.total)}` : `${dialogEmployees.length} employees`}
+                        </p>
+                    </DialogHeader>
+
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            placeholder="Search employee..."
+                            value={dialogSearch}
+                            onChange={(e) => setDialogSearch(e.target.value)}
+                            className="pl-9"
+                        />
+                    </div>
+
+                    <div className="flex-1 overflow-auto rounded-md border">
+                        <Table>
+                            <TableHeader className="bg-muted/50 sticky top-0">
+                                <TableRow>
+                                    <TableHead>Employee</TableHead>
+                                    <TableHead>Position</TableHead>
+                                    <TableHead>Office</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead className="text-right">Total Compensation</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredDialogEmployees.length > 0 ? (
+                                    filteredDialogEmployees.map((employee) => (
+                                        <TableRow key={employee.id}>
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold uppercase">
+                                                        {employee.last_name}, {employee.first_name} {employee.middle_name} {employee.suffix}
+                                                    </span>
+                                                    <span className="text-muted-foreground text-xs">#{employee.id}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <span className="text-sm">{employee.position || '-'}</span>
+                                            </TableCell>
+                                            <TableCell>
+                                                <span className="text-sm">{employee.office?.name || '-'}</span>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant="secondary" className="text-xs">
+                                                    {employee.employment_status?.name || '-'}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right font-medium text-green-600">
+                                                {formatCurrency(employee.total_compensation)}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="py-8 text-center text-gray-500">
+                                            No employees found
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

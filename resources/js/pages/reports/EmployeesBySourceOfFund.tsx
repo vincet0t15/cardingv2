@@ -222,9 +222,6 @@ export default function EmployeesBySourceOfFund({ sourceOfFundCodes, employees, 
                         <TableHeader className="bg-muted/50">
                             <TableRow>
                                 <TableHead className="font-bold">Employee</TableHead>
-                                <TableHead className="font-bold">Position</TableHead>
-                                <TableHead className="font-bold">Office</TableHead>
-                                <TableHead className="font-bold">Status</TableHead>
                                 <TableHead className="font-bold">Source of Fund</TableHead>
                                 <TableHead className="text-right font-bold">Monthly Salary</TableHead>
                             </TableRow>
@@ -235,26 +232,25 @@ export default function EmployeesBySourceOfFund({ sourceOfFundCodes, employees, 
                                     <TableRow key={employee.id} className="hover:bg-muted/30">
                                         <TableCell>
                                             <div className="flex flex-col">
-                                                <span className="font-bold uppercase">
-                                                    {employee.last_name}, {employee.first_name} {employee.middle_name} {employee.suffix}
-                                                </span>
-                                                <span className="text-muted-foreground text-xs font-medium">
-                                                    #{employee.id}
-                                                </span>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="font-bold uppercase">
+                                                        {employee.last_name}, {employee.first_name} {employee.middle_name} {employee.suffix}
+                                                    </span>
+                                                    <Badge variant="secondary" className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                                                        #{employee.id}
+                                                    </Badge>
+                                                </div>
+                                                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                                                    <span className="font-medium text-slate-700 dark:text-slate-300">{employee.position || '—'}</span>
+                                                    <span>•</span>
+                                                    <span>{employee.office?.name || '—'}</span>
+                                                </div>
+                                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                    <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+                                                        {employee.employment_status?.name || '—'}
+                                                    </Badge>
+                                                </div>
                                             </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col">
-                                                <span className="text-sm">{employee.position || '—'}</span>
-                                                <span className="text-muted-foreground text-xs">
-                                                    {employee.office?.name || '—'}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="secondary" className="font-normal">
-                                                {employee.employment_status?.name || '—'}
-                                            </Badge>
                                         </TableCell>
                                         <TableCell>
                                             {employee.source_of_fund_code ? (
@@ -281,7 +277,7 @@ export default function EmployeesBySourceOfFund({ sourceOfFundCodes, employees, 
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-32 text-center">
+                                    <TableCell colSpan={3} className="h-32 text-center">
                                         <div className="flex flex-col items-center justify-center text-muted-foreground">
                                             <User className="mb-2 h-10 w-10" />
                                             <p>No employees found</p>
