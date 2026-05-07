@@ -7,7 +7,7 @@ import type { Adjustment } from '@/types';
 import type { Claim } from '@/types/claim';
 import type { Employee } from '@/types/employee';
 import type { EmployeeDeduction } from '@/types/employeeDeduction';
-import { Building2, CalendarDays, CoinsIcon, CreditCard, DollarSign, HardHat, Receipt, Shirt, TrendingDown, TrendingUp, User, X } from 'lucide-react';
+import { Building2, CalendarDays, CoinsIcon, CreditCard, DollarSign, Filter, HardHat, Receipt, Shirt, TrendingDown, TrendingUp, User } from 'lucide-react';
 import { useState } from 'react';
 
 interface OverviewProps {
@@ -83,12 +83,6 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
             .map(p => ({ value: p.split('-')[1], label: MONTHS[parseInt(p.split('-')[1]) - 1] }))
         : [];
 
-    const hasActiveFilters = selectedYear || selectedMonth;
-    const clearFilters = () => {
-        setSelectedYear(null);
-        setSelectedMonth(null);
-    };
-
     const grossPay =
         Number(employee.latest_salary?.amount ?? 0) +
         Number(employee.latest_pera?.amount ?? 0) +
@@ -126,9 +120,8 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
         <div className="space-y-6">
             {/* Period Filter */}
             <div className="flex flex-wrap items-center gap-3 rounded-md border bg-card p-4">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                    <span>Filter by Period:</span>
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <Filter className="h-4 w-4" />
                 </div>
                 <CustomComboBox
                     items={availableYears.map(y => ({ value: y, label: y }))}
@@ -138,21 +131,16 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         setSelectedYear(value);
                         setSelectedMonth(null);
                     }}
+                    showClear={true}
                 />
-                {selectedYear && (
-                    <CustomComboBox
-                        items={filteredMonthOptions}
-                        placeholder="All Months"
-                        value={selectedMonth}
-                        onSelect={(value) => setSelectedMonth(value)}
-                    />
-                )}
-                {hasActiveFilters && (
-                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2">
-                        <X className="h-4 w-4 mr-1" />
-                        Clear
-                    </Button>
-                )}
+                <CustomComboBox
+                    items={filteredMonthOptions}
+                    placeholder="All Months"
+                    value={selectedMonth}
+                    onSelect={(value) => setSelectedMonth(value)}
+                    showClear={true}
+                    disabled={!selectedYear}
+                />
                 <div className="flex-1" />
                 {selectedPeriodKey && (
                     <Badge variant="outline" className="text-xs">
