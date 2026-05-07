@@ -227,12 +227,25 @@ class ManageEmployeeController extends Controller
                 ->values()
                 ->toArray();
 
-            $availableYears = collect()
+            // Create a year range from 10 years ago to current year + 5 for flexibility
+            $currentYear = Carbon::now()->year;
+            $startYear = $currentYear - 10;
+            $endYear = $currentYear + 5;
+            $yearRange = range($startYear, $endYear);
+
+            // Also collect years from actual data
+            $dataYears = collect()
                 ->merge(EmployeeDeduction::where('employee_id', $employee->id)->select('pay_period_year as year')->distinct())
                 ->merge($allClaims->map(fn($c) => (object) ['year' => (int) Carbon::parse($c->claim_date)->format('Y')])->unique('year')->values())
                 ->merge($adjustments->filter(fn($a) => $a->pay_period_year)->map(fn($a) => (object) ['year' => $a->pay_period_year]))
                 ->merge($employee->clothingAllowances->map(fn($ca) => (object) ['year' => (int) Carbon::parse($ca->start_date)->format('Y')]))
                 ->pluck('year')
+                ->unique()
+                ->toArray();
+
+            // Merge year range with data years and deduplicate
+            $availableYears = collect($yearRange)
+                ->merge($dataYears)
                 ->unique()
                 ->sort()
                 ->reverse()
