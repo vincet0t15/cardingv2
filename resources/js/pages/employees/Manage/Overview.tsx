@@ -8,8 +8,7 @@ import type { Claim } from '@/types/claim';
 import type { Employee } from '@/types/employee';
 import type { EmployeeDeduction } from '@/types/employeeDeduction';
 import { Building2, CalendarDays, CoinsIcon, CreditCard, DollarSign, Filter, HardHat, Receipt, Shirt, TrendingDown, TrendingUp, User } from 'lucide-react';
-import { usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { router, usePage } from '@inertiajs/react';
 
 interface OverviewProps {
     employee: Employee;
@@ -44,36 +43,32 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
     const currentPeriodKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
 
     const urlParams = new URLSearchParams(window.location.search);
-    const initialYear = urlParams.get('year');
-    const initialMonth = urlParams.get('month');
-
-    const [selectedYear, setSelectedYear] = useState<string | null>(initialYear);
-    const [selectedMonth, setSelectedMonth] = useState<string | null>(initialMonth);
+    const selectedYear = urlParams.get('year');
+    const selectedMonth = urlParams.get('month');
 
     const handleFilterChange = (field: string, value: string) => {
+        const currentParams = new URLSearchParams(window.location.search);
+
         if (field === 'year') {
-            setSelectedYear(value || null);
-            setSelectedMonth(null);
-            const newParams = new URLSearchParams(window.location.search);
             if (value) {
-                newParams.set('year', value);
+                currentParams.set('year', value);
             } else {
-                newParams.delete('year');
+                currentParams.delete('year');
             }
-            newParams.delete('month');
-            const newUrl = `${window.location.pathname}?${newParams.toString()}`;
-            window.location.href = newUrl;
+            currentParams.delete('month');
         } else {
-            setSelectedMonth(value || null);
-            const newParams = new URLSearchParams(window.location.search);
             if (value) {
-                newParams.set('month', value);
+                currentParams.set('month', value);
             } else {
-                newParams.delete('month');
+                currentParams.delete('month');
             }
-            const newUrl = `${window.location.pathname}?${newParams.toString()}`;
-            window.location.href = newUrl;
         }
+
+        router.get(
+            window.location.pathname,
+            Object.fromEntries(currentParams),
+            { preserveState: true, preserveScroll: true }
+        );
     };
 
     const availableDeductionPeriods = Object.keys(deductions || {});
