@@ -65,11 +65,14 @@ function Overview({
     const currentPeriodKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
 
     // Dynamic year range: fixed start year (2020) to current year + 5
-    const startYear = 2020;
-    const endYear = currentYear + 5;
-    const yearOptions = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i)
-        .reverse()
-        .map((y) => ({ value: y.toString(), label: y.toString() }));
+    const startYearOverview = 2020;
+    const endYearOverview = currentYear + 5;
+    const years = Array.from({ length: endYearOverview - startYearOverview + 1 }, (_, i) => startYearOverview + i);
+
+    const yearOptions = years.map((year) => ({
+        value: year.toString(),
+        label: year.toString(),
+    }));
 
     const { data: filterData, setData } = useForm({
         month: '',
