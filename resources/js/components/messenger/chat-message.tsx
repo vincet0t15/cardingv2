@@ -24,7 +24,7 @@ function storageUrl(path: string | null): string {
     return new URL(`/storage/${path}`, window.location.origin).toString();
 }
 
-function formatUrls(text: string): ReactNode {
+function formatUrls(text: string, isMe: boolean): ReactNode {
     const urlRegex = /(https?:\/\/[^\s<]+)/g;
     const parts = text.split(urlRegex);
     return parts.map((part, index) => {
@@ -36,7 +36,7 @@ function formatUrls(text: string): ReactNode {
                     href={part}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[#5b3df5] underline hover:text-[#4a32cc]"
+                    className={isMe ? 'text-white underline hover:text-gray-200' : 'text-[#5b3df5] underline hover:text-[#4a32cc]'}
                 >
                     {part}
                 </a>
@@ -208,7 +208,7 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete,
                                     )}
                                 </button>
                             ) : null}
-                            {msg.body && <span>{formatUrls(msg.body)}</span>}
+                            {msg.body && <span>{formatUrls(msg.body, isMe)}</span>}
                         </div>
 
                         <DropdownMenu modal={false}>
