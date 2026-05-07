@@ -298,6 +298,7 @@ export default function EmployeeManagePage({
                             totalDeductionsAllTime={totalDeductionsAllTime}
                             totalClaimsAllTime={totalClaimsAllTime}
                             adjustments={adjustments}
+                            availableYears={availableYears}
                         />
                     </TabsContent>
                     <TabsContent value="compensation" className="mt-0 outline-none">

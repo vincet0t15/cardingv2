@@ -17,6 +17,7 @@ interface OverviewProps {
     totalDeductionsAllTime: number;
     totalClaimsAllTime: number;
     adjustments?: Adjustment[];
+    availableYears?: number[];
 }
 
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -50,7 +51,15 @@ function formatDate(dateStr?: string | undefined) {
     return `${day} ${monthShort} ${year}`;
 }
 
-function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalClaimsAllTime, adjustments = [] }: OverviewProps) {
+function Overview({
+    employee,
+    deductions,
+    claims,
+    totalDeductionsAllTime,
+    totalClaimsAllTime,
+    adjustments = [],
+    availableYears = [],
+}: OverviewProps) {
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
     const currentPeriodKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
@@ -188,11 +197,17 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                     showClear={true}
                 />
                 <CustomComboBox
-                    items={availablePeriods
-                        .map((p) => p.split('-')[0])
-                        .filter((v, i, a) => a.indexOf(v) === i)
-                        .sort((a, b) => b.localeCompare(a))
-                        .map((y) => ({ value: y, label: y }))}
+                    items={(availableYears && availableYears.length > 0
+                        ? availableYears
+                        : availablePeriods
+                              .map((p) => p.split('-')[0])
+                              .filter((v, i, a) => a.indexOf(v) === i)
+                              .sort((a, b) => b.localeCompare(a))
+                              .map((y) => parseInt(y))
+                    )
+                        .filter((y) => y != null)
+                        .sort((a, b) => b - a)
+                        .map((y) => ({ value: y.toString(), label: y.toString() }))}
                     placeholder="All Years"
                     value={selectedYear || null}
                     onSelect={(value) => handleFilterChange('year', value ?? '')}
