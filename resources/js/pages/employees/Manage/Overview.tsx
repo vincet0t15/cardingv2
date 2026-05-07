@@ -8,6 +8,7 @@ import type { Claim } from '@/types/claim';
 import type { Employee } from '@/types/employee';
 import type { EmployeeDeduction } from '@/types/employeeDeduction';
 import { Building2, CalendarDays, CoinsIcon, CreditCard, DollarSign, Filter, HardHat, Receipt, Shirt, TrendingDown, TrendingUp, User } from 'lucide-react';
+import { usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 interface OverviewProps {
@@ -37,9 +38,44 @@ function formatDate(dateStr?: string | undefined) {
 }
 
 function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalClaimsAllTime, adjustments = [] }: OverviewProps) {
+    const { url } = usePage();
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
     const currentPeriodKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialYear = urlParams.get('year');
+    const initialMonth = urlParams.get('month');
+
+    const [selectedYear, setSelectedYear] = useState<string | null>(initialYear);
+    const [selectedMonth, setSelectedMonth] = useState<string | null>(initialMonth);
+
+    const handleFilterChange = (field: string, value: string) => {
+        if (field === 'year') {
+            setSelectedYear(value || null);
+            setSelectedMonth(null);
+            const newParams = new URLSearchParams(window.location.search);
+            if (value) {
+                newParams.set('year', value);
+            } else {
+                newParams.delete('year');
+            }
+            newParams.delete('month');
+            const newUrl = `${window.location.pathname}?${newParams.toString()}`;
+            window.location.href = newUrl;
+        } else {
+            setSelectedMonth(value || null);
+            const newParams = new URLSearchParams(window.location.search);
+            if (value) {
+                newParams.set('month', value);
+            } else {
+                newParams.delete('month');
+            }
+            const newUrl = `${window.location.pathname}?${newParams.toString()}`;
+            window.location.href = newUrl;
+        }
+    };
+
     const availableDeductionPeriods = Object.keys(deductions || {});
     const latestDeductionPeriod = availableDeductionPeriods.sort().reverse()[0] || null;
 
@@ -50,14 +86,10 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
         acc[periodKey].push(c);
         return acc;
     }, {} as Record<string, typeof claims>);
-    const availableClaimPeriods = Object.keys(claimsByPeriod);
-    const latestClaimPeriod = availableClaimPeriods.sort().reverse()[0] || null;
+    const latestClaimPeriod = Object.keys(claimsByPeriod).sort().reverse()[0] || null;
 
-    const allAvailablePeriods = [...new Set([...availableDeductionPeriods, ...availableClaimPeriods])].sort().reverse();
+    const allAvailablePeriods = [...new Set([...availableDeductionPeriods, ...Object.keys(claimsByPeriod)])].sort().reverse();
     const availableYears = [...new Set(allAvailablePeriods.map(p => p.split('-')[0]))].sort().reverse();
-
-    const [selectedYear, setSelectedYear] = useState<string | null>(null);
-    const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
     const selectedPeriodKey = selectedYear && selectedMonth
         ? `${selectedYear}-${selectedMonth.padStart(2, '0')}`
@@ -120,33 +152,25 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
         <div className="space-y-6">
             {/* Period Filter */}
             <div className="flex flex-wrap items-center gap-3 rounded-md border bg-card p-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <Filter className="h-4 w-4" />
-                </div>
                 <CustomComboBox
                     items={availableYears.map(y => ({ value: y, label: y }))}
                     placeholder="All Years"
                     value={selectedYear}
-                    onSelect={(value) => {
-                        setSelectedYear(value);
-                        setSelectedMonth(null);
-                    }}
+                    onSelect={(value) => handleFilterChange('year', value ?? '')}
                     showClear={true}
                 />
                 <CustomComboBox
                     items={filteredMonthOptions}
                     placeholder="All Months"
                     value={selectedMonth}
-                    onSelect={(value) => setSelectedMonth(value)}
+                    onSelect={(value) => handleFilterChange('month', value ?? '')}
                     showClear={true}
                     disabled={!selectedYear}
                 />
                 <div className="flex-1" />
-                {selectedPeriodKey && (
-                    <Badge variant="outline" className="text-xs">
-                        Showing: {displayPeriodLabel}
-                    </Badge>
-                )}
+                <Badge variant="outline" className="text-xs">
+                    {displayPeriodLabel}
+                </Badge>
             </div>
 
             {/* Compensation Summary Cards */}
@@ -302,31 +326,6 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                             </Card>
                         </div>
                     </div>
-
-                    {/* Overview Totals */}
-                    <Card className="rounded-md border-slate-200 bg-slate-50 p-5 shadow-sm">
-                        <CardHeader>
-                            <CardTitle className="text-base">Period Overview</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid gap-3 bg-transparent sm:grid-cols-2 lg:grid-cols-4">
-                            <div className="rounded-md border border-slate-200 bg-white p-4">
-                                <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Gross Pay</p>
-                                <p className="mt-2 text-lg font-semibold text-slate-900">{formatCurrency(grossPay)}</p>
-                            </div>
-                            <div className="rounded-md border border-slate-200 bg-white p-4">
-                                <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Deductions</p>
-                                <p className="mt-2 text-lg font-semibold text-rose-600">{formatCurrency(displayDeductionTotal)}</p>
-                            </div>
-                            <div className="rounded-md border border-slate-200 bg-white p-4">
-                                <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Claims</p>
-                                <p className="mt-2 text-lg font-semibold text-emerald-600">{formatCurrency(displayClaimsTotal)}</p>
-                            </div>
-                            <div className="rounded-md border border-slate-200 bg-white p-4">
-                                <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Net Pay</p>
-                                <p className="mt-2 text-lg font-semibold text-blue-700">{formatCurrency(grossPay - displayDeductionTotal)}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
 
                     {/* Deductions Breakdown */}
                     {displayDeductions.length > 0 && (
@@ -504,47 +503,8 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                                 <p className="text-muted-foreground text-xs uppercase">All-Time Claims</p>
                                 <p className="mt-1 text-xl font-semibold text-emerald-600">{formatCurrency(totalClaimsAllTime)}</p>
                             </div>
-                            <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                                <p className="text-muted-foreground text-xs uppercase">Current Period</p>
-                                <p className="mt-1 text-lg font-semibold text-slate-900">{displayPeriodLabel}</p>
-                            </div>
                         </CardContent>
                     </Card>
-
-                    {/* Latest Deductions Period */}
-                    {Object.keys(deductions).length > 0 && (
-                        <Card className="rounded-md border-slate-200 p-5 shadow-sm">
-                            <CardHeader>
-                                <CardTitle className="text-base">Latest Deductions Period</CardTitle>
-                            </CardHeader>
-                            <CardContent className="pt-4">
-                                {(() => {
-                                    const latestKey = Object.keys(deductions)[0];
-                                    const [year, month] = latestKey.split('-');
-                                    const items = deductions[latestKey];
-                                    const total = items.reduce((sum, d) => sum + Number(d.amount), 0);
-                                    return (
-                                        <div className="space-y-2">
-                                            <p className="mb-3 text-sm font-semibold">
-                                                {MONTHS[parseInt(month) - 1]} {year}
-                                            </p>
-                                            {items.map((d) => (
-                                                <div key={d.id} className="flex items-center justify-between text-sm">
-                                                    <span className="text-muted-foreground">{d.deduction_type?.name ?? '—'}</span>
-                                                    <span className="font-medium text-red-600">{formatCurrency(Number(d.amount))}</span>
-                                                </div>
-                                            ))}
-                                            <Separator className="my-2" />
-                                            <div className="flex items-center justify-between text-sm font-semibold">
-                                                <span>Total</span>
-                                                <span className="text-red-600">{formatCurrency(total)}</span>
-                                            </div>
-                                        </div>
-                                    );
-                                })()}
-                            </CardContent>
-                        </Card>
-                    )}
 
                     {/* Employment Details */}
                     <Card className="rounded-md border-slate-200 p-5 shadow-sm">
