@@ -916,7 +916,12 @@ export default function Dashboard({
                                         <div
                                             key={employee.id}
                                             className="group flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
-                                            onClick={() => router.get(route('manage.employees.show', employee.id))}
+                                            onClick={() =>
+                                                router.get(route('manage.employees.show', employee.id), {
+                                                    month: filterData.month,
+                                                    year: filterData.year,
+                                                })
+                                            }
                                         >
                                             <Avatar className="h-10 w-10 border">
                                                 {employee.image_path ? (

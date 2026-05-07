@@ -1,14 +1,14 @@
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CustomComboBox } from '@/components/CustomComboBox';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import type { Adjustment } from '@/types';
 import type { Claim } from '@/types/claim';
 import type { Employee } from '@/types/employee';
 import type { EmployeeDeduction } from '@/types/employeeDeduction';
-import { Building2, CalendarDays, CoinsIcon, CreditCard, DollarSign, Filter, HardHat, Receipt, Shirt, TrendingDown, TrendingUp, User } from 'lucide-react';
-import { router, usePage } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
+import { Building2, CalendarDays, CoinsIcon, CreditCard, DollarSign, HardHat, Receipt, Shirt, TrendingDown, TrendingUp, User } from 'lucide-react';
+import { useMemo } from 'react';
 
 interface OverviewProps {
     employee: Employee;
@@ -19,7 +19,21 @@ interface OverviewProps {
     adjustments?: Adjustment[];
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS = [
+    { value: '1', label: 'January' },
+    { value: '2', label: 'February' },
+    { value: '3', label: 'March' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'May' },
+    { value: '6', label: 'June' },
+    { value: '7', label: 'July' },
+    { value: '8', label: 'August' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' },
+];
 
 function formatCurrency(amount: number | undefined | null) {
     if (!amount) return '₱0.00';
@@ -37,78 +51,101 @@ function formatDate(dateStr?: string | undefined) {
 }
 
 function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalClaimsAllTime, adjustments = [] }: OverviewProps) {
-    const { url } = usePage();
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
     const currentPeriodKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const selectedYear = urlParams.get('year');
-    const selectedMonth = urlParams.get('month');
+    const { data: filterData, setData } = useForm({
+        month: '',
+        year: '',
+    });
+
+    const currentUrl = window.location.href;
+    const urlParams = new URLSearchParams(currentUrl.split('?')[1] || '');
+    const selectedYear = urlParams.get('year') || '';
+    const selectedMonth = urlParams.get('month') || '';
+
+    const availablePeriods = useMemo(() => {
+        const deductionPeriods = Object.keys(deductions || {});
+        const claimPeriods = claims.reduce((acc: string[], c) => {
+            const periodKey = `${new Date(c.claim_date).getFullYear()}-${String(new Date(c.claim_date).getMonth() + 1).padStart(2, '0')}`;
+            if (!acc.includes(periodKey)) acc.push(periodKey);
+            return acc;
+        }, []);
+        return [...new Set([...deductionPeriods, ...claimPeriods])].sort().reverse();
+    }, [deductions, claims]);
+
+    // Determine the display period based on filters
+    let displayPeriodKey: string;
+    let displayPeriodLabel: string;
+
+    if (selectedYear && selectedMonth) {
+        // Both year and month selected
+        displayPeriodKey = `${selectedYear}-${selectedMonth.padStart(2, '0')}`;
+        displayPeriodLabel = `${MONTHS_SHORT[parseInt(selectedMonth) - 1]} ${selectedYear}`;
+    } else if (selectedYear) {
+        // Only year selected - find the first available month in that year
+        const yearPeriods = availablePeriods.filter((p) => p.startsWith(selectedYear));
+        displayPeriodKey = yearPeriods[0] || `${selectedYear}-01`;
+        displayPeriodLabel = `${selectedYear} (All Months)`;
+    } else {
+        // No filters - use latest period
+        const latestPeriod = availablePeriods[0] || currentPeriodKey;
+        displayPeriodKey = latestPeriod;
+        displayPeriodLabel = `${MONTHS_SHORT[parseInt(displayPeriodKey.split('-')[1]) - 1]} ${displayPeriodKey.split('-')[0]}`;
+    }
+
+    const selectedPeriodKey = selectedYear && selectedMonth ? `${selectedYear}-${selectedMonth.padStart(2, '0')}` : null;
+
+    const displayDeductions = useMemo(() => {
+        if (selectedYear && !selectedMonth) {
+            // Year-only filter: show all deductions for that year
+            const yearDeductions: EmployeeDeduction[] = [];
+            availablePeriods.forEach((period) => {
+                if (period.startsWith(selectedYear)) {
+                    yearDeductions.push(...(deductions[period] ?? []));
+                }
+            });
+            return yearDeductions;
+        }
+        // Specific month/year or default behavior
+        return deductions[displayPeriodKey] ?? [];
+    }, [deductions, displayPeriodKey, selectedYear, selectedMonth, availablePeriods]);
+
+    const displayClaims = useMemo(() => {
+        if (selectedYear && !selectedMonth) {
+            // Year-only filter: show all claims for that year
+            return claims.filter((c) => {
+                const d = new Date(c.claim_date);
+                return d.getFullYear().toString() === selectedYear;
+            });
+        }
+        if (selectedYear && selectedMonth) {
+            // Specific month and year
+            return claims.filter((c) => {
+                const d = new Date(c.claim_date);
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === `${selectedYear}-${selectedMonth.padStart(2, '0')}`;
+            });
+        }
+        return [];
+    }, [claims, selectedYear, selectedMonth]);
+
+    const displayDeductionTotal = useMemo(() => displayDeductions.reduce((sum, d) => sum + Number(d.amount), 0), [displayDeductions]);
+    const displayClaimsTotal = useMemo(() => displayClaims.reduce((sum, c) => sum + Number(c.amount), 0), [displayClaims]);
 
     const handleFilterChange = (field: string, value: string) => {
-        const currentParams = new URLSearchParams(window.location.search);
-
+        const newParams = new URLSearchParams(window.location.search);
         if (field === 'year') {
-            if (value) {
-                currentParams.set('year', value);
-            } else {
-                currentParams.delete('year');
-            }
-            currentParams.delete('month');
+            setData('year', value);
+            value ? newParams.set('year', value) : newParams.delete('year');
+            newParams.delete('month');
         } else {
-            if (value) {
-                currentParams.set('month', value);
-            } else {
-                currentParams.delete('month');
-            }
+            setData('month', value);
+            value ? newParams.set('month', value) : newParams.delete('month');
         }
-
-        router.get(
-            window.location.pathname,
-            Object.fromEntries(currentParams),
-            { preserveState: true, preserveScroll: true }
-        );
+        const newUrl = `${window.location.pathname}?${newParams.toString()}`;
+        router.get(newUrl, {}, { preserveState: true, preserveScroll: true });
     };
-
-    const availableDeductionPeriods = Object.keys(deductions || {});
-    const latestDeductionPeriod = availableDeductionPeriods.sort().reverse()[0] || null;
-
-    const claimsByPeriod = claims.reduce((acc, c) => {
-        const d = new Date(c.claim_date);
-        const periodKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        if (!acc[periodKey]) acc[periodKey] = [];
-        acc[periodKey].push(c);
-        return acc;
-    }, {} as Record<string, typeof claims>);
-    const latestClaimPeriod = Object.keys(claimsByPeriod).sort().reverse()[0] || null;
-
-    const allAvailablePeriods = [...new Set([...availableDeductionPeriods, ...Object.keys(claimsByPeriod)])].sort().reverse();
-    const availableYears = [...new Set(allAvailablePeriods.map(p => p.split('-')[0]))].sort().reverse();
-
-    const selectedPeriodKey = selectedYear && selectedMonth
-        ? `${selectedYear}-${selectedMonth.padStart(2, '0')}`
-        : null;
-
-    const displayPeriodKey = selectedPeriodKey || latestDeductionPeriod || currentPeriodKey;
-    const displayDeductions = deductions[displayPeriodKey] ?? [];
-
-    const displayClaims = selectedPeriodKey
-        ? claimsByPeriod[displayPeriodKey] ?? []
-        : (latestClaimPeriod ? claimsByPeriod[latestClaimPeriod] : []);
-
-    const displayDeductionTotal = displayDeductions.reduce((sum, d) => sum + Number(d.amount), 0);
-    const displayClaimsTotal = displayClaims.reduce((sum, c) => sum + Number(c.amount), 0);
-
-    const displayPeriodLabel = displayPeriodKey
-        ? `${MONTHS[parseInt(displayPeriodKey.split('-')[1]) - 1]} ${displayPeriodKey.split('-')[0]}`
-        : `${MONTHS[currentMonth - 1]} ${currentYear}`;
-
-    const filteredMonthOptions = selectedYear
-        ? allAvailablePeriods
-            .filter(p => p.startsWith(selectedYear))
-            .map(p => ({ value: p.split('-')[1], label: MONTHS[parseInt(p.split('-')[1]) - 1] }))
-        : [];
 
     const grossPay =
         Number(employee.latest_salary?.amount ?? 0) +
@@ -116,7 +153,6 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
         (employee.is_rata_eligible ? Number(employee.latest_rata?.amount ?? 0) : 0) +
         Number(employee.latest_hazard_pay?.amount ?? 0) +
         Number(employee.latest_clothing_allowance?.amount ?? 0);
-    const netPay = grossPay - displayDeductionTotal;
 
     const hireDate =
         employee.earliest_salary?.effective_date ??
@@ -130,37 +166,37 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
         if (adjustment.adjustmentType?.name) {
             return adjustment.adjustmentType.name;
         }
-
         if (typeof adjustment.adjustment_type === 'string') {
             return adjustment.adjustment_type;
         }
-
         const adjustmentTypeObject = adjustment.adjustment_type as unknown as { name?: string } | null;
         if (adjustmentTypeObject && typeof adjustmentTypeObject === 'object') {
             return adjustmentTypeObject.name ?? 'Adjustment';
         }
-
         return 'Adjustment';
     };
 
     return (
         <div className="space-y-6">
             {/* Period Filter */}
-            <div className="flex flex-wrap items-center gap-3 rounded-md border bg-card p-4">
+            <div className="bg-card flex flex-wrap items-center gap-3 rounded-md border p-4">
                 <CustomComboBox
-                    items={availableYears.map(y => ({ value: y, label: y }))}
-                    placeholder="All Years"
-                    value={selectedYear}
-                    onSelect={(value) => handleFilterChange('year', value ?? '')}
+                    items={MONTHS}
+                    placeholder="All Months"
+                    value={selectedMonth || null}
+                    onSelect={(value) => handleFilterChange('month', value ?? '')}
                     showClear={true}
                 />
                 <CustomComboBox
-                    items={filteredMonthOptions}
-                    placeholder="All Months"
-                    value={selectedMonth}
-                    onSelect={(value) => handleFilterChange('month', value ?? '')}
+                    items={availablePeriods
+                        .map((p) => p.split('-')[0])
+                        .filter((v, i, a) => a.indexOf(v) === i)
+                        .sort((a, b) => b.localeCompare(a))
+                        .map((y) => ({ value: y, label: y }))}
+                    placeholder="All Years"
+                    value={selectedYear || null}
+                    onSelect={(value) => handleFilterChange('year', value ?? '')}
                     showClear={true}
-                    disabled={!selectedYear}
                 />
                 <div className="flex-1" />
                 <Badge variant="outline" className="text-xs">
@@ -346,7 +382,9 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                                         </div>
                                         <div>
                                             <p className="text-muted-foreground text-xs">Net after deductions</p>
-                                            <p className="text-2xl font-semibold text-slate-900">{formatCurrency(grossPay - displayDeductionTotal)}</p>
+                                            <p className="text-2xl font-semibold text-slate-900">
+                                                {formatCurrency(grossPay - displayDeductionTotal)}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -488,7 +526,9 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                         <CardContent className="grid gap-3 bg-transparent">
                             <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
                                 <p className="text-muted-foreground text-xs uppercase">Years of Service</p>
-                                <p className="mt-1 text-xl font-semibold text-slate-900">{yearsOfService} year{yearsOfService !== 1 ? 's' : ''}</p>
+                                <p className="mt-1 text-xl font-semibold text-slate-900">
+                                    {yearsOfService} year{yearsOfService !== 1 ? 's' : ''}
+                                </p>
                             </div>
                             <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
                                 <p className="text-muted-foreground text-xs uppercase">All-Time Deductions</p>
