@@ -2,14 +2,13 @@ import { CustomComboBox } from '@/components/CustomComboBox';
 import Pagination from '@/components/paginationData';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Employee as EmployeeType } from '@/types/employee';
 import { Head, router } from '@inertiajs/react';
-import { ArrowUpRight, FileText, Filter, HelpCircle, Printer, Search, Users, X } from 'lucide-react';
+import { ArrowUpRight, FileText, Filter, Printer, Search, Users, X } from 'lucide-react';
 import { useState } from 'react';
 
 interface SourceOfFundCode {
@@ -218,28 +217,29 @@ export default function Index({ employees, sourceOfFundCodes, offices, filters, 
                     )}
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center gap-2">
-                            <HelpCircle className="text-muted-foreground h-4 w-4" />
-                            <CardTitle className="text-sm">Frequently Asked Questions</CardTitle>
+                <div className="rounded-lg bg-sky-50 p-4 dark:bg-sky-950/20">
+                    <div className="flex gap-3">
+                        <svg
+                            className="h-5 w-5 shrink-0 translate-y-0.5 text-sky-600 dark:text-sky-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                        </svg>
+                        <div className="text-sm">
+                            <p className="mb-1 font-semibold">Quick Tip</p>
+                            <p className="text-sky-700 dark:text-sky-400">
+                                Click on any funding source card to view the list of employees funded by that specific funding code. This will show you detailed information about each employee, their position, office assignment, and compensation details.
+                            </p>
                         </div>
-                    </CardHeader>
-                    <CardContent>
-                        <Collapsible className="w-full">
-                            <CollapsibleTrigger asChild>
-                                <Button variant="ghost" className="w-full justify-between text-sm font-medium">
-                                    How do I view employees for a specific funding code?
-                                    <ArrowUpRight className="h-4 w-4" />
-                                </Button>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="text-muted-foreground mt-2 text-sm">
-                                Click on any funding source card above to view the list of employees funded by that specific funding code. This will
-                                show you detailed information about each employee, their position, office assignment, and compensation details.
-                            </CollapsibleContent>
-                        </Collapsible>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
 
                 <Card>
                     <CardHeader>
