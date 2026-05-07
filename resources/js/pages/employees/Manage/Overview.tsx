@@ -64,6 +64,13 @@ function Overview({
     const currentYear = new Date().getFullYear();
     const currentPeriodKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
 
+    // Dynamic year range: fixed start year (2020) to current year + 5
+    const startYear = 2020;
+    const endYear = currentYear + 5;
+    const yearOptions = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i)
+        .reverse()
+        .map((y) => ({ value: y.toString(), label: y.toString() }));
+
     const { data: filterData, setData } = useForm({
         month: '',
         year: '',
@@ -197,17 +204,7 @@ function Overview({
                     showClear={true}
                 />
                 <CustomComboBox
-                    items={(availableYears && availableYears.length > 0
-                        ? availableYears
-                        : availablePeriods
-                              .map((p) => p.split('-')[0])
-                              .filter((v, i, a) => a.indexOf(v) === i)
-                              .sort((a, b) => b.localeCompare(a))
-                              .map((y) => parseInt(y))
-                    )
-                        .filter((y) => y != null)
-                        .sort((a, b) => b - a)
-                        .map((y) => ({ value: y.toString(), label: y.toString() }))}
+                    items={yearOptions}
                     placeholder="All Years"
                     value={selectedYear || null}
                     onSelect={(value) => handleFilterChange('year', value ?? '')}
