@@ -1,11 +1,14 @@
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CustomComboBox } from '@/components/CustomComboBox';
 import { Separator } from '@/components/ui/separator';
 import type { Adjustment } from '@/types';
 import type { Claim } from '@/types/claim';
 import type { Employee } from '@/types/employee';
 import type { EmployeeDeduction } from '@/types/employeeDeduction';
-import { Building2, CalendarDays, CoinsIcon, CreditCard, DollarSign, HardHat, Receipt, Shirt, TrendingDown, TrendingUp, User } from 'lucide-react';
+import { Building2, CalendarDays, CoinsIcon, CreditCard, DollarSign, HardHat, Receipt, Shirt, TrendingDown, TrendingUp, User, X } from 'lucide-react';
+import { useState } from 'react';
 
 interface OverviewProps {
     employee: Employee;
@@ -37,14 +40,54 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
     const currentPeriodKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
-    const currentMonthDeductions = deductions[currentPeriodKey] ?? [];
-    const currentMonthDeductionTotal = currentMonthDeductions.reduce((sum, d) => sum + Number(d.amount), 0);
+    const availableDeductionPeriods = Object.keys(deductions || {});
+    const latestDeductionPeriod = availableDeductionPeriods.sort().reverse()[0] || null;
 
-    const currentMonthClaims = claims.filter((c) => {
+    const claimsByPeriod = claims.reduce((acc, c) => {
         const d = new Date(c.claim_date);
-        return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear;
-    });
-    const currentMonthClaimsTotal = currentMonthClaims.reduce((sum, c) => sum + Number(c.amount), 0);
+        const periodKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (!acc[periodKey]) acc[periodKey] = [];
+        acc[periodKey].push(c);
+        return acc;
+    }, {} as Record<string, typeof claims>);
+    const availableClaimPeriods = Object.keys(claimsByPeriod);
+    const latestClaimPeriod = availableClaimPeriods.sort().reverse()[0] || null;
+
+    const allAvailablePeriods = [...new Set([...availableDeductionPeriods, ...availableClaimPeriods])].sort().reverse();
+    const availableYears = [...new Set(allAvailablePeriods.map(p => p.split('-')[0]))].sort().reverse();
+
+    const [selectedYear, setSelectedYear] = useState<string | null>(null);
+    const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+
+    const selectedPeriodKey = selectedYear && selectedMonth
+        ? `${selectedYear}-${selectedMonth.padStart(2, '0')}`
+        : null;
+
+    const displayPeriodKey = selectedPeriodKey || latestDeductionPeriod || currentPeriodKey;
+    const displayDeductions = deductions[displayPeriodKey] ?? [];
+
+    const displayClaims = selectedPeriodKey
+        ? claimsByPeriod[displayPeriodKey] ?? []
+        : (latestClaimPeriod ? claimsByPeriod[latestClaimPeriod] : []);
+
+    const displayDeductionTotal = displayDeductions.reduce((sum, d) => sum + Number(d.amount), 0);
+    const displayClaimsTotal = displayClaims.reduce((sum, c) => sum + Number(c.amount), 0);
+
+    const displayPeriodLabel = displayPeriodKey
+        ? `${MONTHS[parseInt(displayPeriodKey.split('-')[1]) - 1]} ${displayPeriodKey.split('-')[0]}`
+        : `${MONTHS[currentMonth - 1]} ${currentYear}`;
+
+    const filteredMonthOptions = selectedYear
+        ? allAvailablePeriods
+            .filter(p => p.startsWith(selectedYear))
+            .map(p => ({ value: p.split('-')[1], label: MONTHS[parseInt(p.split('-')[1]) - 1] }))
+        : [];
+
+    const hasActiveFilters = selectedYear || selectedMonth;
+    const clearFilters = () => {
+        setSelectedYear(null);
+        setSelectedMonth(null);
+    };
 
     const grossPay =
         Number(employee.latest_salary?.amount ?? 0) +
@@ -52,18 +95,15 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
         (employee.is_rata_eligible ? Number(employee.latest_rata?.amount ?? 0) : 0) +
         Number(employee.latest_hazard_pay?.amount ?? 0) +
         Number(employee.latest_clothing_allowance?.amount ?? 0);
-    const netThisMonth = grossPay - currentMonthDeductionTotal;
+    const netPay = grossPay - displayDeductionTotal;
 
     const hireDate =
         employee.earliest_salary?.effective_date ??
         (employee.salaries && employee.salaries.length ? employee.salaries[employee.salaries.length - 1].effective_date : employee.created_at);
     const yearsOfService = hireDate ? Math.floor((new Date().getTime() - new Date(hireDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 0;
 
-    const recentClaims = claims.slice(0, 5);
+    const recentClaims = displayClaims.slice(0, 5);
     const recentAdjustments = adjustments.slice(0, 5);
-    const currentPeriodLabel = `${MONTHS[currentMonth - 1]} ${currentYear}`;
-    const currentMonthClaimsCount = currentMonthClaims.length;
-    const currentMonthDeductionCount = currentMonthDeductions.length;
 
     const getAdjustmentTypeName = (adjustment: Adjustment) => {
         if (adjustment.adjustmentType?.name) {
@@ -84,6 +124,43 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
 
     return (
         <div className="space-y-6">
+            {/* Period Filter */}
+            <div className="flex flex-wrap items-center gap-3 rounded-md border bg-card p-4">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                    <span>Filter by Period:</span>
+                </div>
+                <CustomComboBox
+                    items={availableYears.map(y => ({ value: y, label: y }))}
+                    placeholder="All Years"
+                    value={selectedYear}
+                    onSelect={(value) => {
+                        setSelectedYear(value);
+                        setSelectedMonth(null);
+                    }}
+                />
+                {selectedYear && (
+                    <CustomComboBox
+                        items={filteredMonthOptions}
+                        placeholder="All Months"
+                        value={selectedMonth}
+                        onSelect={(value) => setSelectedMonth(value)}
+                    />
+                )}
+                {hasActiveFilters && (
+                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 px-2">
+                        <X className="h-4 w-4 mr-1" />
+                        Clear
+                    </Button>
+                )}
+                <div className="flex-1" />
+                {selectedPeriodKey && (
+                    <Badge variant="outline" className="text-xs">
+                        Showing: {displayPeriodLabel}
+                    </Badge>
+                )}
+            </div>
+
             {/* Compensation Summary Cards */}
             <div>
                 <div className="mb-3 flex items-center justify-between">
@@ -184,12 +261,12 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
             {/* Main Content Grid */}
             <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
                 <div className="space-y-6">
-                    {/* Current Month Summary */}
+                    {/* Summary */}
                     <div>
                         <div className="mb-3 flex items-center justify-between">
-                            <h3 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">Current Month Summary</h3>
+                            <h3 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">Summary</h3>
                             <Badge variant="outline" className="text-xs">
-                                {currentPeriodLabel}
+                                {displayPeriodLabel}
                             </Badge>
                         </div>
                         <div className="grid gap-4 md:grid-cols-3">
@@ -201,9 +278,9 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                                     </div>
                                 </CardHeader>
                                 <CardContent className="bg-transparent">
-                                    <div className="text-2xl font-bold text-red-600">{formatCurrency(currentMonthDeductionTotal)}</div>
+                                    <div className="text-2xl font-bold text-red-600">{formatCurrency(displayDeductionTotal)}</div>
                                     <p className="text-muted-foreground mt-1 text-xs">
-                                        {currentMonthDeductionCount} deduction{currentMonthDeductionCount !== 1 ? 's' : ''}
+                                        {displayDeductions.length} deduction{displayDeductions.length !== 1 ? 's' : ''}
                                     </p>
                                 </CardContent>
                             </Card>
@@ -216,9 +293,9 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                                     </div>
                                 </CardHeader>
                                 <CardContent className="bg-transparent">
-                                    <div className="text-2xl font-bold text-emerald-700">{formatCurrency(currentMonthClaimsTotal)}</div>
+                                    <div className="text-2xl font-bold text-emerald-700">{formatCurrency(displayClaimsTotal)}</div>
                                     <p className="text-muted-foreground mt-1 text-xs">
-                                        {currentMonthClaimsCount} claim{currentMonthClaimsCount !== 1 ? 's' : ''}
+                                        {displayClaims.length} claim{displayClaims.length !== 1 ? 's' : ''}
                                     </p>
                                 </CardContent>
                             </Card>
@@ -231,7 +308,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                                     </div>
                                 </CardHeader>
                                 <CardContent className="bg-transparent">
-                                    <div className="text-2xl font-bold text-blue-700">{formatCurrency(netThisMonth)}</div>
+                                    <div className="text-2xl font-bold text-blue-700">{formatCurrency(grossPay - displayDeductionTotal)}</div>
                                     <p className="text-muted-foreground mt-1 text-xs">After deductions</p>
                                 </CardContent>
                             </Card>
@@ -241,7 +318,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                     {/* Overview Totals */}
                     <Card className="rounded-md border-slate-200 bg-slate-50 p-5 shadow-sm">
                         <CardHeader>
-                            <CardTitle className="text-base">Month Overview</CardTitle>
+                            <CardTitle className="text-base">Period Overview</CardTitle>
                         </CardHeader>
                         <CardContent className="grid gap-3 bg-transparent sm:grid-cols-2 lg:grid-cols-4">
                             <div className="rounded-md border border-slate-200 bg-white p-4">
@@ -250,49 +327,49 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                             </div>
                             <div className="rounded-md border border-slate-200 bg-white p-4">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Deductions</p>
-                                <p className="mt-2 text-lg font-semibold text-rose-600">{formatCurrency(currentMonthDeductionTotal)}</p>
+                                <p className="mt-2 text-lg font-semibold text-rose-600">{formatCurrency(displayDeductionTotal)}</p>
                             </div>
                             <div className="rounded-md border border-slate-200 bg-white p-4">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Claims</p>
-                                <p className="mt-2 text-lg font-semibold text-emerald-600">{formatCurrency(currentMonthClaimsTotal)}</p>
+                                <p className="mt-2 text-lg font-semibold text-emerald-600">{formatCurrency(displayClaimsTotal)}</p>
                             </div>
                             <div className="rounded-md border border-slate-200 bg-white p-4">
                                 <p className="text-muted-foreground text-xs tracking-[0.2em] uppercase">Net Pay</p>
-                                <p className="mt-2 text-lg font-semibold text-blue-700">{formatCurrency(netThisMonth)}</p>
+                                <p className="mt-2 text-lg font-semibold text-blue-700">{formatCurrency(grossPay - displayDeductionTotal)}</p>
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* Current Month Deductions Breakdown */}
-                    {currentMonthDeductions.length > 0 && (
+                    {/* Deductions Breakdown */}
+                    {displayDeductions.length > 0 && (
                         <Card className="rounded-md border-red-200 p-5 shadow-sm">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2 text-base">
                                     <TrendingDown className="h-5 w-5 text-rose-600" />
-                                    Current Month Deductions Breakdown
+                                    Deductions Breakdown
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="rounded-md border border-slate-200 bg-white p-4">
                                     <div className="flex items-center justify-between text-sm text-slate-500">
-                                        <span>{currentPeriodLabel}</span>
+                                        <span>{displayPeriodLabel}</span>
                                         <span>
-                                            {currentMonthDeductionCount} item{currentMonthDeductionCount !== 1 ? 's' : ''}
+                                            {displayDeductions.length} item{displayDeductions.length !== 1 ? 's' : ''}
                                         </span>
                                     </div>
                                     <div className="mt-3 grid gap-4 sm:grid-cols-2">
                                         <div>
                                             <p className="text-muted-foreground text-xs">Total Deductions</p>
-                                            <p className="text-2xl font-semibold text-rose-600">{formatCurrency(currentMonthDeductionTotal)}</p>
+                                            <p className="text-2xl font-semibold text-rose-600">{formatCurrency(displayDeductionTotal)}</p>
                                         </div>
                                         <div>
                                             <p className="text-muted-foreground text-xs">Net after deductions</p>
-                                            <p className="text-2xl font-semibold text-slate-900">{formatCurrency(netThisMonth)}</p>
+                                            <p className="text-2xl font-semibold text-slate-900">{formatCurrency(grossPay - displayDeductionTotal)}</p>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="space-y-3">
-                                    {currentMonthDeductions.map((deduction) => {
+                                    {displayDeductions.map((deduction) => {
                                         const amount = Number(deduction.amount);
                                         const percentage = grossPay > 0 ? (amount / grossPay) * 100 : 0;
                                         return (
@@ -311,7 +388,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                                 <Separator />
                                 <div className="flex items-center justify-between text-sm font-semibold">
                                     <span>Total</span>
-                                    <span className="text-rose-600">{formatCurrency(currentMonthDeductionTotal)}</span>
+                                    <span className="text-rose-600">{formatCurrency(displayDeductionTotal)}</span>
                                 </div>
                             </CardContent>
                         </Card>
@@ -441,7 +518,7 @@ function Overview({ employee, deductions, claims, totalDeductionsAllTime, totalC
                             </div>
                             <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
                                 <p className="text-muted-foreground text-xs uppercase">Current Period</p>
-                                <p className="mt-1 text-lg font-semibold text-slate-900">{currentPeriodLabel}</p>
+                                <p className="mt-1 text-lg font-semibold text-slate-900">{displayPeriodLabel}</p>
                             </div>
                         </CardContent>
                     </Card>
