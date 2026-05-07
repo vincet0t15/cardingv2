@@ -1,7 +1,7 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { Check, CheckCheck, CornerUpLeft, Download, FileText, MoreHorizontal, Paperclip, Trash2 } from 'lucide-react';
-import { memo, useEffect, useState, useCallback } from 'react';
+import { memo, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { ImageLightbox } from './image-lightbox';
 
 const AVATAR_COLORS = ['bg-sky-500', 'bg-violet-500', 'bg-emerald-500', 'bg-rose-500', 'bg-amber-500', 'bg-cyan-500', 'bg-fuchsia-500'];
@@ -22,6 +22,28 @@ function getInitials(name: string) {
 function storageUrl(path: string | null): string {
     if (!path) return '';
     return new URL(`/storage/${path}`, window.location.origin).toString();
+}
+
+function formatUrls(text: string): ReactNode {
+    const urlRegex = /(https?:\/\/[^\s<]+)/g;
+    const parts = text.split(urlRegex);
+    return parts.map((part, index) => {
+        if (urlRegex.test(part)) {
+            urlRegex.lastIndex = 0;
+            return (
+                <a
+                    key={index}
+                    href={part}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#5b3df5] underline hover:text-[#4a32cc]"
+                >
+                    {part}
+                </a>
+            );
+        }
+        return part;
+    });
 }
 
 function formatFileSize(bytes: number | null): string {
@@ -186,7 +208,7 @@ export function ChatMessage({ msg, prevMsg, isMe, showAvatar, onReply, onDelete,
                                     )}
                                 </button>
                             ) : null}
-                            {msg.body && <span>{msg.body}</span>}
+                            {msg.body && <span>{formatUrls(msg.body)}</span>}
                         </div>
 
                         <DropdownMenu modal={false}>
