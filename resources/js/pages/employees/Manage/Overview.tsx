@@ -74,15 +74,13 @@ function Overview({
         label: year.toString(),
     }));
 
-    const { data: filterData, setData } = useForm({
-        month: '',
-        year: '',
-    });
-
-    const currentUrl = window.location.href;
+    const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
     const urlParams = new URLSearchParams(currentUrl.split('?')[1] || '');
-    const selectedYear = urlParams.get('year') || '';
-    const selectedMonth = urlParams.get('month') || '';
+
+    const { data: filterData, setData } = useForm({
+        month: urlParams.get('month') || '',
+        year: urlParams.get('year') || '',
+    });
 
     const availablePeriods = useMemo(() => {
         const deductionPeriods = Object.keys(deductions || {});
@@ -93,6 +91,9 @@ function Overview({
         }, []);
         return [...new Set([...deductionPeriods, ...claimPeriods])].sort().reverse();
     }, [deductions, claims]);
+
+    const selectedYear = filterData.year;
+    const selectedMonth = filterData.month;
 
     // Determine the display period based on filters
     let displayPeriodKey: string;
@@ -152,18 +153,13 @@ function Overview({
     const displayDeductionTotal = useMemo(() => displayDeductions.reduce((sum, d) => sum + Number(d.amount), 0), [displayDeductions]);
     const displayClaimsTotal = useMemo(() => displayClaims.reduce((sum, c) => sum + Number(c.amount), 0), [displayClaims]);
 
-    const handleFilterChange = (field: string, value: string) => {
-        const newParams = new URLSearchParams(window.location.search);
-        if (field === 'year') {
-            setData('year', value);
-            value ? newParams.set('year', value) : newParams.delete('year');
-            newParams.delete('month');
-        } else {
-            setData('month', value);
-            value ? newParams.set('month', value) : newParams.delete('month');
-        }
-        const newUrl = `${window.location.pathname}?${newParams.toString()}`;
-        router.get(newUrl, {}, { preserveState: true, preserveScroll: true });
+    const handleFilterChange = (field: 'month' | 'year', value: string) => {
+        const newFilters = { ...filterData, [field]: value };
+        setData(field, value);
+        const params: Record<string, string> = {};
+        if (newFilters.month) params.month = newFilters.month;
+        if (newFilters.year) params.year = newFilters.year;
+        router.get(window.location.pathname, Object.keys(params).length > 0 ? params : undefined, { preserveState: true, preserveScroll: true });
     };
 
     const grossPay =
