@@ -73,31 +73,14 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
     const [selectedDeduction, setSelectedDeduction] = useState<EmployeeDeduction | null>(null);
 
-    // Initialize filters from URL, sessionStorage, or props
-    const getInitialFilters = () => {
-        const urlParams = new URLSearchParams(window.location.search);
-
-        // Check if there are saved filters in sessionStorage (when coming back from employee page)
-        const savedFilters = sessionStorage.getItem('employeeDeductionsFilters');
-        if (savedFilters && !urlParams.has('month')) {
-            const parsed = JSON.parse(savedFilters);
-            // Clear sessionStorage after using it
-            sessionStorage.removeItem('employeeDeductionsFilters');
-            return parsed;
-        }
-
-        // Otherwise use URL params or default filters
-        return {
-            month: parseInt(urlParams.get('month') || String(filters.month)),
-            year: parseInt(urlParams.get('year') || String(filters.year)),
-            search: urlParams.get('search') || filters.search || '',
-            office_id: urlParams.get('office_id') || filters.office_id || '',
-            employment_status_id: urlParams.get('employment_status_id') || filters.employment_status_id || '',
-            has_deductions: urlParams.get('has_deductions') === 'false' ? false : (filters.has_deductions ?? true),
-        };
-    };
-
-    const { data: filterData, setData: setFilterData } = useForm(getInitialFilters());
+    const { data: filterData, setData: setFilterData } = useForm({
+        month: filters.month || new Date().getMonth() + 1,
+        year: filters.year || new Date().getFullYear(),
+        search: filters.search || '',
+        office_id: filters.office_id || '',
+        employment_status_id: filters.employment_status_id || '',
+        has_deductions: filters.has_deductions ?? true,
+    });
 
     const {
         data: addData,
@@ -130,31 +113,28 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
     const monthOptions = MONTHS.map((m) => ({ value: m.value.toString(), label: m.label }));
     const deductionTypeOptions = deductionTypes.map((t) => ({ value: t.id.toString(), label: t.name }));
 
-    const handleFilterChange = () => {
-        const queryString: Record<string, string | number> = {};
-        if (filterData.month) queryString.month = filterData.month;
-        if (filterData.year) queryString.year = filterData.year;
-        if (filterData.search) queryString.search = filterData.search;
-        if (filterData.office_id) queryString.office_id = filterData.office_id;
-        if (filterData.employment_status_id) queryString.employment_status_id = filterData.employment_status_id;
-        queryString.has_deductions = filterData.has_deductions ? '1' : '0';
+    const buildQueryParams = (data: typeof filterData) => {
+        const params: Record<string, string | number | boolean> = {};
+        if (data.month) params.month = data.month;
+        if (data.year) params.year = data.year;
+        if (data.search) params.search = data.search;
+        if (data.office_id) params.office_id = data.office_id;
+        if (data.employment_status_id) params.employment_status_id = data.employment_status_id;
+        params.has_deductions = data.has_deductions;
+        return params;
+    };
 
-        // Update URL with current filters
-        const url = new URL(window.location.href);
-        url.searchParams.set('month', filterData.month.toString());
-        url.searchParams.set('year', filterData.year.toString());
-        if (filterData.search) url.searchParams.set('search', filterData.search);
-        else url.searchParams.delete('search');
-        if (filterData.office_id) url.searchParams.set('office_id', filterData.office_id);
-        else url.searchParams.delete('office_id');
-        if (filterData.employment_status_id) url.searchParams.set('employment_status_id', filterData.employment_status_id);
-        else url.searchParams.delete('employment_status_id');
-        url.searchParams.set('has_deductions', filterData.has_deductions.toString());
+    const handleFilterChange = (field: keyof typeof filterData, value: string | number | boolean) => {
+        const newFilters = { ...filterData, [field]: value };
+        setFilterData(field, value);
+        router.get(route('employee-deductions.index'), buildQueryParams(newFilters), {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
 
-        // Update browser history
-        window.history.pushState({}, '', url.toString());
-
-        router.get(route('employee-deductions.index'), queryString, {
+    const applyFilters = () => {
+        router.get(route('employee-deductions.index'), buildQueryParams(filterData), {
             preserveState: true,
             preserveScroll: true,
         });
@@ -246,7 +226,7 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
                                 items={monthOptions}
                                 placeholder="Select Month"
                                 value={filterData.month.toString()}
-                                onSelect={(value) => setFilterData('month', value ? parseInt(value) : 0)}
+                                onSelect={(value) => handleFilterChange('month', value ? parseInt(value) : 0)}
                             />
                         </div>
 
@@ -255,7 +235,7 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
                                 items={YEARS}
                                 placeholder="Select Year"
                                 value={filterData.year.toString()}
-                                onSelect={(value) => setFilterData('year', value ? parseInt(value) : currentYear)}
+                                onSelect={(value) => handleFilterChange('year', value ? parseInt(value) : currentYear)}
                             />
                         </div>
 
@@ -264,7 +244,7 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
                                 items={officeOptions}
                                 placeholder="All Offices"
                                 value={filterData.office_id || null}
-                                onSelect={(value) => setFilterData('office_id', value ?? '')}
+                                onSelect={(value) => handleFilterChange('office_id', value ?? '')}
                             />
                         </div>
 
@@ -273,7 +253,7 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
                                 items={employmentStatusOptions}
                                 placeholder="All Status"
                                 value={filterData.employment_status_id || null}
-                                onSelect={(value) => setFilterData('employment_status_id', value ?? '')}
+                                onSelect={(value) => handleFilterChange('employment_status_id', value ?? '')}
                             />
                         </div>
 
@@ -283,6 +263,12 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
                                 className="pl-8"
                                 value={filterData.search}
                                 onChange={(e) => setFilterData('search', e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        applyFilters();
+                                    }
+                                }}
                             />
                             <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50 select-none" />
                         </div>
@@ -291,14 +277,14 @@ export default function EmployeeDeductionsIndex({ employees, deductionTypes, off
                             <Checkbox
                                 id="has_deductions"
                                 checked={filterData.has_deductions}
-                                onCheckedChange={(checked) => setFilterData('has_deductions', checked as boolean)}
+                                onCheckedChange={(checked) => handleFilterChange('has_deductions', checked as boolean)}
                             />
                             <Label htmlFor="has_deductions" className="cursor-pointer text-sm select-none">
                                 Has deductions only
                             </Label>
                         </div>
 
-                        <Button onClick={handleFilterChange}>Filter</Button>
+                        <Button onClick={applyFilters}>Filter</Button>
                     </div>
                 </div>
                 <div className="w-full overflow-hidden rounded-sm border shadow-sm">
