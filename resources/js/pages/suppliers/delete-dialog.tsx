@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Supplier } from '@/types/supplier';
 import { useForm } from '@inertiajs/react';
+import { toast } from 'sonner';
 
 interface DeleteSupplierDialogProps {
     supplier: Supplier | null;
@@ -14,7 +15,8 @@ export function DeleteSupplierDialog({ supplier, onClose }: DeleteSupplierDialog
     const handleDelete = () => {
         if (supplier) {
             destroy(route('suppliers.destroy', supplier.id), {
-                onSuccess: () => {
+                onSuccess: (response: { props: FlashProps }) => {
+                    toast.success(response.props.flash?.success);
                     onClose();
                 },
             });

@@ -83,6 +83,6 @@ class SupplierController extends Controller
      */
     public function destroy(Supplier $supplier)
     {
-        return $this->handleDeletion($supplier, 'suppliers.delete');
+        return $this->handleDeletion($supplier, 'suppliers.manage');
     }
 }
