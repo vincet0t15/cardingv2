@@ -10,7 +10,7 @@ import type { Employee, Employee as EmployeeType } from '@/types/employee';
 import type { EmployeeDeduction } from '@/types/employeeDeduction';
 import { router, usePage } from '@inertiajs/react';
 import { PencilIcon, Plus, Printer, Trash2, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -60,6 +60,13 @@ export function CompensationDeductions({
 }: CompensationDeductionsProps) {
     const { props } = usePage();
     const [lastFlashMessage, setLastFlashMessage] = useState<string | null>(null);
+    const [localFilters, setLocalFilters] = useState<{ deduction_month?: string; deduction_year?: string }>(filters);
+    const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Sync local state when filters prop changes
+    useEffect(() => {
+        setLocalFilters(filters);
+    }, [filters]);
 
     // Watch for flash messages and show them as toasts
     useEffect(() => {
@@ -69,6 +76,50 @@ export function CompensationDeductions({
             setLastFlashMessage(flashMessage);
         }
     }, [props.flash, lastFlashMessage]);
+
+    // Memoize year options
+    const yearOptions = useMemo(() =>
+        availableYears.map((year) => ({ value: String(year), label: String(year) })),
+        [availableYears]
+    );
+
+    // Debounced filter apply
+    const applyFilter = useCallback((month: string | undefined, year: string | undefined) => {
+        const newFilters = { ...localFilters };
+        if (month !== undefined) {
+            month ? (newFilters.deduction_month = month) : delete newFilters.deduction_month;
+        }
+        if (year !== undefined) {
+            year ? (newFilters.deduction_year = year) : delete newFilters.deduction_year;
+        }
+        setLocalFilters(newFilters);
+
+        if (debounceRef.current) {
+            clearTimeout(debounceRef.current);
+        }
+
+        debounceRef.current = setTimeout(() => {
+            const params: Record<string, string> = { tab: 'deductions' };
+            if (month) params.deduction_month = month;
+            if (year) params.deduction_year = year;
+            router.get(route('manage.employees.index', employee.id), params, { preserveState: true, preserveScroll: true });
+        }, 300);
+    }, [localFilters, employee.id]);
+
+    // Cleanup debounce on unmount
+    useEffect(() => {
+        return () => {
+            if (debounceRef.current) {
+                clearTimeout(debounceRef.current);
+            }
+        };
+    }, []);
+
+    const clearFilters = useCallback(() => {
+        setLocalFilters({});
+        router.get(route('manage.employees.index', employee.id), { tab: 'deductions' }, { preserveState: true, preserveScroll: true });
+    }, [employee.id]);
+
     const goToPage = (page: number) => {
         router.get(
             route('manage.employees.index', employee.id),
@@ -81,20 +132,6 @@ export function CompensationDeductions({
             { preserveState: true, preserveScroll: true },
         );
     };
-
-    const applyFilter = (month: string | undefined, year: string | undefined) => {
-        const params: Record<string, string> = { tab: 'deductions' };
-        if (month) params.deduction_month = month;
-        if (year) params.deduction_year = year;
-        router.get(route('manage.employees.index', employee.id), params, { preserveState: true, preserveScroll: true });
-    };
-
-    const clearFilters = () => {
-        router.get(route('manage.employees.index', employee.id), { tab: 'deductions' }, { preserveState: true, preserveScroll: true });
-    };
-
-    const formatCurrency = (amount: number) =>
-        new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(amount);
 
     const getEffectiveAmount = (
         history: { amount: number; effective_date: string }[] | undefined,
@@ -159,11 +196,14 @@ export function CompensationDeductions({
 
     const [editingDeduction, setEditingDeduction] = useState<EmployeeDeduction | null>(null);
 
-    const periods = Array.isArray(periodsList) ? periodsList : [];
+    // Memoize periods
+    const periods = useMemo(() => Array.isArray(periodsList) ? periodsList : [], [periodsList]);
     const currentPage = pagination?.current_page ?? 1;
     const lastPage = pagination?.last_page ?? 1;
+    const isEmpty = useMemo(() => periods.length === 0, [periods]);
 
-    const getClothingAllowancesForPeriod = (periodYear: number, periodMonth: number) => {
+    // Memoize compensation data lookups
+    const getClothingAllowancesForPeriod = useCallback((periodYear: number, periodMonth: number) => {
         if (!allClothingAllowances || allClothingAllowances.length === 0) return [];
 
         const periodStart = new Date(periodYear, periodMonth - 1, 1);
@@ -175,9 +215,9 @@ export function CompensationDeductions({
 
             return startDate <= periodEnd && (!endDate || endDate >= periodStart);
         });
-    };
+    }, [allClothingAllowances]);
 
-    const getHazardPaysForPeriod = (periodYear: number, periodMonth: number) => {
+    const getHazardPaysForPeriod = useCallback((periodYear: number, periodMonth: number) => {
         if (!employee.hazard_pays || employee.hazard_pays.length === 0) return [];
 
         const periodStart = new Date(periodYear, periodMonth - 1, 1);
@@ -189,41 +229,23 @@ export function CompensationDeductions({
 
             return startDate <= periodEnd && (!endDate || endDate >= periodStart);
         });
-    };
+    }, [employee.hazard_pays]);
 
-    const computeSignedAdjustment = (adj: any) => {
-        const amt = Number(adj.amount) || 0;
-        const effect = (
-            (adj.adjustmentType && adj.adjustmentType.effect) ||
-            (typeof adj.adjustment_type === 'object' && adj.adjustment_type?.effect) ||
-            adj.effect ||
-            ''
-        )
-            .toString()
-            .toLowerCase();
-
-        if (effect.includes('neg') || effect === '-' || effect.includes('subtract')) {
-            return -amt;
-        }
-
-        return amt;
-    };
-
-    const getClaimsForPeriod = (periodYear: number, periodMonth: number): Claim[] => {
+    const getClaimsForPeriod = useCallback((periodYear: number, periodMonth: number): Claim[] => {
         if (!allClaimsGrouped) return [];
         const key = `${periodYear}-${String(periodMonth).padStart(2, '0')}`;
         const claims = allClaimsGrouped[key];
         return Array.isArray(claims) ? claims : [];
-    };
+    }, [allClaimsGrouped]);
 
-    const getAdjustmentsForPeriod = (periodYear: number, periodMonth: number) => {
+    const getAdjustmentsForPeriod = useCallback((periodYear: number, periodMonth: number) => {
         if (!allAdjustmentsGrouped) return [];
         const key = `${periodYear}-${String(periodMonth).padStart(2, '0')}`;
         const adjustments = allAdjustmentsGrouped[key];
         return Array.isArray(adjustments) ? adjustments : [];
-    };
+    }, [allAdjustmentsGrouped]);
 
-    const groupDeductionsBySalary = (deductionList: EmployeeDeduction[]) => {
+    const groupDeductionsBySalary = useCallback((deductionList: EmployeeDeduction[]) => {
         const grouped = new Map<string | number, { salaryId: string | number | null; salary: any; deductions: EmployeeDeduction[] }>();
 
         deductionList.forEach((d) => {
@@ -239,7 +261,32 @@ export function CompensationDeductions({
         });
 
         return Array.from(grouped.values());
-    };
+    }, []);
+
+    // Format currency memoized
+    const formatCurrency = useCallback((amount: number) =>
+        new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(amount),
+        []
+    );
+
+    // Memoized adjustment calculator
+    const computeSignedAdjustment = useCallback((adj: any) => {
+        const amt = Number(adj.amount) || 0;
+        const effect = (
+            (adj.adjustmentType && adj.adjustmentType.effect) ||
+            (typeof adj.adjustment_type === 'object' && adj.adjustment_type?.effect) ||
+            adj.effect ||
+            ''
+        )
+            .toString()
+            .toLowerCase();
+
+        if (effect.includes('neg') || effect === '-' || effect.includes('subtract')) {
+            return -amt;
+        }
+
+        return amt;
+    }, []);
 
     return (
         <div className="space-y-4">
@@ -248,18 +295,18 @@ export function CompensationDeductions({
                 <CustomComboBox
                     items={MONTHS.map((month, index) => ({ value: String(index + 1), label: month }))}
                     placeholder="All Months"
-                    value={filters.deduction_month ? String(filters.deduction_month) : null}
-                    onSelect={(value) => applyFilter(value ?? undefined, filters.deduction_year)}
+                    value={localFilters.deduction_month ? String(localFilters.deduction_month) : null}
+                    onSelect={(value) => applyFilter(value ?? undefined, localFilters.deduction_year)}
                 />
 
                 <CustomComboBox
-                    items={availableYears.map((year) => ({ value: String(year), label: String(year) }))}
+                    items={yearOptions}
                     placeholder="All Years"
-                    value={filters.deduction_year ? String(filters.deduction_year) : null}
-                    onSelect={(value) => applyFilter(filters.deduction_month, value ?? undefined)}
+                    value={localFilters.deduction_year ? String(localFilters.deduction_year) : null}
+                    onSelect={(value) => applyFilter(localFilters.deduction_month, value ?? undefined)}
                 />
 
-                {(filters.deduction_month || filters.deduction_year) && (
+                {(localFilters.deduction_month || localFilters.deduction_year) && (
                     <Button variant="ghost" onClick={clearFilters}>
                         <X className="mr-1 h-4 w-4" />
                         Clear

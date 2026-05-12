@@ -9,7 +9,7 @@ import type { Employee } from '@/types/employee';
 import { PaginatedDataResponse } from '@/types/pagination';
 import { router } from '@inertiajs/react';
 import { PencilIcon, Plus, Trash2, X } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CreateClaimDialog } from './create';
 import { DeleteClaimDialog } from './delete';
 import { EditClaimDialog } from './edit';
@@ -32,6 +32,14 @@ interface DialogState {
 export function EmployeeClaims({ employee, claims, claimTypes, availableYears, filters }: ClaimsProps) {
     const [openCreateDialog, setOpenCreateDialog] = useState(false);
     const [editDialogState, setEditDialogState] = useState<DialogState>({ open: false, claim: null });
+    const [localFilters, setLocalFilters] = useState<ClaimFilters>(filters);
+    const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Sync local state when filters prop changes
+    useEffect(() => {
+        setLocalFilters(filters);
+    }, [filters]);
+
     const claimsData = claims || {
         data: [],
         current_page: 1,
@@ -45,13 +53,38 @@ export function EmployeeClaims({ employee, claims, claimTypes, availableYears, f
     };
     const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
     const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-    const applyFilter = (newFilters: Partial<ClaimFilters>) => {
-        router.get(route('manage.employees.claims.index', employee.id), { ...filters, ...newFilters }, { preserveState: true, preserveScroll: true });
-    };
 
-    const clearFilters = () => {
+    // Debounced navigation
+    const applyFilter = useCallback((newFilters: Partial<ClaimFilters>) => {
+        const merged = { ...localFilters, ...newFilters };
+        setLocalFilters(merged);
+
+        if (debounceRef.current) {
+            clearTimeout(debounceRef.current);
+        }
+
+        debounceRef.current = setTimeout(() => {
+            router.get(
+                route('manage.employees.claims.index', employee.id),
+                merged,
+                { preserveState: true, preserveScroll: true }
+            );
+        }, 300);
+    }, [localFilters, employee.id]);
+
+    // Cleanup debounce on unmount
+    useEffect(() => {
+        return () => {
+            if (debounceRef.current) {
+                clearTimeout(debounceRef.current);
+            }
+        };
+    }, []);
+
+    const clearFilters = useCallback(() => {
+        setLocalFilters({});
         router.get(route('manage.employees.claims.index', employee.id), {}, { preserveState: true, preserveScroll: true });
-    };
+    }, [employee.id]);
 
     const openEditDialog = (claim: Claim) => {
         setEditDialogState({ open: true, claim });
@@ -79,30 +112,55 @@ export function EmployeeClaims({ employee, claims, claimTypes, availableYears, f
         return date.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
     };
 
-    const hasActiveFilters = filters.claim_month || filters.claim_year || filters.claim_type_id;
+    // Memoize active filters check
+    const hasActiveFilters = useMemo(() =>
+        localFilters.claim_month || localFilters.claim_year || localFilters.claim_type_id,
+        [localFilters]
+    );
+
+    // Memoize month options
+    const monthOptions = useMemo(() =>
+        MONTHS.map((month, index) => ({ value: String(index + 1), label: month })),
+        []
+    );
+
+    // Memoize year options
+    const yearOptions = useMemo(() =>
+        availableYears.map((year) => ({ value: String(year), label: String(year) })),
+        [availableYears]
+    );
+
+    // Memoize claim type options
+    const claimTypeOptions = useMemo(() =>
+        claimTypes.map((type) => ({ value: String(type.id), label: type.name })),
+        [claimTypes]
+    );
+
+    // Memoize empty state check
+    const isEmpty = useMemo(() => claimsData.data.length === 0, [claimsData.data.length]);
 
     return (
         <div className="space-y-4">
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-3">
                 <CustomComboBox
-                    items={MONTHS.map((month, index) => ({ value: String(index + 1), label: month }))}
+                    items={monthOptions}
                     placeholder="All Months"
-                    value={filters.claim_month ?? null}
+                    value={localFilters.claim_month ?? null}
                     onSelect={(value) => applyFilter({ claim_month: value ?? undefined })}
                 />
 
                 <CustomComboBox
-                    items={availableYears.map((year) => ({ value: String(year), label: String(year) }))}
+                    items={yearOptions}
                     placeholder="All Years"
-                    value={filters.claim_year ?? null}
+                    value={localFilters.claim_year ?? null}
                     onSelect={(value) => applyFilter({ claim_year: value ?? undefined })}
                 />
 
                 <CustomComboBox
-                    items={claimTypes.map((type) => ({ value: String(type.id), label: type.name }))}
+                    items={claimTypeOptions}
                     placeholder="All Types"
-                    value={filters.claim_type_id ?? null}
+                    value={localFilters.claim_type_id ?? null}
                     onSelect={(value) => applyFilter({ claim_type_id: value ?? undefined })}
                 />
 
@@ -122,7 +180,7 @@ export function EmployeeClaims({ employee, claims, claimTypes, availableYears, f
             </div>
 
             {/* Claims Table */}
-            {claimsData.data.length === 0 ? (
+            {isEmpty ? (
                 <div className="text-muted-foreground rounded-sm border py-12 text-center text-sm">No claims recorded yet.</div>
             ) : (
                 <div className="rounded-md border">

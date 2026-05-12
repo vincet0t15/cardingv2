@@ -44,7 +44,9 @@ class ClaimController extends Controller
             ->pluck('year')
             ->toArray();
 
-        return Inertia::render('Employees/Manage/Manage', [
+        $claimTypes = ClaimType::active()->get();
+
+        return Inertia::render('employees/Manage/Manage', [
             'employee' => $employee->load(['office', 'employmentStatus']),
             'claims' => $claims,
             'claimTypes' => $claimTypes,
