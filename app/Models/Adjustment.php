@@ -37,7 +37,6 @@ class Adjustment extends Model
         'pay_period_month' => 'integer',
         'pay_period_year' => 'integer',
         'effectivity_date' => 'date',
-        'approved_at' => 'datetime',
         'processed_at' => 'datetime',
     ];
 

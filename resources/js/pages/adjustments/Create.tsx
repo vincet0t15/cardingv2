@@ -13,6 +13,7 @@ import type { Employee } from '@/types/employee';
 import type { ReferenceType } from '@/types/referenceType';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, Save } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Props {
     employees?: Employee[];
@@ -77,9 +78,15 @@ export default function Create({ employees = [], adjustmentTypes = [], reference
         e.preventDefault();
 
         if (isEdit) {
-            put(route('adjustments.update', adjustment.id));
+            put(route('adjustments.update', adjustment.id), {
+                onSuccess: () => toast.success('Adjustment updated successfully'),
+                onError: () => toast.error('Failed to update adjustment'),
+            });
         } else {
-            post(route('adjustments.store'));
+            post(route('adjustments.store'), {
+                onSuccess: () => toast.success('Adjustment created successfully'),
+                onError: () => toast.error('Failed to create adjustment'),
+            });
         }
     };
 

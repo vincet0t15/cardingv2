@@ -25,7 +25,7 @@ class AdjustmentController extends Controller
     {
         $this->authorize('viewAny', Adjustment::class);
 
-        $query = Adjustment::with(['employee.office', 'employee.employmentStatus', 'approvedBy', 'createdBy'])
+        $query = Adjustment::with(['employee.office', 'employee.employmentStatus', 'createdBy'])
             ->orderBy('created_at', 'desc');
 
         // Filter by status
@@ -152,7 +152,7 @@ class AdjustmentController extends Controller
     {
         $this->authorize('view', $adjustment);
 
-        $adjustment->load(['employee.office', 'employee.employmentStatus', 'approvedBy', 'createdBy']);
+        $adjustment->load(['employee.office', 'employee.employmentStatus', 'createdBy']);
 
         return Inertia::render('adjustments/Show', [
             'adjustment' => $adjustment,
@@ -233,7 +233,7 @@ class AdjustmentController extends Controller
         $this->authorize('viewAny', Adjustment::class);
 
         $adjustments = $employee->adjustments()
-            ->with(['approvedBy', 'createdBy'])
+            ->with(['createdBy'])
             ->orderBy('pay_period_year', 'desc')
             ->orderBy('pay_period_month', 'desc')
             ->orderBy('created_at', 'desc')
@@ -252,7 +252,7 @@ class AdjustmentController extends Controller
     {
         $this->authorize('viewAny', Adjustment::class);
 
-        $query = Adjustment::with(['employee.office', 'approvedBy', 'createdBy'])
+        $query = Adjustment::with(['employee.office', 'createdBy'])
             ->orderBy('effectivity_date', 'desc');
 
         // Filter by period
