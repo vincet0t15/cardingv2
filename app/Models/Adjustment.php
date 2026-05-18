@@ -134,7 +134,7 @@ class Adjustment extends Model
         static::creating(function ($adjustment) {
             $adjustment->created_by = Auth::id();
             if (!$adjustment->status) {
-                $adjustment->status = self::STATUS_PENDING;
+                $adjustment->status = self::STATUS_PROCESSED;
             }
         });
     }
