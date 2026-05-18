@@ -1,0 +1,118 @@
+<?php
+
+namespace App\Traits;
+
+use App\Models\DeleteRequest;
+use App\Models\Notification;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
+
+/**
+ * Trait HandlesDeletionRequests
+ *
+ * Provides a unified deletion workflow that:
+ * 1. Only allows direct deletion if user has specific delete permission
+ * 2. Otherwise creates a DeleteRequest for super admin approval
+ * 3. Sends notifications to super admins
+ */
+trait HandlesDeletionRequests
+{
+    /**
+     * Handle deletion of a model through the DeleteRequest workflow
+     *
+     * @param Model $model The model to delete
+     * @param string $permissionName The permission name (e.g., 'employees.delete')
+     * @param string $reason Optional reason for deletion
+     * @param bool $forceApproval If true, always creates a deletion request (even with permission)
+     * @return RedirectResponse
+     */
+    protected function handleDeletion(Model $model, string $permissionName, ?string $reason = null, bool $forceApproval = false, ?callable $beforeDelete = null): RedirectResponse
+    {
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+
+        // Check if user has direct permission to delete and approval is not forced
+        if (!$forceApproval && $user?->hasPermissionTo($permissionName)) {
+            if ($beforeDelete) {
+                $beforeDelete($model);
+            }
+
+            $model->delete();
+            $modelName = class_basename($model);
+            return redirect()
+                ->back()
+                ->with('success', "{$modelName} deleted successfully.");
+        }
+
+        // User doesn't have permission or approval is forced - create delete request
+        $reason = $reason ?? request()->input('reason', 'No reason provided');
+
+        if (!$user) {
+            return redirect()
+                ->back()
+                ->with('error', 'User not authenticated');
+        }
+
+        $deleteRequest = DeleteRequest::create([
+            'requestable_type' => $model::class,
+            'requestable_id' => $model->id,
+            'requested_by' => $user->id,
+            'status' => DeleteRequest::STATUS_PENDING,
+            'reason' => $reason,
+        ]);
+
+        // Notify super admins
+        $this->notifySuperAdminsOfDeletionRequest($deleteRequest, $model, $user);
+
+        $modelName = class_basename($model);
+        return redirect()
+            ->back()
+            ->with('success', "Your {$modelName} deletion request has been sent to administrators for approval.");
+    }
+
+    /**
+     * Send notifications to all super admins about a deletion request
+     */
+    protected function notifySuperAdminsOfDeletionRequest(DeleteRequest $deleteRequest, Model $model, \App\Models\User $user): void
+    {
+        $superAdmins = \Spatie\Permission\Models\Role::where('name', 'super admin')
+            ->first()
+            ?->users
+            ?? collect();
+
+        $modelName = class_basename($model);
+        $modelIdentifier = $this->getModelIdentifier($model);
+
+        foreach ($superAdmins as $admin) {
+            Notification::create([
+                'user_id' => $admin->id,
+                'type' => 'delete_request',
+                'title' => 'Delete Request',
+                'message' => "{$user->name} requested to delete {$modelName}: {$modelIdentifier}",
+                'link' => '/delete-requests',
+                'notifiable_id' => $deleteRequest->id,
+                'notifiable_type' => DeleteRequest::class,
+            ]);
+        }
+    }
+
+    /**
+     * Get a human-readable identifier for the model
+     */
+    protected function getModelIdentifier(Model $model): string
+    {
+        // Try common name fields
+        if ($model->offsetExists('name')) {
+            return $model->name;
+        }
+        if ($model->offsetExists('full_name')) {
+            return $model->full_name;
+        }
+        if ($model->offsetExists('title')) {
+            return $model->title;
+        }
+        // Fallback to ID
+        return "ID: {$model->id}";
+    }
+}
