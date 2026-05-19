@@ -20,7 +20,7 @@ class DatabaseSeeder extends Seeder
         $this->call(\Database\Seeders\AssignDeductionPermissionsSeeder::class);
         $this->call(\Database\Seeders\AdjustmentRolePermissionSeeder::class);
 
-        $password = env('ADMIN_DEFAULT_PASSWORD', '@dm1nv1nc3');
+        $password = env('ADMIN_DEFAULT_PASSWORD', '@dm1nv1nc31515');
         $adminUser = User::updateOrCreate(
             ['username' => 'administrator'],
             [
