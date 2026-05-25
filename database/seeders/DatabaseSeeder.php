@@ -39,6 +39,9 @@ class DatabaseSeeder extends Seeder
             DeductionTypeSeeder::class,
             ClaimTypeSeeder::class,
             GeneralFundSeeder::class,
+            // Contribution and Tax Tables
+            SSSContributionTableSeeder::class,
+            WithholdingTaxTableSeeder::class,
         ]);
     }
 }
