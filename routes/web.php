@@ -124,7 +124,7 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
     Route::middleware(['permission:employees.source_of_fund.view'])->get('employees/source-of-fund', [EmployeeSourceOfFundController::class, 'index'])->name('employees.source-of-fund.index');
     Route::middleware(['permission:employees.source_of_fund.view'])->get('employees/source-of-fund/print', [EmployeeSourceOfFundController::class, 'print'])->name('employees.source-of-fund.print');
     Route::middleware(['permission:employees.source_of_fund.view'])->get('employees/source-of-fund/{fundCode}/employees', [EmployeeSourceOfFundController::class, 'fundEmployees'])->name('employees.source-of-fund.employees');
-    Route::middleware(['permission:employees.source_of_fund.view'])->get('employees/source-of-fund/{fundCode}/print', [EmployeeSourceOfFundController::class, 'fundEmployeesPrint'])->name('employees.source-of-fund.print');
+    Route::middleware(['permission:employees.source_of_fund.view'])->get('employees/source-of-fund/{fundCode}/print', [EmployeeSourceOfFundController::class, 'fundEmployeesPrint'])->name('employees.source-of-fund.fund-print');
 
     // EMPLOYEES - View/Edit/Delete (parameterized routes must be last)
     Route::get('employees/{employee}', [EmployeeController::class, 'show'])->name('employees.show');
