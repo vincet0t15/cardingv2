@@ -1,10 +1,10 @@
 import { ChartOfficeClaims } from '@/components/chart-office-claims';
-import { ChartPieMultiple } from '@/components/chart-pie-multiple';
+
 import { CustomComboBox } from '@/components/CustomComboBox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import type { Employee } from '@/types/employee';
@@ -19,7 +19,6 @@ import {
     Clock,
     Coins,
     FileText,
-    Filter,
     Key,
     MinusCircle,
     Receipt,
@@ -29,7 +28,6 @@ import {
     Users,
     Wallet,
 } from 'lucide-react';
-import React from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -180,9 +178,6 @@ export default function Dashboard({
     recentEmployeesWithDeductions,
     topDeductionTypes,
     currentPeriod,
-    recentActivity,
-    highestTravelClaims,
-    topClaimants,
     mostTravelClaims,
     mostTrips,
     mostOvertimeClaims,
@@ -191,15 +186,7 @@ export default function Dashboard({
     employeesByEmploymentStatus,
     topSuppliers,
 }: DashboardProps) {
-    const [chartType, setChartType] = React.useState<'bar' | 'pie'>('bar');
-    const [salaryViewMode, setSalaryViewMode] = React.useState<'byFund' | 'byCode'>('byFund');
-    const [claimsTypeFilter, setClaimsTypeFilter] = React.useState<'claims' | 'overtime'>('claims');
-
-    const {
-        data: filterData,
-        setData: setFilterData,
-        get,
-    } = useForm({
+    const { data: filterData, setData: setFilterData } = useForm({
         month: filters.month.toString(),
         year: filters.year.toString(),
     });
@@ -423,126 +410,92 @@ export default function Dashboard({
                                     {filterData.year}
                                 </CardDescription>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="outline" size="sm">
-                                            <Filter className="mr-2 h-4 w-4" />
-                                            {salaryViewMode === 'byFund' ? 'By Fund' : 'By Code'}
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-40">
-                                        <DropdownMenuRadioGroup
-                                            value={salaryViewMode}
-                                            onValueChange={(value) => setSalaryViewMode(value as 'byFund' | 'byCode')}
-                                        >
-                                            <DropdownMenuRadioItem value="byFund">By Fund</DropdownMenuRadioItem>
-                                            <DropdownMenuRadioItem value="byCode">By Code</DropdownMenuRadioItem>
-                                        </DropdownMenuRadioGroup>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                                <Button variant="ghost" size="sm" onClick={() => router.get(route('employees.source-of-fund.index'))}>
-                                    View All
-                                    <ArrowUpRight className="ml-1 h-3 w-3" />
-                                </Button>
-                            </div>
+                            <Button variant="ghost" size="sm" onClick={() => router.get(route('employees.source-of-fund.index'))}>
+                                View All
+                                <ArrowUpRight className="ml-1 h-3 w-3" />
+                            </Button>
                         </div>
                     </CardHeader>
                 </Card>
 
-                {/* Salary Distribution Chart */}
-                {salaryViewMode === 'byFund' && (
-                    <ChartPieMultiple
-                        data={salaryDistribution.map((fund) => ({
-                            code: fund.code,
-                            description: fund.description,
-                            total_amount: fund.total_amount,
-                        }))}
-                        title="Salaries by General Fund"
-                        description={`Distribution for ${months.find((m) => m.value === filterData.month)?.label || 'Current'} ${filterData.year}`}
-                    />
-                )}
-
-                {salaryViewMode === 'byCode' && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Coins className="h-5 w-5" />
-                                Salaries by Source of Fund Code
-                            </CardTitle>
-                            <CardDescription>
-                                Distribution for {months.find((m) => m.value === filterData.month)?.label || 'Current'} {filterData.year}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {salaryDistribution.flatMap((fund) => fund.codes).filter((code) => code.total_amount > 0).length > 0 ? (
-                                <div className="space-y-3">
-                                    {salaryDistribution
-                                        .flatMap((fund) => fund.codes)
-                                        .filter((code) => code.total_amount > 0)
-                                        .sort((a, b) => b.total_amount - a.total_amount)
-                                        .map((code, index) => {
-                                            const maxAmount =
-                                                salaryDistribution
-                                                    .flatMap((fund) => fund.codes)
-                                                    .filter((c) => c.total_amount > 0)
-                                                    .sort((a, b) => b.total_amount - a.total_amount)[0]?.total_amount || 1;
-                                            const percentage = (code.total_amount / maxAmount) * 100;
-                                            return (
-                                                <div key={code.code} className="space-y-1">
-                                                    <div className="flex items-center justify-between text-sm">
-                                                        <div className="flex items-center gap-2">
-                                                            <span
-                                                                className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                                                                    index === 0
-                                                                        ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'
-                                                                        : index === 1
-                                                                          ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
-                                                                          : index === 2
-                                                                            ? 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300'
-                                                                            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                                                                }`}
-                                                            >
-                                                                {index + 1}
-                                                            </span>
-                                                            <div>
-                                                                <p className="font-medium">{code.code}</p>
-                                                                <p className="text-muted-foreground text-xs">{code.code_description}</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <p className="font-semibold text-blue-600">{formatCurrency(code.total_amount)}</p>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Coins className="h-5 w-5" />
+                            Salaries by Source of Fund Code
+                        </CardTitle>
+                        <CardDescription>
+                            Distribution for {months.find((m) => m.value === filterData.month)?.label || 'Current'} {filterData.year}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {salaryDistribution.flatMap((fund) => fund.codes).filter((code) => code.total_amount > 0).length > 0 ? (
+                            <div className="space-y-3">
+                                {salaryDistribution
+                                    .flatMap((fund) => fund.codes)
+                                    .filter((code) => code.total_amount > 0)
+                                    .sort((a, b) => b.total_amount - a.total_amount)
+                                    .map((code, index) => {
+                                        const maxAmount =
+                                            salaryDistribution
+                                                .flatMap((fund) => fund.codes)
+                                                .filter((c) => c.total_amount > 0)
+                                                .sort((a, b) => b.total_amount - a.total_amount)[0]?.total_amount || 1;
+                                        const percentage = (code.total_amount / maxAmount) * 100;
+                                        return (
+                                            <div key={code.code} className="space-y-1">
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <span
+                                                            className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                                                                index === 0
+                                                                    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'
+                                                                    : index === 1
+                                                                      ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                                                                      : index === 2
+                                                                        ? 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300'
+                                                                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                                            }`}
+                                                        >
+                                                            {index + 1}
+                                                        </span>
+                                                        <div>
+                                                            <p className="font-medium">{code.code}</p>
+                                                            <p className="text-muted-foreground text-xs">{code.code_description}</p>
                                                         </div>
                                                     </div>
-                                                    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                                                        <div
-                                                            className="h-full rounded-full bg-gradient-to-r from-teal-500 to-teal-600 transition-all"
-                                                            style={{ width: `${percentage}%` }}
-                                                        />
+                                                    <div className="text-right">
+                                                        <p className="font-semibold text-blue-600">{formatCurrency(code.total_amount)}</p>
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
+                                                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                                                    <div
+                                                        className="h-full rounded-full bg-gradient-to-r from-teal-500 to-teal-600 transition-all"
+                                                        style={{ width: `${percentage}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
+                        ) : (
+                            <div className="py-8 text-center">
+                                <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                                    <Coins className="h-6 w-6 text-slate-400" />
                                 </div>
-                            ) : (
-                                <div className="py-8 text-center">
-                                    <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
-                                        <Coins className="h-6 w-6 text-slate-400" />
-                                    </div>
-                                    <p className="text-muted-foreground text-sm">No salary data available for this period</p>
-                                </div>
-                            )}
-                        </CardContent>
-                        {salaryDistribution.flatMap((fund) => fund.codes).filter((code) => code.total_amount > 0).length > 0 && (
-                            <CardFooter className="flex-col items-start gap-2 text-sm">
-                                <div className="text-muted-foreground text-xs">
-                                    Showing salary distribution across{' '}
-                                    {salaryDistribution.flatMap((fund) => fund.codes).filter((code) => code.total_amount > 0).length} source codes
-                                </div>
-                            </CardFooter>
+                                <p className="text-muted-foreground text-sm">No salary data available for this period</p>
+                            </div>
                         )}
-                    </Card>
-                )}
+                    </CardContent>
+                    {salaryDistribution.flatMap((fund) => fund.codes).filter((code) => code.total_amount > 0).length > 0 && (
+                        <CardFooter className="flex-col items-start gap-2 text-sm">
+                            <div className="text-muted-foreground text-xs">
+                                Showing salary distribution across{' '}
+                                {salaryDistribution.flatMap((fund) => fund.codes).filter((code) => code.total_amount > 0).length} source codes
+                            </div>
+                        </CardFooter>
+                    )}
+                </Card>
 
                 {/* Travel & Overtime Claims & Suppliers Charts */}
                 <div className="grid gap-6 lg:grid-cols-2">
