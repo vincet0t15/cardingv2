@@ -227,6 +227,18 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
 
     const totalAllDeductions = filteredDeductions.reduce((sum, d) => sum + Number(d.amount), 0);
 
+    // Get all distinct periods from filtered deductions for cumulative compensation calculation
+    const allDistinctPeriods = useMemo(() => {
+        const periodSet = new Map<string, { year: number; month: number }>();
+        filteredDeductions.forEach((d) => {
+            const key = `${d.pay_period_year}-${String(d.pay_period_month).padStart(2, '0')}`;
+            if (!periodSet.has(key)) {
+                periodSet.set(key, { year: d.pay_period_year, month: d.pay_period_month });
+            }
+        });
+        return Array.from(periodSet.values());
+    }, [filteredDeductions]);
+
     // Normalize and return an adjustment type display name (handles object or string shapes)
     const getAdjustmentTypeName = (a: any) => {
         if (!a) return '—';
@@ -264,8 +276,10 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
 
     // Determine which compensation values to show based on filters
     let salary: number;
+    let salaryPeriodsCount: number = 0;
     let pera: number;
     let rata: number;
+    let rataPeriodsCount: number = 0;
     let hazardPay: number;
     let clothingAllowance: number;
     let showGrossAndNet: boolean = true;
@@ -280,10 +294,13 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
         clothingAllowance = getEffectiveAmountForDateRange(employee.clothing_allowances, parseInt(filterYear), parseInt(filterMonth));
         showGrossAndNet = true; // Specific period - calculations make sense
     } else if (filterYear) {
-        // Year only - sum ALL records within that year
-        salary = sumCompensationForYear(employee.salaries, parseInt(filterYear));
-        pera = sumCompensationForYear(employee.peras, parseInt(filterYear));
-        rata = employee.is_rata_eligible ? sumCompensationForYear(employee.ratas, parseInt(filterYear)) : 0;
+        // Year only - sum across periods within that year
+        const yearPeriods = allDistinctPeriods.filter((p) => p.year === parseInt(filterYear));
+        salary = yearPeriods.reduce((sum, p) => sum + getEffectiveAmount(employee.salaries, p.year, p.month), 0);
+        salaryPeriodsCount = yearPeriods.length;
+        pera = yearPeriods.reduce((sum, p) => sum + getEffectiveAmount(employee.peras, p.year, p.month), 0);
+        rata = employee.is_rata_eligible ? yearPeriods.reduce((sum, p) => sum + getEffectiveAmount(employee.ratas, p.year, p.month), 0) : 0;
+        rataPeriodsCount = employee.is_rata_eligible ? yearPeriods.filter((p) => getEffectiveAmount(employee.ratas, p.year, p.month) > 0).length : 0;
         // For year view, sum date-range based records that fall in the year
         hazardPay = employee.hazard_pays
             ? employee.hazard_pays.reduce((sum, r) => {
@@ -300,10 +317,14 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
         showGrossAndNet = true;
         isYearlyView = true;
     } else {
-        // All time - sum ALL salary/pera/rata across all periods
-        salary = sumCompensation(employee.salaries);
-        pera = sumCompensation(employee.peras);
-        rata = employee.is_rata_eligible ? sumCompensation(employee.ratas) : 0;
+        // All time - sum across all distinct deduction periods
+        salary = allDistinctPeriods.reduce((sum, p) => sum + getEffectiveAmount(employee.salaries, p.year, p.month), 0);
+        salaryPeriodsCount = allDistinctPeriods.length;
+        pera = allDistinctPeriods.reduce((sum, p) => sum + getEffectiveAmount(employee.peras, p.year, p.month), 0);
+        rata = employee.is_rata_eligible ? allDistinctPeriods.reduce((sum, p) => sum + getEffectiveAmount(employee.ratas, p.year, p.month), 0) : 0;
+        rataPeriodsCount = employee.is_rata_eligible
+            ? allDistinctPeriods.filter((p) => getEffectiveAmount(employee.ratas, p.year, p.month) > 0).length
+            : 0;
         // All-time sum for date-range based allowances
         hazardPay = employee.hazard_pays ? employee.hazard_pays.reduce((sum, r) => sum + Number(r.amount), 0) : 0;
         clothingAllowance = employee.clothing_allowances ? employee.clothing_allowances.reduce((sum, r) => sum + Number(r.amount), 0) : 0;
@@ -600,10 +621,8 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                                                         </div>
                                                         <div className="grid grid-cols-2 divide-x border-t">
                                                             <div className="grid grid-cols-2">
-                                                                <div className="text-muted-foreground px-4 py-2 text-sm">Total Deductions</div>
-                                                                <div className="px-4 py-2 text-right font-medium text-red-800">
-                                                                    -{formatCurrency(groupTotal)}
-                                                                </div>
+                                                                <div className="text-muted-foreground px-4 py-2 text-sm" />
+                                                                <div className="px-4 py-2 text-right" />
                                                             </div>
                                                             <div className="grid grid-cols-2 bg-green-50">
                                                                 <div className="px-4 py-2 text-sm font-medium text-green-800">Net Pay</div>
