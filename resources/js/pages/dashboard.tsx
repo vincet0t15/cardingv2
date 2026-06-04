@@ -105,6 +105,13 @@ interface DashboardProps {
         travel_count: number;
         total_travel_amount: number;
     }[];
+    mostTrips: {
+        employee_id: number;
+        employee_name: string;
+        office: string;
+        travel_count: number;
+        total_travel_amount: number;
+    }[];
     mostOvertimeClaims: {
         employee_id: number;
         employee_name: string;
@@ -177,6 +184,7 @@ export default function Dashboard({
     highestTravelClaims,
     topClaimants,
     mostTravelClaims,
+    mostTrips,
     mostOvertimeClaims,
     claimsByOffice,
     overtimeByOffice,
@@ -537,8 +545,8 @@ export default function Dashboard({
                 )}
 
                 {/* Travel & Overtime Claims & Suppliers Charts */}
-                <div className="grid gap-6 lg:grid-cols-3">
-                    {/* Top 10 Travel Claims Chart */}
+                <div className="grid gap-6 lg:grid-cols-2">
+                    {/* Top 10 Travel Claims by Amount */}
                     <Card>
                         <CardHeader>
                             <div className="flex items-center justify-between">
@@ -581,7 +589,11 @@ export default function Dashboard({
                                                         </span>
                                                         <div>
                                                             <button
-                                                                onClick={() => router.get(route('claims.employee.detail', employee.employee_id))}
+                                                                onClick={() =>
+                                                                    router.get(route('claims.employee.detail', employee.employee_id), {
+                                                                        type: 'travel',
+                                                                    })
+                                                                }
                                                                 className="cursor-pointer text-left font-medium text-blue-600 hover:underline"
                                                             >
                                                                 {employee.employee_name}
@@ -610,6 +622,89 @@ export default function Dashboard({
                                         <Receipt className="h-6 w-6 text-slate-400" />
                                     </div>
                                     <p className="text-muted-foreground text-sm">No travel claims data for this period</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Top 10 Employees with Most Trips */}
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="flex items-center gap-2">
+                                    <Receipt className="h-5 w-5" />
+                                    Top 10 Employees with Most Trips
+                                </CardTitle>
+                                <Button variant="ghost" size="sm" onClick={() => router.get(route('claims.report', { type: 'travel' }))}>
+                                    View All
+                                    <ArrowUpRight className="ml-1 h-3 w-3" />
+                                </Button>
+                            </div>
+                            <CardDescription>
+                                Employees with most travel trips for {months.find((m) => m.value === filterData.month)?.label || 'Current'}{' '}
+                                {filterData.year}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="bg-white">
+                            {mostTrips.length > 0 ? (
+                                <div className="space-y-3">
+                                    {mostTrips.map((employee, index) => {
+                                        const maxCount = mostTrips[0]?.travel_count || 1;
+                                        const percentage = (employee.travel_count / maxCount) * 100;
+                                        return (
+                                            <div key={employee.employee_id} className="space-y-1">
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <span
+                                                            className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                                                                index === 0
+                                                                    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'
+                                                                    : index === 1
+                                                                      ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                                                                      : index === 2
+                                                                        ? 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300'
+                                                                        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                                            }`}
+                                                        >
+                                                            {index + 1}
+                                                        </span>
+                                                        <div>
+                                                            <button
+                                                                onClick={() =>
+                                                                    router.get(route('claims.employee.detail', employee.employee_id), {
+                                                                        type: 'travel',
+                                                                    })
+                                                                }
+                                                                className="cursor-pointer text-left font-medium text-amber-600 hover:underline"
+                                                            >
+                                                                {employee.employee_name}
+                                                            </button>
+                                                            <p className="text-muted-foreground text-xs">{employee.office}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="font-semibold text-amber-600">{formatNumber(employee.travel_count)} trips</p>
+                                                        <p className="text-muted-foreground text-xs">
+                                                            {formatCurrency(employee.total_travel_amount)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                                                    <div
+                                                        className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-600 transition-all"
+                                                        style={{ width: `${percentage}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="py-8 text-center">
+                                    <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                                        <Receipt className="h-6 w-6 text-slate-400" />
+                                    </div>
+                                    <p className="text-muted-foreground text-sm">No travel trips data for this period</p>
                                 </div>
                             )}
                         </CardContent>
@@ -658,7 +753,11 @@ export default function Dashboard({
                                                         </span>
                                                         <div>
                                                             <button
-                                                                onClick={() => router.get(route('claims.employee.detail', employee.employee_id))}
+                                                                onClick={() =>
+                                                                    router.get(route('claims.employee.detail', employee.employee_id), {
+                                                                        type: 'overtime',
+                                                                    })
+                                                                }
                                                                 className="cursor-pointer text-left font-medium text-emerald-600 hover:underline"
                                                             >
                                                                 {employee.employee_name}

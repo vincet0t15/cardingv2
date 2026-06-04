@@ -357,6 +357,32 @@ class DashboardController extends Controller
                 ];
             });
 
+        // Top 10 Employees with Most Travel Trips (by count, not amount) - Travel Reimbursement only
+        $mostTripsQuery = Claim::whereHas('claimType', function ($query) {
+            $query->where('code', 'TRAVEL');
+        })->with(['employee.office']);
+
+        if ($useFilters) {
+            $mostTripsQuery->whereMonth('claim_date', $currentMonth)
+                ->whereYear('claim_date', $currentYear);
+        }
+
+        $mostTrips = $mostTripsQuery->selectRaw('employee_id, COUNT(*) as travel_count, SUM(amount) as total_travel_amount')
+            ->groupBy('employee_id')
+            ->with(['employee.office'])
+            ->orderByDesc('travel_count')
+            ->limit(10)
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'employee_id' => $item->employee_id,
+                    'employee_name' => $item->employee->last_name . ', ' . $item->employee->first_name,
+                    'office' => $item->employee->office?->name ?? 'N/A',
+                    'travel_count' => (int) $item->travel_count,
+                    'total_travel_amount' => (float) $item->total_travel_amount,
+                ];
+            });
+
         // Top 10 Employees with Most Overtime Claims (by amount)
         $mostOvertimeClaimsQuery = Claim::whereHas('claimType', function ($query) {
             $query->where('code', 'OVERTIME');
@@ -528,6 +554,7 @@ class DashboardController extends Controller
             'highestTravelClaims' => $highestTravelClaims,
             'topClaimants' => $topClaimants,
             'mostTravelClaims' => $mostTravelClaims,
+            'mostTrips' => $mostTrips,
             'mostOvertimeClaims' => $mostOvertimeClaims,
             'claimsByOffice' => $claimsByOffice,
             'overtimeByOffice' => $overtimeByOffice,
