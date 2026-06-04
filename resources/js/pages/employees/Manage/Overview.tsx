@@ -109,15 +109,18 @@ function Overview({
         displayPeriodKey = yearPeriods[0] || `${selectedYear}-01`;
         displayPeriodLabel = `${selectedYear} (All Months)`;
     } else {
-        // No filters - use latest period
-        const latestPeriod = availablePeriods[0] || currentPeriodKey;
-        displayPeriodKey = latestPeriod;
-        displayPeriodLabel = `${MONTHS_SHORT[parseInt(displayPeriodKey.split('-')[1]) - 1]} ${displayPeriodKey.split('-')[0]}`;
+        // No filters — show all periods
+        displayPeriodKey = '';
+        displayPeriodLabel = 'All Periods';
     }
 
     const selectedPeriodKey = selectedYear && selectedMonth ? `${selectedYear}-${selectedMonth.padStart(2, '0')}` : null;
 
     const displayDeductions = useMemo(() => {
+        if (!selectedYear && !selectedMonth) {
+            // No filters — show ALL deductions across all periods
+            return Object.values(deductions || {}).flat();
+        }
         if (selectedYear && !selectedMonth) {
             // Year-only filter: show all deductions for that year
             const yearDeductions: EmployeeDeduction[] = [];
@@ -128,11 +131,15 @@ function Overview({
             });
             return yearDeductions;
         }
-        // Specific month/year or default behavior
+        // Specific month/year
         return deductions[displayPeriodKey] ?? [];
     }, [deductions, displayPeriodKey, selectedYear, selectedMonth, availablePeriods]);
 
     const displayClaims = useMemo(() => {
+        if (!selectedYear && !selectedMonth) {
+            // No filters — show ALL claims
+            return claims;
+        }
         if (selectedYear && !selectedMonth) {
             // Year-only filter: show all claims for that year
             return claims.filter((c) => {
@@ -147,7 +154,7 @@ function Overview({
                 return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === `${selectedYear}-${selectedMonth.padStart(2, '0')}`;
             });
         }
-        return [];
+        return claims;
     }, [claims, selectedYear, selectedMonth]);
 
     const displayDeductionTotal = useMemo(() => displayDeductions.reduce((sum, d) => sum + Number(d.amount), 0), [displayDeductions]);
