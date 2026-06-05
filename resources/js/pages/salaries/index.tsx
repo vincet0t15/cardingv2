@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -17,7 +18,7 @@ import type { FilterProps } from '@/types/filter';
 import type { Office } from '@/types/office';
 import type { PaginatedDataResponse } from '@/types/pagination';
 import { Head, router, useForm } from '@inertiajs/react';
-import { Coins, DollarSign, History, PlusIcon, Printer, Search, TrendingUp, User } from 'lucide-react';
+import { Coins, DollarSign, EllipsisVertical, History, Plus, Printer, Search, TrendingUp, User } from 'lucide-react';
 import { useState } from 'react';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -344,26 +345,24 @@ export default function SalariesIndex({ employees, offices, employmentStatuses, 
                                             {employee.latest_salary ? formatCurrency(employee.latest_salary.amount) : '-'}
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-900/30"
-                                                    onClick={() => router.get(route('salaries.history', employee.id))}
-                                                    title="View Salary History"
-                                                >
-                                                    <History className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 text-teal-600 transition-colors hover:bg-teal-50 hover:text-teal-700 dark:hover:bg-teal-900/30"
-                                                    onClick={() => handleOpenAdd(employee)}
-                                                    title="Add Salary Record"
-                                                >
-                                                    <PlusIcon className="h-4 w-4" />
-                                                </Button>
-                                            </div>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                        <EllipsisVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => router.get(route('employees.show', employee.id))}>
+                                                        <User className="h-4 w-4" /> View Details
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => router.get(route('salaries.history', employee.id))}>
+                                                        <History className="h-4 w-4" /> History
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleOpenAdd(employee)}>
+                                                        <Plus className="h-4 w-4" /> Add Record
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </TableCell>
                                     </TableRow>
                                 ))

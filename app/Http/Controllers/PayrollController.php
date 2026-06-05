@@ -33,9 +33,11 @@ class PayrollController extends Controller
         $employees = Employee::query()
             ->with(['employmentStatus', 'office'])
             ->when($search, function ($query, $search) {
-                $query->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('middle_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%");
+                $query->where(function ($q) use ($search) {
+                    $q->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('middle_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%");
+                });
             })
             ->when($officeId, function ($query, $officeId) {
                 $query->where('office_id', $officeId);
@@ -204,9 +206,11 @@ class PayrollController extends Controller
             $query = Employee::query()
                 ->with(['employmentStatus', 'office'])
                 ->when($search, function ($query, $search) {
-                    $query->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('middle_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%");
+                    $query->where(function ($q) use ($search) {
+                        $q->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('middle_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%");
+                    });
                 })
                 ->when($officeId, function ($query, $officeId) {
                     $query->where('office_id', $officeId);
@@ -426,9 +430,11 @@ class PayrollController extends Controller
         $employees = Employee::query()
             ->with(['employmentStatus', 'office'])
             ->when($search, function ($query, $search) {
-                $query->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('middle_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%");
+                $query->where(function ($q) use ($search) {
+                    $q->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('middle_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%");
+                });
             })
             ->when($officeId, function ($query, $officeId) {
                 $query->where('office_id', $officeId);

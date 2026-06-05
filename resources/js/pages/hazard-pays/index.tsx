@@ -2,9 +2,11 @@ import { CustomComboBox } from '@/components/CustomComboBox';
 import Heading from '@/components/heading';
 import Pagination from '@/components/paginationData';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -16,12 +18,11 @@ import type { FilterProps } from '@/types/filter';
 import type { Office } from '@/types/office';
 import type { PaginatedDataResponse } from '@/types/pagination';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { HardHat, History, PlusIcon, Printer, Search, TrendingUp, User } from 'lucide-react';
+import { EllipsisVertical, HardHat, History, Plus, PlusIcon, Printer, Search, TrendingUp, User } from 'lucide-react';
 import { useState } from 'react';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-// Dynamic year range: fixed start year (2020) to current year + 5
 const currentYear = new Date().getFullYear();
 const startYear = 2020;
 const endYear = currentYear + 5;
@@ -75,7 +76,6 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
         if (merged.search) queryString.search = merged.search;
         if (merged.office_id) queryString.office_id = merged.office_id;
         if (merged.employment_status_id) queryString.employment_status_id = merged.employment_status_id;
-        // Only include month/year if BOTH are provided
         if (merged.month && merged.year) {
             queryString.month = merged.month;
             queryString.year = merged.year;
@@ -152,12 +152,22 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
         return new Intl.NumberFormat('en-PH').format(num);
     };
 
-    // Calculate statistics
+    // Statistics
     const totalEmployees = employees.total;
     const employeesWithHazard = employees.data.filter((e) => e.latest_hazard_pay).length;
     const totalHazard = employees.data.reduce((sum, e) => sum + Number(e.latest_hazard_pay?.amount || 0), 0);
     const averageHazard = employeesWithHazard > 0 ? totalHazard / employeesWithHazard : 0;
     const highestHazard = Math.max(...employees.data.map((e) => Number(e.latest_hazard_pay?.amount || 0)));
+
+    // Helper to format date range
+    const formatDateRange = (start: string | null | undefined, end: string | null | undefined) => {
+        if (!start) return '-';
+        const startDate = new Date(start).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+        const endDate = end
+            ? new Date(end).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })
+            : 'Present';
+        return `${startDate} — ${endDate}`;
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -213,26 +223,21 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
                 </div>
 
                 {/* Instruction Note */}
-                <div className="rounded-lg border border-teal-200 bg-teal-50 p-4 text-teal-800 dark:border-teal-800 dark:bg-teal-900/20 dark:text-teal-300">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
                     <div className="flex items-start gap-3">
-                        <svg className="mt-0.5 h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
+                        <HardHat className="mt-0.5 h-5 w-5 flex-shrink-0" />
                         <div className="text-sm">
                             <p className="mb-1 font-semibold">How to manage Hazard Pay:</p>
-                            <p className="text-teal-700 dark:text-teal-400">
-                                Click on an employee's avatar to view their complete details. Use the action buttons to add hazard pay records or view
-                                history.
+                            <p className="text-amber-700 dark:text-amber-400">
+                                Click an employee's name or avatar to view their full profile. Use the{' '}
+                                <History className="inline-block h-3.5 w-3.5 align-text-bottom" /> History button to see all hazard pay records for an
+                                employee, or the <PlusIcon className="inline-block h-3.5 w-3.5 align-text-bottom" /> Add button to create a new record.
                             </p>
                         </div>
                     </div>
                 </div>
 
+                {/* Filters */}
                 <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-wrap items-center gap-2">
                         <div className="w-[180px]">
@@ -286,103 +291,108 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
                             <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 opacity-50 select-none" />
                         </div>
 
-                        <Button variant="outline" onClick={handlePrint} className="transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                        <Button variant="outline" onClick={handlePrint} className="transition-colors hover:bg-amber-50 dark:hover:bg-amber-900/20">
                             <Printer className="mr-2 h-4 w-4" />
                             Print
                         </Button>
                     </div>
                 </div>
 
-                <div className="bg-card overflow-x-auto overflow-y-hidden rounded-lg border shadow-sm">
+                {/* Table */}
+                <div className="w-full overflow-hidden rounded-lg border shadow-sm">
                     <Table>
                         <TableHeader className="bg-muted/50">
-                            <TableRow className="hover:bg-transparent">
-                                <TableHead className="w-[500px] min-w-[200px]">Employee</TableHead>
-                                <TableHead className="min-w-[140px]">Current Hazard Pay</TableHead>
-                                <TableHead className="min-w-[150px]">Effective Date</TableHead>
-                                <TableHead className="min-w-[100px] text-right">Actions</TableHead>
+                            <TableRow>
+                                <TableHead className="text-primary w-[420px] font-bold">Employee</TableHead>
+                                <TableHead className="text-primary font-bold">Hazard Pay</TableHead>
+                                <TableHead className="text-primary font-bold">Coverage Period</TableHead>
+                                <TableHead className="text-primary text-right font-bold">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
-                        <TableBody>
+                        <TableBody className="divide-y divide-slate-200 dark:divide-slate-700">
                             {employees.data.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={4} className="py-12">
                                         <div className="flex flex-col items-center gap-3">
                                             <HardHat className="text-muted-foreground h-16 w-16" />
-                                            <p className="text-muted-foreground text-lg font-semibold">No employees with hazard pay found.</p>
+                                            <p className="text-muted-foreground text-lg font-semibold">No hazard pay records found.</p>
                                             <p className="text-muted-foreground text-sm">
-                                                {filterData.search ? 'Try adjusting your search' : 'No employees available'}
+                                                {filterData.search ? 'Try adjusting your search or filters' : 'Assign hazard pay to employees to see them here.'}
                                             </p>
                                         </div>
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 employees.data.map((employee) => (
-                                    <TableRow key={employee.id}>
+                                    <TableRow key={employee.id} className="hover:bg-muted/30">
                                         <TableCell>
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="h-9 w-9">
-                                                    <AvatarImage alt={`${employee.first_name} ${employee.last_name}`} />
-                                                    <AvatarFallback>
-                                                        {employee.first_name[0]}
-                                                        {employee.last_name[0]}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium">
-                                                        {employee.first_name} {employee.last_name}
+                                                <Link
+                                                    href={route('employees.show', employee.id)}
+                                                    className="group relative cursor-pointer"
+                                                    title={`View details of ${employee.first_name} ${employee.last_name}`}
+                                                >
+                                                    <Avatar className="h-12 w-12 border-2 border-slate-200 shadow-sm transition-all hover:border-amber-400 hover:shadow-md dark:border-slate-700 dark:hover:border-amber-500">
+                                                        {employee.image_path ? (
+                                                            <AvatarImage
+                                                                src={employee.image_path ?? undefined}
+                                                                alt={`${employee.first_name} ${employee.last_name}`}
+                                                                className="object-cover"
+                                                            />
+                                                        ) : null}
+                                                        <AvatarFallback className="bg-slate-100 dark:bg-slate-800">
+                                                            <User className="h-5 w-5 text-slate-400" />
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                </Link>
+                                                <Link
+                                                    href={route('employees.show', employee.id)}
+                                                    className="flex flex-col transition-colors hover:text-amber-600 dark:hover:text-amber-400"
+                                                >
+                                                    <span className="font-bold uppercase leading-tight">
+                                                        {employee.last_name}, {employee.first_name} {employee.middle_name ?? ''}
                                                     </span>
-                                                    <span className="text-muted-foreground text-sm">{employee.employment_status?.name}</span>
-                                                </div>
+                                                    <span className="text-muted-foreground text-xs">{employee.position ?? ''}</span>
+                                                    <span className="text-muted-foreground text-xs">{employee.office?.name ?? 'N/A'}</span>
+                                                    <Badge variant="outline" className="mt-0.5 w-fit border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                                                        {employee.employment_status?.name ?? 'N/A'}
+                                                    </Badge>
+                                                </Link>
                                             </div>
-                                        </TableCell>
-                                        <TableCell className="bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20">
-                                            {employee.latest_hazard_pay ? (
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium text-amber-900 dark:text-amber-200">
-                                                        {formatCurrency(Number(employee.latest_hazard_pay.amount))}
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-muted-foreground">-</span>
-                                            )}
                                         </TableCell>
                                         <TableCell>
-                                            {employee.latest_hazard_pay?.start_date
-                                                ? new Date(employee.latest_hazard_pay.start_date).toLocaleDateString() +
-                                                  (employee.latest_hazard_pay.end_date
-                                                      ? ` - ${new Date(employee.latest_hazard_pay.end_date).toLocaleDateString()}`
-                                                      : ' - Present')
-                                                : '-'}
+                                            {employee.latest_hazard_pay ? (
+                                                <span className="text-lg font-bold text-amber-700 dark:text-amber-400">
+                                                    {formatCurrency(Number(employee.latest_hazard_pay.amount))}
+                                                </span>
+                                            ) : (
+                                                <span className="text-muted-foreground">—</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-sm">
+                                            {employee.latest_hazard_pay
+                                                ? formatDateRange(employee.latest_hazard_pay.start_date, employee.latest_hazard_pay.end_date)
+                                                : '—'}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <Link href={route('employees.show', employee.id)}>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                                                    >
-                                                        View
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                        <EllipsisVertical className="h-4 w-4" />
                                                     </Button>
-                                                </Link>
-                                                <Link href={route('hazard-pays.history', employee.id)}>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                                                    >
-                                                        <History className="h-4 w-4" />
-                                                    </Button>
-                                                </Link>
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() => handleOpenAdd(employee)}
-                                                    className="transition-colors hover:bg-green-600"
-                                                >
-                                                    <PlusIcon className="h-4 w-4" />
-                                                </Button>
-                                            </div>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => router.get(route('employees.show', employee.id))}>
+                                                        <User className="h-4 w-4" /> View Details
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => router.get(route('hazard-pays.history', employee.id))}>
+                                                        <History className="h-4 w-4" /> History
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleOpenAdd(employee)}>
+                                                        <Plus className="h-4 w-4" /> Add Record
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -392,8 +402,13 @@ export default function HazardPaysIndex({ employees, offices, employmentStatuses
                 </div>
 
                 <Pagination data={employees} />
+
+                <div className="text-muted-foreground text-sm">
+                    Showing {employees.data.length} of {employees.total} employee{employees.total !== 1 ? 's' : ''}
+                </div>
             </div>
 
+            {/* Add Hazard Pay Dialog */}
             <Dialog open={openAdd} onOpenChange={setOpenAdd}>
                 <DialogContent>
                     <DialogHeader>
