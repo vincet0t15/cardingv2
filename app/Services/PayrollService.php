@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Adjustment;
+use App\Models\EmployeeDeduction;
 use Illuminate\Support\Collection;
 
 class PayrollService
@@ -78,7 +80,8 @@ class PayrollService
         $hazardPay = $this->getEffectiveAmountForDateRange($employee->hazardPays, $year, $month);
         $clothingAllowance = $this->getEffectiveAmountForDateRange($employee->clothingAllowances, $year, $month);
 
-        $totalDeductions = (float) $employee->deductions
+        // Use direct query to avoid lazy-loading all employee deductions
+        $totalDeductions = (float) EmployeeDeduction::where('employee_id', $employee->id)
             ->where('pay_period_month', $month)
             ->where('pay_period_year', $year)
             ->sum('amount');

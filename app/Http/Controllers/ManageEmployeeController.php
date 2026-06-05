@@ -215,14 +215,10 @@ class ManageEmployeeController extends Controller
                 return $group->toArray();
             })->toArray();
 
-            $takenPeriods = EmployeeDeduction::where('employee_id', $employee->id)
-                ->selectRaw('DISTINCT pay_period_year, pay_period_month')
-                ->get()
-                ->map(function ($d) {
-                    return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
-                })
-                ->values()
-                ->toArray();
+            // Reuse already-fetched deduction periods to avoid duplicate query
+            $takenPeriods = $deductionPeriods->map(function ($d) {
+                return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
+            })->values()->toArray();
 
             // Create a year range from 10 years ago to current year + 5 for flexibility
             $currentYear = Carbon::now()->year;
@@ -270,11 +266,17 @@ class ManageEmployeeController extends Controller
         }
 
         if ($loadOverviewData || $loadReportData) {
-            $allDeductionsData = EmployeeDeduction::where('employee_id', $employee->id)
-                ->with(['deductionType', 'salary'])
-                ->orderBy('pay_period_year', 'desc')
-                ->orderBy('pay_period_month', 'desc')
-                ->get();
+            // Reuse the already-fetched deductions if available (overview tab loads both),
+            // otherwise do a dedicated fetch for all-time summary
+            if ($loadDeductionData && isset($deductionsData)) {
+                $allDeductionsData = $deductionsData;
+            } else {
+                $allDeductionsData = EmployeeDeduction::where('employee_id', $employee->id)
+                    ->with(['deductionType', 'salary'])
+                    ->orderBy('pay_period_year', 'desc')
+                    ->orderBy('pay_period_month', 'desc')
+                    ->get();
+            }
 
             $allDeductions = $allDeductionsData->groupBy(function ($d) {
                 return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);

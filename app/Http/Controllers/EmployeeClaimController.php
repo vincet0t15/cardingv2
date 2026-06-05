@@ -77,19 +77,24 @@ class EmployeeClaimController extends Controller
             'created_by' => Auth::id(),
         ]);
 
-        // Notify admins about new claim
+        // Bulk notify admins about new claim (single insert query)
         $employeeName = trim($employee->first_name . ' ' . $employee->last_name);
-        $admins = User::role(['super admin', 'admin'])->get();
-        foreach ($admins as $admin) {
-            Notification::create([
-                'user_id' => $admin->id,
-                'type' => Notification::TYPE_GENERAL,
-                'title' => 'New Claim Submitted',
-                'message' => "{$employeeName} submitted a new claim (₱" . number_format($claim->amount, 2) . ")",
-                'link' => route('manage.employees.claims.index', $employee->id),
-                'notifiable_id' => $claim->id,
-                'notifiable_type' => get_class($claim),
-            ]);
+        $adminIds = User::role(['super admin', 'admin'])->pluck('id');
+        $now = now();
+        $notifications = $adminIds->map(fn($userId) => [
+            'user_id' => $userId,
+            'type' => Notification::TYPE_GENERAL,
+            'title' => 'New Claim Submitted',
+            'message' => "{$employeeName} submitted a new claim (₱" . number_format($claim->amount, 2) . ")",
+            'link' => route('manage.employees.claims.index', $employee->id),
+            'notifiable_id' => $claim->id,
+            'notifiable_type' => get_class($claim),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ])->toArray();
+
+        if (!empty($notifications)) {
+            Notification::insert($notifications);
         }
 
         return redirect()->back()->with('success', 'Claim submitted successfully!');
