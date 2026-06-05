@@ -14,6 +14,9 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, Notifiable;
 
+    /** List of role names that are considered "admin-level" */
+    const ADMIN_ROLES = ['super admin', 'admin', 'vice-super admin'];
+
     /**
      * The attributes that are mass assignable.
      *
@@ -73,18 +76,57 @@ class User extends Authenticatable
         return $this->hasOne(Employee::class);
     }
 
+    /**
+     * Check if the user has any admin-level role.
+     * Admin roles are defined in self::ADMIN_ROLES.
+     */
     public function isAdmin(): bool
     {
-        return $this->hasRole('super admin') || $this->hasRole('admin');
+        return $this->hasRole(self::ADMIN_ROLES);
     }
 
+    /**
+     * Check if the user is linked to an employee record.
+     */
     public function isEmployee(): bool
     {
-        return $this->employee !== null;
+        return $this->employee()->exists();
     }
 
-    public function isLinkedEmployee(): bool
+    /**
+     * Check if the user has ONLY the "employee" role (no admin, no hr, no finance).
+     */
+    public function isPureEmployee(): bool
     {
-        return $this->employee !== null && $this->employee->user_id !== null;
+        $roleNames = $this->getRoleNames()->map(fn($role) => strtolower(trim($role)));
+
+        return $roleNames->count() === 1 && $roleNames->contains('employee');
+    }
+
+    /**
+     * Determine if this user should be routed to the Employee Portal
+     * instead of the Admin Dashboard.
+     *
+     * Rules:
+     * 1. Admin-level users → NEVER go to employee portal (even if linked)
+     * 2. Pure employees (linked) → YES, employee portal
+     * 3. Mixed non-admin roles (e.g., employee + hr) → YES, employee portal
+     *    (since they're still linked as an employee)
+     * 4. Not linked to any employee → NO, not employee portal
+     */
+    public function shouldUseEmployeePortal(): bool
+    {
+        // Admin users always see admin dashboard
+        if ($this->isAdmin()) {
+            return false;
+        }
+
+        // Must be linked to an employee record
+        if (! $this->isEmployee()) {
+            return false;
+        }
+
+        // Pure employee OR mixed non-admin roles → employee portal
+        return true;
     }
 }

@@ -27,10 +27,15 @@ class Employee extends Model
         'created_by',
         'image_path',
         'user_id',
+        'contact_number',
+        'email',
+        'address',
+        'birthdate',
     ];
 
     protected $casts = [
         'is_rata_eligible' => 'boolean',
+        'birthdate' => 'date',
     ];
 
     public function employmentStatus(): BelongsTo
@@ -163,6 +168,15 @@ class Employee extends Model
 
     public function getImagePathAttribute($value)
     {
-        return $value ? Storage::url($value) : null;
+        if (!$value) {
+            return null;
+        }
+
+        // Only return the URL if the file actually exists in storage
+        if (!Storage::disk('public')->exists($value)) {
+            return null;
+        }
+
+        return Storage::url($value);
     }
 }

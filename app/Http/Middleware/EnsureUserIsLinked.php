@@ -2,17 +2,19 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Employee;
 use closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureUserIsLinked
 {
     /**
      * Handle an incoming request.
+     *
+     * Users with the "employee" role who are NOT linked to an employee record
+     * are logged out, UNLESS they also have an admin-level role.
+     * Admin users are allowed through regardless of employee linkage.
      */
     public function handle(Request $request, closure $next): Response
     {
@@ -22,14 +24,13 @@ class EnsureUserIsLinked
             return $next($request);
         }
 
-        // Check if user has linked employee
-        $hasEmployee = Employee::where('user_id', $user->id)->exists();
+        // Admin users are always allowed through
+        if ($user->isAdmin()) {
+            return $next($request);
+        }
 
-        $roleNames = $user->roles->pluck('name')->map(fn($role) => strtolower(trim($role)))->toArray();
-        $hasOnlyEmployeeRole = count($roleNames) === 1 && in_array('employee', $roleNames, true);
-
-        // Only require a linked employee record for users who are purely employees.
-        if (! $hasEmployee && $hasOnlyEmployeeRole) {
+        // Non-admin users with "employee" role MUST have a linked employee record
+        if ($user->hasRole('employee') && ! $user->isEmployee()) {
             Auth::guard('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();

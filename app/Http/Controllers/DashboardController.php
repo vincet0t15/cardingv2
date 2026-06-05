@@ -18,7 +18,7 @@ use App\Models\SupplierTransaction;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+
 use Inertia\Inertia;
 
 class DashboardController extends Controller
@@ -28,27 +28,13 @@ class DashboardController extends Controller
         $user = Auth::user();
 
         if ($user) {
-            // Check if user has linked employee
-            $userEmployee = Employee::where('user_id', $user->id)->first();
-
-            // Determine if user is strictly an employee only
-            $roleNames = $user->roles->pluck('name')->map(fn($role) => strtolower(trim($role)))->toArray();
-            $hasOnlyEmployeeRole = count($roleNames) === 1 && in_array('employee', $roleNames, true);
-
-            // Check if user has any privileged/admin role
-            $isAdmin = DB::table('model_has_roles')
-                ->where('model_id', $user->id)
-                ->whereIn('role_id', function ($q) {
-                    $q->select('id')->from('roles')->whereIn('name', ['super admin', 'admin']);
-                })->exists();
-
-            // If linked employee and only has the employee role → employee dashboard
-            if ($userEmployee && $hasOnlyEmployeeRole) {
+            // If user should be on the employee portal, redirect them
+            if ($user->shouldUseEmployeePortal()) {
                 return redirect()->route('employee.dashboard');
             }
 
-            // If not linked and not admin → redirect to employees page
-            if (! $userEmployee && ! $isAdmin) {
+            // If user is not linked to an employee AND not an admin → redirect to employees list
+            if (! $user->isEmployee() && ! $user->isAdmin()) {
                 return redirect()->route('employees.index');
             }
         }

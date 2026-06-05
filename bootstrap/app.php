@@ -4,6 +4,7 @@ use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\EnsureEmployeeOnly;
+use App\Http\Middleware\EnsureEmployeePortal;
 use App\Http\Middleware\EnsureUserIsLinked;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\TrackUserActivity;
@@ -33,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureUserIsAdmin::class,
             'linked' => EnsureUserIsLinked::class,
             'employee_only' => EnsureEmployeeOnly::class,
+            'employee_portal' => EnsureEmployeePortal::class,
             'role' => RoleMiddleware::class,
             'permission' => CheckPermission::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,

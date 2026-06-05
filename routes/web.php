@@ -16,9 +16,12 @@ use App\Http\Controllers\DeductionTypeController;
 use App\Http\Controllers\DeleteRequestController;
 use App\Http\Controllers\DocumentTypeController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\EmployeeClaimController;
 use App\Http\Controllers\EmployeeDashboardController;
+use App\Http\Controllers\EmployeeProfileController;
 use App\Http\Controllers\EmployeeDeductionController;
 use App\Http\Controllers\EmployeeImportController;
+use App\Http\Controllers\EmployeePayslipController;
 use App\Http\Controllers\EmployeeSourceOfFundController;
 use App\Http\Controllers\EmploymentStatusController;
 use App\Http\Controllers\EmploymentTypeReportController;
@@ -51,8 +54,21 @@ Route::get('/', function () {
 Route::middleware(['auth', 'active', 'linked'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->middleware('employee_only')->name('dashboard');
 
-    // EMPLOYEE DASHBOARD - For linked employees
-    Route::get('employee/dashboard', [EmployeeDashboardController::class, 'index'])->name('employee.dashboard');
+    // EMPLOYEE DASHBOARD - For linked employees only (not admins)
+    Route::get('employee/dashboard', [EmployeeDashboardController::class, 'index'])
+        ->middleware('employee_portal')
+        ->name('employee.dashboard');
+
+    // EMPLOYEE SELF-SERVICE ROUTES
+    Route::middleware(['employee_portal'])->prefix('my')->name('employee.')->group(function () {
+        Route::get('claims', [EmployeeClaimController::class, 'index'])->name('claims.index');
+        Route::post('claims', [EmployeeClaimController::class, 'store'])->name('claims.store');
+        Route::delete('claims/{claim}', [EmployeeClaimController::class, 'destroy'])->name('claims.destroy');
+        Route::get('profile/edit', [EmployeeProfileController::class, 'edit'])->name('profile.edit');
+        Route::put('profile', [EmployeeProfileController::class, 'update'])->name('profile.update');
+        Route::get('payslip', [EmployeePayslipController::class, 'show'])->name('payslip.show');
+        Route::get('payslip/pdf', [EmployeePayslipController::class, 'downloadPdf'])->name('payslip.pdf');
+    });
 
     // CLAIMS REPORT - View and print all claims by employee
     Route::prefix('claims-report')->group(function () {

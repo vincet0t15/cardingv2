@@ -10,6 +10,10 @@ class EnsureEmployeeOnly
 {
     /**
      * Handle an incoming request.
+     *
+     * If the user should be using the Employee Portal instead of Admin Dashboard,
+     * redirect them accordingly. This prevents admin-role users from accidentally
+     * landing on the employee dashboard, and vice versa.
      */
     public function handle(Request $request, closure $next): Response
     {
@@ -19,10 +23,7 @@ class EnsureEmployeeOnly
             return $next($request);
         }
 
-        $roleNames = $user->roles->pluck('name')->map(fn($role) => strtolower(trim($role)))->toArray();
-        $hasOnlyEmployeeRole = count($roleNames) === 1 && in_array('employee', $roleNames, true);
-
-        if ($hasOnlyEmployeeRole) {
+        if ($user->shouldUseEmployeePortal()) {
             return redirect()->route('employee.dashboard');
         }
 

@@ -36,6 +36,10 @@ export interface Employee {
     card_color?: string | null;
     earliest_salary?: Salary | null;
     created_at?: string | null;
+    contact_number?: string | null;
+    email?: string | null;
+    address?: string | null;
+    birthdate?: string | null;
 }
 
 export type EmployeeCreateRequest = {

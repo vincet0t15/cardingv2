@@ -110,7 +110,7 @@ class AccountController extends Controller
             'roles.*' => 'string|exists:roles,name',
         ]);
 
-        if (isset($validated['is_active'])) {
+        if (array_key_exists('is_active', $validated)) {
             $user->is_active = $validated['is_active'];
         }
 

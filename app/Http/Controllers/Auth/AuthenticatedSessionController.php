@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\Employee;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -63,6 +64,7 @@ class AuthenticatedSessionController extends Controller
             ->toArray();
 
         $hasOnlyEmployeeRole = count($roleNames) === 1 && in_array('employee', $roleNames, true);
+        $hasNonAdminRoles = collect($roleNames)->every(fn($role) => !in_array($role, User::ADMIN_ROLES, true));
 
         // If user is purely employee and has no linked employee, reject login
         if (! $hasEmployee && $hasOnlyEmployeeRole) {
@@ -74,7 +76,7 @@ class AuthenticatedSessionController extends Controller
         }
 
         // Redirect based on user type
-        if ($hasEmployee && $hasOnlyEmployeeRole) {
+        if ($hasEmployee && ($hasOnlyEmployeeRole || $hasNonAdminRoles)) {
             return redirect()->intended(route('employee.dashboard', absolute: false));
         }
 

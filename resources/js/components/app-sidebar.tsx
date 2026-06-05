@@ -25,6 +25,7 @@ import {
     Shirt,
     Tag,
     Truck,
+    User,
     UserCheck,
     UserRoundPen,
     Wallet,
@@ -204,13 +205,28 @@ const mainNavItems: NavGroup[] = [
 
 const employeeNavItems: NavGroup[] = [
     {
-        title: 'My Profile',
+        title: 'My Portal',
         icon: UserRoundPen,
         children: [
             {
-                title: 'My Dashboard',
+                title: 'Dashboard',
                 href: '/employee/dashboard',
                 icon: LayoutGrid,
+            },
+            {
+                title: 'My Payslip',
+                href: '/my/payslip',
+                icon: ReceiptCent,
+            },
+            {
+                title: 'My Claims',
+                href: '/my/claims',
+                icon: FileText,
+            },
+            {
+                title: 'My Profile',
+                href: '/my/profile/edit',
+                icon: User,
             },
         ],
     },
@@ -218,7 +234,7 @@ const employeeNavItems: NavGroup[] = [
 
 export function AppSidebar() {
     const pageProps = usePage().props as {
-        auth?: { user?: { is_employee?: boolean; is_admin?: boolean } | null };
+        auth?: { user?: { is_employee?: boolean; is_admin?: boolean; should_use_employee_portal?: boolean } | null };
         performanceMetrics?: Array<{
             user_id: number;
             user_name: string;
@@ -230,8 +246,8 @@ export function AppSidebar() {
     };
     const authUser = pageProps.auth?.user;
 
-    // If linked employee (not admin) → show employee nav only
-    const isEmployeeOnly = authUser?.is_employee === true && authUser?.is_admin !== true;
+    // Use the backend's unified decision: should this user see the employee portal?
+    const isEmployeeOnly = authUser?.should_use_employee_portal === true;
     const navItems = isEmployeeOnly ? employeeNavItems : mainNavItems;
     const dashboardHref = isEmployeeOnly ? '/employee/dashboard' : '/dashboard';
 

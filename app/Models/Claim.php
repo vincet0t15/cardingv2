@@ -26,7 +26,7 @@ class Claim extends Model
         'amount' => 'decimal:2',
     ];
 
-    protected $with = ['salary', 'claimType'];
+    protected $with = ['claimType'];
 
     public function employee(): BelongsTo
     {

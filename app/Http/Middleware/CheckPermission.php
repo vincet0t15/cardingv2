@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,7 +20,7 @@ class CheckPermission
         $user = $request->user();
 
         // Admin role bypasses all permission checks
-        if ($user && $user->hasRole('super admin')) {
+        if ($user && $user->hasRole(User::ADMIN_ROLES)) {
             return $next($request);
         }
 

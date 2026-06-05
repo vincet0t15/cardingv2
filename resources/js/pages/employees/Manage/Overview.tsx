@@ -7,7 +7,25 @@ import type { Claim } from '@/types/claim';
 import type { Employee } from '@/types/employee';
 import type { EmployeeDeduction } from '@/types/employeeDeduction';
 import { router, useForm } from '@inertiajs/react';
-import { Building2, CalendarDays, CoinsIcon, CreditCard, DollarSign, HardHat, Receipt, Shirt, TrendingDown, TrendingUp, User } from 'lucide-react';
+import {
+    ArrowDown,
+    ArrowUp,
+    Baby,
+    BadgeCheck,
+    Building2,
+    CalendarDays,
+    CoinsIcon,
+    CreditCard,
+    HardHat,
+    MapPin,
+    Phone,
+    Receipt,
+    Shirt,
+    TrendingDown,
+    TrendingUp,
+    User,
+    Wallet,
+} from 'lucide-react';
 import { useMemo } from 'react';
 
 interface OverviewProps {
@@ -20,7 +38,6 @@ interface OverviewProps {
     availableYears?: number[];
 }
 
-const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTHS = [
     { value: '1', label: 'January' },
     { value: '2', label: 'February' },
@@ -51,6 +68,100 @@ function formatDate(dateStr?: string | undefined) {
     return `${day} ${monthShort} ${year}`;
 }
 
+function formatDateShort(dateStr?: string | undefined) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleString('en-PH', { month: 'short', year: 'numeric' });
+}
+
+// ─── Quick Preset Button ──────────────────────────────────────────────
+
+function QuickPreset({
+    label,
+    active,
+    onClick,
+}: {
+    label: string;
+    active: boolean;
+    onClick: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                active
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+            }`}
+        >
+            {label}
+        </button>
+    );
+}
+
+// ─── Stat Card ─────────────────────────────────────────────────────────
+
+function StatCard({
+    title,
+    value,
+    subtitle,
+    icon: Icon,
+    color,
+}: {
+    title: string;
+    value: string;
+    subtitle?: string;
+    icon: React.ElementType;
+    color: 'blue' | 'emerald' | 'rose' | 'violet' | 'amber';
+}) {
+    const styles = {
+        blue: 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300',
+        emerald: 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+        rose: 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-300',
+        violet: 'border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300',
+        amber: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300',
+    };
+    const iconBg = {
+        blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400',
+        emerald: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400',
+        rose: 'bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400',
+        violet: 'bg-violet-100 text-violet-600 dark:bg-violet-900/50 dark:text-violet-400',
+        amber: 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400',
+    };
+
+    return (
+        <div
+            className={`rounded-xl border p-4 shadow-sm transition-all duration-200 hover:shadow-md ${styles[color]}`}
+        >
+            <div className="flex items-start justify-between">
+                <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider opacity-70">{title}</p>
+                    <p className="mt-1.5 text-2xl font-bold tracking-tight">{value}</p>
+                    {subtitle && <p className="mt-0.5 text-xs opacity-60">{subtitle}</p>}
+                </div>
+                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${iconBg[color]}`}>
+                    <Icon className="h-5 w-5" />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Compensation Bar ─────────────────────────────────────────────────
+
+function CompensationBar({ label, amount, color }: { label: string; amount: number; color: string }) {
+    return (
+        <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-white px-4 py-2.5 shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700/50">
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
+            <span className={`text-sm font-semibold ${color}`}>{formatCurrency(amount)}</span>
+        </div>
+    );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────
+
 function Overview({
     employee,
     deductions,
@@ -62,103 +173,107 @@ function Overview({
 }: OverviewProps) {
     const currentMonth = new Date().getMonth() + 1;
     const currentYear = new Date().getFullYear();
-    const currentPeriodKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
 
-    // Dynamic year range: fixed start year (2020) to current year + 5
-    const startYearOverview = 2020;
-    const endYearOverview = currentYear + 5;
-    const years = Array.from({ length: endYearOverview - startYearOverview + 1 }, (_, i) => startYearOverview + i);
-
-    const yearOptions = years.map((year) => ({
-        value: year.toString(),
-        label: year.toString(),
-    }));
-
-    const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
-    const urlParams = new URLSearchParams(currentUrl.split('?')[1] || '');
+    // Year options from available data + range
+    const yearOptions = useMemo(() => {
+        const allYears = [...availableYears];
+        const currentYr = currentYear;
+        if (!allYears.includes(currentYr)) allYears.push(currentYr);
+        if (!allYears.includes(currentYr - 1)) allYears.push(currentYr - 1);
+        allYears.sort((a, b) => b - a);
+        return allYears.map((y) => ({ value: String(y), label: String(y) }));
+    }, [availableYears, currentYear]);
 
     const { data: filterData, setData } = useForm({
-        month: urlParams.get('month') || '',
-        year: urlParams.get('year') || '',
+        month: '',
+        year: '',
     });
-
-    const availablePeriods = useMemo(() => {
-        const deductionPeriods = Object.keys(deductions || {});
-        const claimPeriods = claims.reduce((acc: string[], c) => {
-            const periodKey = `${new Date(c.claim_date).getFullYear()}-${String(new Date(c.claim_date).getMonth() + 1).padStart(2, '0')}`;
-            if (!acc.includes(periodKey)) acc.push(periodKey);
-            return acc;
-        }, []);
-        return [...new Set([...deductionPeriods, ...claimPeriods])].sort().reverse();
-    }, [deductions, claims]);
 
     const selectedYear = filterData.year;
     const selectedMonth = filterData.month;
 
-    // Determine the display period based on filters
-    let displayPeriodKey: string;
-    let displayPeriodLabel: string;
+    // Available periods from actual data
+    const availablePeriods = useMemo(() => {
+        const dedPeriods = Object.keys(deductions || {});
+        const claimPeriods = claims.reduce((acc: string[], c) => {
+            const pk = `${new Date(c.claim_date).getFullYear()}-${String(new Date(c.claim_date).getMonth() + 1).padStart(2, '0')}`;
+            if (!acc.includes(pk)) acc.push(pk);
+            return acc;
+        }, []);
+        return [...new Set([...dedPeriods, ...claimPeriods])].sort().reverse();
+    }, [deductions, claims]);
 
-    if (selectedYear && selectedMonth) {
-        // Both year and month selected
-        displayPeriodKey = `${selectedYear}-${selectedMonth.padStart(2, '0')}`;
-        displayPeriodLabel = `${MONTHS_SHORT[parseInt(selectedMonth) - 1]} ${selectedYear}`;
-    } else if (selectedYear) {
-        // Only year selected - find the first available month in that year
-        const yearPeriods = availablePeriods.filter((p) => p.startsWith(selectedYear));
-        displayPeriodKey = yearPeriods[0] || `${selectedYear}-01`;
-        displayPeriodLabel = `${selectedYear} (All Months)`;
-    } else {
-        // No filters — show all periods
-        displayPeriodKey = '';
-        displayPeriodLabel = 'All Periods';
-    }
+    const displayPeriodKey =
+        selectedYear && selectedMonth
+            ? `${selectedYear}-${selectedMonth.padStart(2, '0')}`
+            : '';
 
-    const selectedPeriodKey = selectedYear && selectedMonth ? `${selectedYear}-${selectedMonth.padStart(2, '0')}` : null;
+    const displayPeriodLabel =
+        selectedYear && selectedMonth
+            ? `${MONTHS[parseInt(selectedMonth) - 1].label} ${selectedYear}`
+            : selectedYear
+              ? `${selectedYear} (All Months)`
+              : 'All Periods';
 
+    // Filtered data
     const displayDeductions = useMemo(() => {
-        if (!selectedYear && !selectedMonth) {
-            // No filters — show ALL deductions across all periods
-            return Object.values(deductions || {}).flat();
-        }
+        if (!selectedYear && !selectedMonth) return Object.values(deductions || {}).flat();
         if (selectedYear && !selectedMonth) {
-            // Year-only filter: show all deductions for that year
-            const yearDeductions: EmployeeDeduction[] = [];
-            availablePeriods.forEach((period) => {
-                if (period.startsWith(selectedYear)) {
-                    yearDeductions.push(...(deductions[period] ?? []));
-                }
-            });
-            return yearDeductions;
+            return Object.entries(deductions || {}).reduce((acc: EmployeeDeduction[], [period, items]) => {
+                if (period.startsWith(selectedYear)) acc.push(...items);
+                return acc;
+            }, []);
         }
-        // Specific month/year
         return deductions[displayPeriodKey] ?? [];
-    }, [deductions, displayPeriodKey, selectedYear, selectedMonth, availablePeriods]);
+    }, [deductions, displayPeriodKey, selectedYear, selectedMonth]);
+
+    const displayDeductionTotal = useMemo(
+        () => displayDeductions.reduce((sum, d) => sum + Number(d.amount), 0),
+        [displayDeductions],
+    );
 
     const displayClaims = useMemo(() => {
-        if (!selectedYear && !selectedMonth) {
-            // No filters — show ALL claims
-            return claims;
-        }
-        if (selectedYear && !selectedMonth) {
-            // Year-only filter: show all claims for that year
-            return claims.filter((c) => {
-                const d = new Date(c.claim_date);
-                return d.getFullYear().toString() === selectedYear;
-            });
-        }
-        if (selectedYear && selectedMonth) {
-            // Specific month and year
-            return claims.filter((c) => {
-                const d = new Date(c.claim_date);
-                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === `${selectedYear}-${selectedMonth.padStart(2, '0')}`;
-            });
-        }
-        return claims;
-    }, [claims, selectedYear, selectedMonth]);
+        if (!selectedYear && !selectedMonth) return claims;
+        if (selectedYear && !selectedMonth)
+            return claims.filter((c) => new Date(c.claim_date).getFullYear().toString() === selectedYear);
+        return claims.filter((c) => {
+            const d = new Date(c.claim_date);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === displayPeriodKey;
+        });
+    }, [claims, selectedYear, selectedMonth, displayPeriodKey]);
 
-    const displayDeductionTotal = useMemo(() => displayDeductions.reduce((sum, d) => sum + Number(d.amount), 0), [displayDeductions]);
-    const displayClaimsTotal = useMemo(() => displayClaims.reduce((sum, c) => sum + Number(c.amount), 0), [displayClaims]);
+    const displayClaimsTotal = useMemo(
+        () => displayClaims.reduce((sum, c) => sum + Number(c.amount), 0),
+        [displayClaims],
+    );
+
+    // Financial summary
+    const monthlySalary = Number(employee.latest_salary?.amount ?? 0);
+    const monthlyPera = Number(employee.latest_pera?.amount ?? 0);
+    const monthlyRata = employee.is_rata_eligible ? Number(employee.latest_rata?.amount ?? 0) : 0;
+    const monthlyHazard = Number(employee.latest_hazard_pay?.amount ?? 0);
+    const monthlyClothing = Number(employee.latest_clothing_allowance?.amount ?? 0);
+    const grossPay = monthlySalary + monthlyPera + monthlyRata + monthlyHazard + monthlyClothing;
+
+    const hireDate =
+        employee.earliest_salary?.effective_date ??
+        (employee.salaries && employee.salaries.length > 0
+            ? employee.salaries[employee.salaries.length - 1].effective_date
+            : employee.created_at);
+    const yearsOfService = hireDate
+        ? Math.floor((new Date().getTime() - new Date(hireDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+        : 0;
+
+    const recentClaims = displayClaims.slice(0, 5);
+    const recentAdjustments = adjustments.slice(0, 5);
+
+    const getAdjustmentTypeName = (adj: Adjustment) => {
+        if (adj.adjustmentType?.name) return adj.adjustmentType.name;
+        if (typeof adj.adjustment_type === 'string') return adj.adjustment_type;
+        const obj = adj.adjustment_type as unknown as { name?: string } | null;
+        if (obj && typeof obj === 'object') return obj.name ?? 'Adjustment';
+        return 'Adjustment';
+    };
 
     const handleFilterChange = (field: 'month' | 'year', value: string) => {
         const newFilters = { ...filterData, [field]: value };
@@ -166,360 +281,396 @@ function Overview({
         const params: Record<string, string> = {};
         if (newFilters.month) params.month = newFilters.month;
         if (newFilters.year) params.year = newFilters.year;
-        router.get(window.location.pathname, Object.keys(params).length > 0 ? params : undefined, { preserveState: true, preserveScroll: true });
+        router.get(window.location.pathname, Object.keys(params).length > 0 ? params : undefined, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
-    const grossPay =
-        Number(employee.latest_salary?.amount ?? 0) +
-        Number(employee.latest_pera?.amount ?? 0) +
-        (employee.is_rata_eligible ? Number(employee.latest_rata?.amount ?? 0) : 0) +
-        Number(employee.latest_hazard_pay?.amount ?? 0) +
-        Number(employee.latest_clothing_allowance?.amount ?? 0);
-
-    const hireDate =
-        employee.earliest_salary?.effective_date ??
-        (employee.salaries && employee.salaries.length ? employee.salaries[employee.salaries.length - 1].effective_date : employee.created_at);
-    const yearsOfService = hireDate ? Math.floor((new Date().getTime() - new Date(hireDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 0;
-
-    const recentClaims = displayClaims.slice(0, 5);
-    const recentAdjustments = adjustments.slice(0, 5);
-
-    const getAdjustmentTypeName = (adjustment: Adjustment) => {
-        if (adjustment.adjustmentType?.name) {
-            return adjustment.adjustmentType.name;
+    const setQuickPeriod = (month: number | null, year: number | null) => {
+        const params: Record<string, string> = {};
+        if (month) {
+            setData('month', String(month));
+            params.month = String(month);
+        } else {
+            setData('month', '');
         }
-        if (typeof adjustment.adjustment_type === 'string') {
-            return adjustment.adjustment_type;
+        if (year) {
+            setData('year', String(year));
+            params.year = String(year);
+        } else {
+            setData('year', '');
         }
-        const adjustmentTypeObject = adjustment.adjustment_type as unknown as { name?: string } | null;
-        if (adjustmentTypeObject && typeof adjustmentTypeObject === 'object') {
-            return adjustmentTypeObject.name ?? 'Adjustment';
-        }
-        return 'Adjustment';
+        router.get(window.location.pathname, Object.keys(params).length > 0 ? params : undefined, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
+
+    const hasActiveFilter = selectedMonth || selectedYear;
 
     return (
         <div className="space-y-6">
-            {/* Period Filter */}
-            <div className="bg-card flex flex-wrap items-center gap-3 rounded-md border p-4">
+            {/* ── Filter Bar ── */}
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div className="flex items-center gap-2">
+                    <CalendarDays className="h-4 w-4 text-slate-400" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Period</span>
+                </div>
+                <QuickPreset
+                    label="All Time"
+                    active={!hasActiveFilter}
+                    onClick={() => setQuickPeriod(null, null)}
+                />
+                <QuickPreset
+                    label="This Month"
+                    active={selectedMonth === String(currentMonth) && selectedYear === String(currentYear)}
+                    onClick={() => setQuickPeriod(currentMonth, currentYear)}
+                />
+                <QuickPreset
+                    label="Last Month"
+                    active={
+                        selectedMonth === String(currentMonth === 1 ? 12 : currentMonth - 1) &&
+                        selectedYear === String(currentMonth === 1 ? currentYear - 1 : currentYear)
+                    }
+                    onClick={() => {
+                        const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+                        const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+                        setQuickPeriod(prevMonth, prevYear);
+                    }}
+                />
+                <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
                 <CustomComboBox
                     items={MONTHS}
-                    placeholder="All Months"
+                    placeholder="Month"
                     value={selectedMonth || null}
-                    onSelect={(value) => handleFilterChange('month', value ?? '')}
+                    onSelect={(v) => handleFilterChange('month', v ?? '')}
                     showClear={true}
+                    className="w-32"
                 />
                 <CustomComboBox
                     items={yearOptions}
-                    placeholder="All Years"
+                    placeholder="Year"
                     value={selectedYear || null}
-                    onSelect={(value) => handleFilterChange('year', value ?? '')}
+                    onSelect={(v) => handleFilterChange('year', v ?? '')}
                     showClear={true}
+                    className="w-28"
                 />
-                <div className="flex-1" />
-                <Badge variant="outline" className="text-xs">
-                    {displayPeriodLabel}
-                </Badge>
-            </div>
-
-            {/* Compensation Summary Cards */}
-            <div>
-                <div className="mb-3 flex items-center justify-between">
-                    <h3 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">Current Compensation</h3>
-                    <Badge variant="outline" className="text-xs">
-                        Gross: {formatCurrency(grossPay)}
+                <div className="ml-auto">
+                    <Badge variant="outline" className="bg-slate-50 text-xs dark:bg-slate-800">
+                        {displayPeriodLabel}
                     </Badge>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-                    <Card className="rounded-md border-blue-200 bg-blue-50 p-5 text-blue-800 shadow-sm">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium">Basic Salary</CardTitle>
-                            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-100 dark:bg-blue-900/30">
-                                <CoinsIcon className="h-4 w-4 text-blue-600" />
-                            </div>
-                        </CardHeader>
-                        <CardContent className="bg-transparent">
-                            <div className="text-2xl font-bold">{formatCurrency(employee.latest_salary?.amount)}</div>
-                            <p className="text-muted-foreground mt-1 text-xs">Effective {formatDate(employee.latest_salary?.effective_date)}</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="rounded-md border-green-200 bg-green-50 p-5 text-green-800 shadow-sm">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium">PERA</CardTitle>
-                            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-green-100 dark:bg-green-900/30">
-                                <CreditCard className="h-4 w-4 text-green-600" />
-                            </div>
-                        </CardHeader>
-                        <CardContent className="bg-transparent">
-                            <div className="text-2xl font-bold">{formatCurrency(employee.latest_pera?.amount)}</div>
-                            <p className="text-muted-foreground mt-1 text-xs">Effective {formatDate(employee.latest_pera?.effective_date)}</p>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="rounded-md border-purple-200 bg-purple-50 p-5 text-purple-800 shadow-sm">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium">RATA</CardTitle>
-                            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-purple-100 dark:bg-purple-900/30">
-                                <CreditCard className="h-4 w-4 text-purple-600" />
-                            </div>
-                        </CardHeader>
-                        <CardContent className="bg-transparent">
-                            {employee.is_rata_eligible ? (
-                                <>
-                                    <div className="text-2xl font-bold">{formatCurrency(employee.latest_rata?.amount)}</div>
-                                    <p className="text-muted-foreground mt-1 text-xs">Effective {formatDate(employee.latest_rata?.effective_date)}</p>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="text-muted-foreground text-2xl font-bold">N/A</div>
-                                    <p className="text-muted-foreground mt-1 text-xs">Not RATA eligible</p>
-                                </>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    <Card className="rounded-md border-orange-200 bg-orange-50 p-5 text-orange-800 shadow-sm">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium">Hazard Pay</CardTitle>
-                            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-orange-100 dark:bg-orange-900/30">
-                                <HardHat className="h-4 w-4 text-orange-600" />
-                            </div>
-                        </CardHeader>
-                        <CardContent className="bg-transparent">
-                            <div className="text-2xl font-bold">{formatCurrency(employee.latest_hazard_pay?.amount)}</div>
-                            <p className="text-muted-foreground mt-1 text-xs">
-                                {employee.latest_hazard_pay?.start_date
-                                    ? formatDate(employee.latest_hazard_pay.start_date) +
-                                      (employee.latest_hazard_pay.end_date ? ` - ${formatDate(employee.latest_hazard_pay.end_date)}` : ' - Present')
-                                    : 'N/A'}
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="rounded-md border-pink-200 bg-pink-50 p-5 text-pink-800 shadow-sm">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium">Clothing Allow.</CardTitle>
-                            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-pink-100 dark:bg-pink-900/30">
-                                <Shirt className="h-4 w-4 text-pink-600" />
-                            </div>
-                        </CardHeader>
-                        <CardContent className="bg-transparent">
-                            <div className="text-2xl font-bold">{formatCurrency(employee.latest_clothing_allowance?.amount)}</div>
-                            <p className="text-muted-foreground mt-1 text-xs">
-                                {employee.latest_clothing_allowance?.start_date
-                                    ? formatDate(employee.latest_clothing_allowance.start_date) +
-                                      (employee.latest_clothing_allowance.end_date
-                                          ? ` - ${formatDate(employee.latest_clothing_allowance.end_date)}`
-                                          : ' - Present')
-                                    : 'N/A'}
-                            </p>
-                        </CardContent>
-                    </Card>
-                </div>
             </div>
 
-            {/* Main Content Grid */}
-            <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-                <div className="space-y-6">
-                    {/* Summary */}
-                    <div>
-                        <div className="mb-3 flex items-center justify-between">
-                            <h3 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">Summary</h3>
-                            <Badge variant="outline" className="text-xs">
-                                {displayPeriodLabel}
-                            </Badge>
-                        </div>
-                        <div className="grid gap-4 md:grid-cols-3">
-                            <Card className="rounded-md border-red-200 p-5 text-red-800 shadow-sm">
-                                <CardHeader className="flex items-center justify-between pb-2">
-                                    <CardTitle className="text-sm font-medium">Deductions</CardTitle>
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-red-100 dark:bg-red-900/30">
-                                        <TrendingDown className="h-4 w-4 text-red-600" />
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="bg-transparent">
-                                    <div className="text-2xl font-bold text-red-600">{formatCurrency(displayDeductionTotal)}</div>
-                                    <p className="text-muted-foreground mt-1 text-xs">
-                                        {displayDeductions.length} deduction{displayDeductions.length !== 1 ? 's' : ''}
-                                    </p>
-                                </CardContent>
-                            </Card>
+            {/* ── Top Summary Row ── */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <StatCard
+                    title="Gross Monthly"
+                    value={formatCurrency(grossPay)}
+                    subtitle={`${monthlySalary ? 'includes salary + allowances' : 'no salary data'}`}
+                    icon={Wallet}
+                    color="blue"
+                />
+                <StatCard
+                    title="Deductions"
+                    value={formatCurrency(displayDeductionTotal || totalDeductionsAllTime)}
+                    subtitle={hasActiveFilter ? `This period` : 'All-time total'}
+                    icon={TrendingDown}
+                    color="rose"
+                />
+                <StatCard
+                    title="Claims"
+                    value={formatCurrency(displayClaimsTotal || totalClaimsAllTime)}
+                    subtitle={hasActiveFilter ? `This period` : 'All-time total'}
+                    icon={Receipt}
+                    color="emerald"
+                />
+                <StatCard
+                    title="Net Monthly"
+                    value={formatCurrency(grossPay - (displayDeductionTotal || totalDeductionsAllTime))}
+                    subtitle="After all deductions"
+                    icon={CoinsIcon}
+                    color="violet"
+                />
+            </div>
 
-                            <Card className="rounded-md border-emerald-200 bg-emerald-50 p-5 text-emerald-800 shadow-sm">
-                                <CardHeader className="flex items-center justify-between pb-2">
-                                    <CardTitle className="text-sm font-medium">Claims</CardTitle>
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-900/30">
-                                        <Receipt className="h-4 w-4 text-emerald-600" />
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="bg-transparent">
-                                    <div className="text-2xl font-bold text-emerald-700">{formatCurrency(displayClaimsTotal)}</div>
-                                    <p className="text-muted-foreground mt-1 text-xs">
-                                        {displayClaims.length} claim{displayClaims.length !== 1 ? 's' : ''}
-                                    </p>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="rounded-md border-blue-200 bg-blue-50 p-5 text-blue-800 shadow-sm">
-                                <CardHeader className="flex items-center justify-between pb-2">
-                                    <CardTitle className="text-sm font-medium">Net Pay</CardTitle>
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-100 dark:bg-blue-900/30">
-                                        <CoinsIcon className="h-4 w-4 text-blue-600" />
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="bg-transparent">
-                                    <div className="text-2xl font-bold text-blue-700">{formatCurrency(grossPay - displayDeductionTotal)}</div>
-                                    <p className="text-muted-foreground mt-1 text-xs">After deductions</p>
-                                </CardContent>
-                            </Card>
-                        </div>
+            {/* ── Compensation Breakdown ── */}
+            <Card className="overflow-hidden rounded-xl border shadow-sm">
+                <CardHeader className="border-b bg-slate-50/50 px-5 py-3 dark:bg-slate-800/50">
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                            <Wallet className="h-4 w-4 text-blue-600" />
+                            Compensation Breakdown
+                        </CardTitle>
+                        <Badge variant="outline" className="text-xs">
+                            Gross: {formatCurrency(grossPay)}
+                        </Badge>
                     </div>
+                </CardHeader>
+                <CardContent className="space-y-2 p-5">
+                    <CompensationBar label="Basic Salary" amount={monthlySalary} color="text-blue-600" />
+                    <CompensationBar label="PERA" amount={monthlyPera} color="text-emerald-600" />
+                    {monthlyRata > 0 && (
+                        <CompensationBar label="RATA" amount={monthlyRata} color="text-purple-600" />
+                    )}
+                    {monthlyHazard > 0 && (
+                        <CompensationBar label="Hazard Pay" amount={monthlyHazard} color="text-orange-600" />
+                    )}
+                    {monthlyClothing > 0 && (
+                        <CompensationBar
+                            label="Clothing Allowance"
+                            amount={monthlyClothing}
+                            color="text-pink-600"
+                        />
+                    )}
+                    <Separator className="my-2" />
+                    <div className="flex items-center justify-between rounded-lg bg-blue-50 px-4 py-3 dark:bg-blue-950/50">
+                        <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                            Total Gross Pay
+                        </span>
+                        <span className="text-lg font-bold text-blue-700 dark:text-blue-400">
+                            {formatCurrency(grossPay)}
+                        </span>
+                    </div>
+                </CardContent>
+            </Card>
 
-                    {/* Deductions Breakdown */}
+            {/* ── Main Grid ── */}
+            <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+                {/* Left Column */}
+                <div className="space-y-6">
+                    {/* ── Pay Flow Visual ── */}
+                    {hasActiveFilter && displayDeductions.length > 0 && (
+                        <Card className="overflow-hidden rounded-xl border shadow-sm">
+                            <CardHeader className="border-b bg-slate-50/50 px-5 py-3 dark:bg-slate-800/50">
+                                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                                    <TrendingUp className="h-4 w-4 text-emerald-600" />
+                                    Pay Flow — {displayPeriodLabel}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-5">
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+                                        <div className="flex items-center gap-2 text-sm font-medium text-emerald-800">
+                                            <ArrowDown className="h-4 w-4" />
+                                            Gross Pay
+                                        </div>
+                                        <span className="text-lg font-bold text-emerald-700">
+                                            {formatCurrency(grossPay)}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between rounded-lg border border-rose-200 bg-rose-50 px-4 py-3">
+                                        <div className="flex items-center gap-2 text-sm font-medium text-rose-800">
+                                            <ArrowUp className="h-4 w-4" />
+                                            Deductions
+                                        </div>
+                                        <span className="text-lg font-bold text-rose-600">
+                                            -{formatCurrency(displayDeductionTotal)}
+                                        </span>
+                                    </div>
+                                    <Separator />
+                                    <div className="flex items-center justify-between rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
+                                        <div className="flex items-center gap-2 text-sm font-semibold text-violet-800">
+                                            <CoinsIcon className="h-4 w-4" />
+                                            Net Pay
+                                        </div>
+                                        <span className="text-xl font-bold text-violet-700">
+                                            {formatCurrency(grossPay - displayDeductionTotal)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* ── Deductions Breakdown ── */}
                     {displayDeductions.length > 0 && (
-                        <Card className="rounded-md border-red-200 p-5 shadow-sm">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2 text-base">
-                                    <TrendingDown className="h-5 w-5 text-rose-600" />
+                        <Card className="overflow-hidden rounded-xl border shadow-sm">
+                            <CardHeader className="border-b bg-slate-50/50 px-5 py-3 dark:bg-slate-800/50">
+                                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                                    <TrendingDown className="h-4 w-4 text-rose-600" />
                                     Deductions Breakdown
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="rounded-md border border-slate-200 bg-white p-4">
-                                    <div className="flex items-center justify-between text-sm text-slate-500">
-                                        <span>{displayPeriodLabel}</span>
-                                        <span>
-                                            {displayDeductions.length} item{displayDeductions.length !== 1 ? 's' : ''}
-                                        </span>
-                                    </div>
-                                    <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                                        <div>
-                                            <p className="text-muted-foreground text-xs">Total Deductions</p>
-                                            <p className="text-2xl font-semibold text-rose-600">{formatCurrency(displayDeductionTotal)}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-muted-foreground text-xs">Net after deductions</p>
-                                            <p className="text-2xl font-semibold text-slate-900">
-                                                {formatCurrency(grossPay - displayDeductionTotal)}
-                                            </p>
-                                        </div>
-                                    </div>
+                            <CardContent className="p-5">
+                                <div className="mb-4 flex items-center justify-between text-sm text-slate-500">
+                                    <span>{displayPeriodLabel}</span>
+                                    <span>
+                                        {displayDeductions.length} item{displayDeductions.length !== 1 ? 's' : ''}
+                                    </span>
                                 </div>
                                 <div className="space-y-3">
                                     {displayDeductions.map((deduction) => {
                                         const amount = Number(deduction.amount);
-                                        const percentage = grossPay > 0 ? (amount / grossPay) * 100 : 0;
+                                        const pct = grossPay > 0 ? (amount / grossPay) * 100 : 0;
                                         return (
-                                            <div key={deduction.id} className="space-y-2">
-                                                <div className="flex items-center justify-between text-sm font-medium">
-                                                    <span>{deduction.deduction_type?.name ?? '—'}</span>
-                                                    <span className="text-rose-600">{formatCurrency(amount)}</span>
+                                            <div key={deduction.id} className="space-y-1.5">
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                                                        {deduction.deduction_type?.name ?? '—'}
+                                                    </span>
+                                                    <span className="font-semibold text-rose-600">
+                                                        {formatCurrency(amount)}
+                                                    </span>
                                                 </div>
-                                                <div className="bg-muted h-2 overflow-hidden rounded-full">
-                                                    <div className="h-full bg-rose-500" style={{ width: `${Math.min(percentage, 100)}%` }} />
+                                                <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                                                    <div
+                                                        className="h-full rounded-full bg-gradient-to-r from-rose-400 to-rose-600"
+                                                        style={{ width: `${Math.min(pct, 100)}%` }}
+                                                    />
                                                 </div>
                                             </div>
                                         );
                                     })}
                                 </div>
-                                <Separator />
-                                <div className="flex items-center justify-between text-sm font-semibold">
-                                    <span>Total</span>
-                                    <span className="text-rose-600">{formatCurrency(displayDeductionTotal)}</span>
+                                <Separator className="my-4" />
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                        Total Deductions
+                                    </span>
+                                    <span className="text-lg font-bold text-rose-600">
+                                        {formatCurrency(displayDeductionTotal)}
+                                    </span>
                                 </div>
+                                {grossPay > 0 && (
+                                    <div className="mt-1 text-right text-xs text-slate-400">
+                                        {(displayDeductionTotal / grossPay) * 100}% of gross pay
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     )}
 
-                    {/* Recent Claims */}
-                    {recentClaims.length > 0 && (
-                        <Card className="rounded-md border-emerald-200 p-5 shadow-sm">
-                            <CardHeader>
-                                <CardTitle className="text-base">Recent Claims</CardTitle>
+                    {/* ── Recent Activity ── */}
+                    {(recentClaims.length > 0 || recentAdjustments.length > 0) && (
+                        <Card className="overflow-hidden rounded-xl border shadow-sm">
+                            <CardHeader className="border-b bg-slate-50/50 px-5 py-3 dark:bg-slate-800/50">
+                                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                                    <Receipt className="h-4 w-4 text-emerald-600" />
+                                    Recent Activity
+                                </CardTitle>
                             </CardHeader>
-                            <CardContent className="pt-4">
+                            <CardContent className="p-5">
                                 <div className="space-y-3">
                                     {recentClaims.map((claim) => (
                                         <div
-                                            key={claim.id}
-                                            className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3 last:border-0 dark:border-slate-700"
+                                            key={`claim-${claim.id}`}
+                                            className="flex items-start justify-between rounded-lg border border-slate-100 bg-white p-3 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700/50"
                                         >
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    <Receipt className="text-muted-foreground h-4 w-4" />
-                                                    <span className="text-sm font-medium">{claim.claim_type?.name ?? 'Claim'}</span>
+                                            <div className="flex items-start gap-3">
+                                                <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
+                                                    <Receipt className="h-4 w-4 text-emerald-600" />
                                                 </div>
-                                                <p className="text-muted-foreground mt-1 text-xs">{claim.purpose}</p>
-                                                <p className="text-muted-foreground mt-1 text-xs">{formatDate(claim.claim_date)}</p>
+                                                <div>
+                                                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                                                        {claim.claim_type?.name ?? 'Claim'}
+                                                    </p>
+                                                    <p className="text-xs text-slate-500">{claim.purpose}</p>
+                                                    <p className="mt-0.5 text-xs text-slate-400">{formatDate(claim.claim_date)}</p>
+                                                </div>
                                             </div>
-                                            <div className="text-right">
-                                                <div className="font-semibold text-green-600">{formatCurrency(claim.amount)}</div>
+                                            <div className="text-sm font-semibold text-emerald-600">
+                                                {formatCurrency(claim.amount)}
                                             </div>
                                         </div>
                                     ))}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {/* Recent Adjustments */}
-                    {recentAdjustments.length > 0 && (
-                        <Card className="rounded-md border-violet-200 p-5 shadow-sm">
-                            <CardHeader>
-                                <CardTitle className="text-base">Recent Adjustments</CardTitle>
-                            </CardHeader>
-                            <CardContent className="pt-4">
-                                <div className="space-y-3">
-                                    {recentAdjustments.map((adj) => (
-                                        <div
-                                            key={adj.id}
-                                            className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3 last:border-0 dark:border-slate-700"
-                                        >
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2">
-                                                    <TrendingUp className="text-muted-foreground h-4 w-4" />
-                                                    <span className="text-sm font-medium">{getAdjustmentTypeName(adj)}</span>
+                                    {recentAdjustments.map((adj) => {
+                                        const isPositive = Number(adj.amount) >= 0;
+                                        return (
+                                            <div
+                                                key={`adj-${adj.id}`}
+                                                className="flex items-start justify-between rounded-lg border border-slate-100 bg-white p-3 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700/50"
+                                            >
+                                                <div className="flex items-start gap-3">
+                                                    <div
+                                                        className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-full ${
+                                                            isPositive
+                                                                ? 'bg-emerald-100 dark:bg-emerald-900/50'
+                                                                : 'bg-rose-100 dark:bg-rose-900/50'
+                                                        }`}
+                                                    >
+                                                        <TrendingUp
+                                                            className={`h-4 w-4 ${
+                                                                isPositive ? 'text-emerald-600' : 'text-rose-600'
+                                                            }`}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                                                            {getAdjustmentTypeName(adj)}
+                                                        </p>
+                                                        <p className="text-xs text-slate-500">{adj.reason}</p>
+                                                        <p className="mt-0.5 text-xs text-slate-400">
+                                                            {formatDate(adj.effectivity_date)}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <p className="text-muted-foreground mt-1 text-xs">{adj.reason}</p>
-                                                <p className="text-muted-foreground mt-1 text-xs">{formatDate(adj.effectivity_date)}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className={`font-semibold ${Number(adj.amount) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                    {Number(adj.amount) >= 0 ? '+' : ''}
+                                                <div
+                                                    className={`text-sm font-semibold ${
+                                                        isPositive ? 'text-emerald-600' : 'text-rose-600'
+                                                    }`}
+                                                >
+                                                    {isPositive ? '+' : ''}
                                                     {formatCurrency(adj.amount)}
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </CardContent>
                         </Card>
                     )}
 
-                    {/* Compensation History */}
+                    {/* ── Compensation History ── */}
                     {employee.salaries && employee.salaries.length > 1 && (
-                        <Card className="rounded-md border-blue-200 p-5 shadow-sm">
-                            <CardHeader>
-                                <CardTitle className="text-base">Compensation History</CardTitle>
+                        <Card className="overflow-hidden rounded-xl border shadow-sm">
+                            <CardHeader className="border-b bg-slate-50/50 px-5 py-3 dark:bg-slate-800/50">
+                                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                                    <TrendingUp className="h-4 w-4 text-blue-600" />
+                                    Salary History
+                                </CardTitle>
                             </CardHeader>
-                            <CardContent className="pt-4">
+                            <CardContent className="p-5">
                                 <div className="space-y-3">
-                                    {employee.salaries.slice(0, 5).map((salary, index) => {
+                                    {employee.salaries.slice(0, 6).map((salary, index) => {
                                         const prevSalary = employee.salaries?.[index + 1];
-                                        const increase = prevSalary ? Number(salary.amount) - Number(prevSalary.amount) : 0;
+                                        const increase = prevSalary
+                                            ? Number(salary.amount) - Number(prevSalary.amount)
+                                            : 0;
                                         const increasePercent =
-                                            prevSalary && Number(prevSalary.amount) > 0 ? (increase / Number(prevSalary.amount)) * 100 : 0;
+                                            prevSalary && Number(prevSalary.amount) > 0
+                                                ? (increase / Number(prevSalary.amount)) * 100
+                                                : 0;
 
                                         return (
-                                            <div key={salary.id} className="flex items-center justify-between">
+                                            <div
+                                                key={salary.id}
+                                                className="flex items-center justify-between rounded-lg border border-slate-100 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800"
+                                            >
                                                 <div>
-                                                    <div className="text-sm font-medium">{formatCurrency(salary.amount)}</div>
-                                                    <div className="text-muted-foreground text-xs">Effective {formatDate(salary.effective_date)}</div>
+                                                    <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                                        {formatCurrency(salary.amount)}
+                                                    </div>
+                                                    <div className="text-xs text-slate-400">
+                                                        {formatDateShort(salary.effective_date)}
+                                                        {salary.source_of_fund_code && (
+                                                            <span className="ml-2">
+                                                                · {salary.source_of_fund_code.code}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 {increase > 0 && (
-                                                    <Badge variant="outline" className="border-green-200 bg-green-50 text-green-700">
-                                                        +{formatCurrency(increase)} ({increasePercent.toFixed(1)}%)
+                                                    <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-400">
+                                                        <ArrowUp className="mr-0.5 h-3 w-3" />
+                                                        {formatCurrency(increase)} ({increasePercent.toFixed(1)}%)
+                                                    </Badge>
+                                                )}
+                                                {increase < 0 && (
+                                                    <Badge variant="outline" className="border-rose-200 bg-rose-50 text-rose-700">
+                                                        <ArrowDown className="mr-0.5 h-3 w-3" />
+                                                        {formatCurrency(Math.abs(increase))}
                                                     </Badge>
                                                 )}
                                             </div>
@@ -529,92 +680,171 @@ function Overview({
                             </CardContent>
                         </Card>
                     )}
+
+                    {/* ── Empty State ── */}
+                    {displayDeductions.length === 0 && recentClaims.length === 0 && recentAdjustments.length === 0 && (
+                        <Card className="rounded-xl border border-dashed shadow-sm">
+                            <CardContent className="flex flex-col items-center py-12 text-center">
+                                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                                    <CoinsIcon className="h-7 w-7 text-slate-400" />
+                                </div>
+                                <h3 className="text-base font-semibold text-slate-700 dark:text-slate-300">
+                                    No Data for This Period
+                                </h3>
+                                <p className="mt-1 max-w-sm text-sm text-slate-500">
+                                    {hasActiveFilter
+                                        ? 'Try selecting a different period or "All Time" to view employee records.'
+                                        : 'No deductions, claims, or adjustments recorded for this employee.'}
+                                </p>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
 
-                {/* Sidebar */}
+                {/* ── Right Sidebar ── */}
                 <div className="space-y-6">
                     {/* Quick Stats */}
-                    <Card className="rounded-md border-slate-200 p-5 shadow-sm">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-base">
-                                <CalendarDays className="h-5 w-5 text-blue-600" />
+                    <Card className="overflow-hidden rounded-xl border shadow-sm">
+                        <CardHeader className="border-b bg-slate-50/50 px-5 py-3 dark:bg-slate-800/50">
+                            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                                <BadgeCheck className="h-4 w-4 text-blue-600" />
                                 Quick Stats
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="grid gap-3 bg-transparent">
-                            <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                                <p className="text-muted-foreground text-xs uppercase">Years of Service</p>
-                                <p className="mt-1 text-xl font-semibold text-slate-900">
+                        <CardContent className="space-y-3 p-5">
+                            <div className="rounded-lg border border-slate-100 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                    Years of Service
+                                </p>
+                                <p className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100">
                                     {yearsOfService} year{yearsOfService !== 1 ? 's' : ''}
                                 </p>
+                                <p className="text-xs text-slate-400">Since {formatDateShort(hireDate)}</p>
                             </div>
-                            <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                                <p className="text-muted-foreground text-xs uppercase">All-Time Deductions</p>
-                                <p className="mt-1 text-xl font-semibold text-rose-600">{formatCurrency(totalDeductionsAllTime)}</p>
+                            <div className="rounded-lg border border-rose-100 bg-rose-50 p-3 shadow-sm dark:border-rose-900 dark:bg-rose-950/50">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-rose-500">
+                                    All-Time Deductions
+                                </p>
+                                <p className="mt-1 text-xl font-bold text-rose-700 dark:text-rose-400">
+                                    {formatCurrency(totalDeductionsAllTime)}
+                                </p>
                             </div>
-                            <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                                <p className="text-muted-foreground text-xs uppercase">All-Time Claims</p>
-                                <p className="mt-1 text-xl font-semibold text-emerald-600">{formatCurrency(totalClaimsAllTime)}</p>
+                            <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 shadow-sm dark:border-emerald-900 dark:bg-emerald-950/50">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-emerald-500">
+                                    All-Time Claims
+                                </p>
+                                <p className="mt-1 text-xl font-bold text-emerald-700 dark:text-emerald-400">
+                                    {formatCurrency(totalClaimsAllTime)}
+                                </p>
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* Employment Details */}
-                    <Card className="rounded-md border-slate-200 p-5 shadow-sm">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-base">
-                                <User className="h-5 w-5 text-blue-600" />
-                                Employment Info
+                    {/* Employment Info */}
+                    <Card className="overflow-hidden rounded-xl border shadow-sm">
+                        <CardHeader className="border-b bg-slate-50/50 px-5 py-3 dark:bg-slate-800/50">
+                            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                                <User className="h-4 w-4 text-violet-600" />
+                                Employment Details
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-3 bg-transparent">
-                            <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                <div className="flex items-center gap-2 text-sm">
-                                    <User className="text-muted-foreground h-4 w-4" />
-                                    <span className="text-muted-foreground">Position</span>
-                                </div>
-                                <span className="text-sm font-semibold">{employee.position}</span>
+                        <CardContent className="space-y-4 p-5">
+                            <div className="rounded-lg border border-slate-100 bg-white p-4 shadow-sm transition-colors hover:border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600">
+                                <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-slate-400">
+                                    <User className="h-3.5 w-3.5" />
+                                    Position
+                                </p>
+                                <p className="mt-1.5 text-base font-semibold text-slate-800 dark:text-slate-200">
+                                    {employee.position}
+                                </p>
                             </div>
-                            <Separator />
-                            <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                <div className="flex items-center gap-2 text-sm">
-                                    <Building2 className="text-muted-foreground h-4 w-4" />
-                                    <span className="text-muted-foreground">Office</span>
-                                </div>
-                                <span className="text-sm font-semibold">{employee.office?.name ?? '—'}</span>
+
+                            <div className="rounded-lg border border-slate-100 bg-white p-4 shadow-sm transition-colors hover:border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600">
+                                <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-slate-400">
+                                    <Building2 className="h-3.5 w-3.5" />
+                                    Office / Department
+                                </p>
+                                <p className="mt-1.5 text-base font-semibold text-slate-800 dark:text-slate-200">
+                                    {employee.office?.name ?? '—'}
+                                </p>
                             </div>
-                            <Separator />
-                            <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                <div className="flex items-center gap-2 text-sm">
-                                    <CalendarDays className="text-muted-foreground h-4 w-4" />
-                                    <span className="text-muted-foreground">Status</span>
+
+                            <div className="rounded-lg border border-slate-100 bg-white p-4 shadow-sm transition-colors hover:border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600">
+                                <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-slate-400">
+                                    <Building2 className="h-3.5 w-3.5" />
+                                    Employment Status
+                                </p>
+                                <div className="mt-2">
+                                    <Badge className="border-emerald-200 bg-emerald-50 px-3 py-1 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-400">
+                                        {employee.employment_status?.name ?? '—'}
+                                    </Badge>
                                 </div>
-                                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
-                                    {employee.employment_status?.name ?? '—'}
-                                </Badge>
                             </div>
-                            <Separator />
-                            <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                <div className="flex items-center gap-2 text-sm">
-                                    <DollarSign className="text-muted-foreground h-4 w-4" />
-                                    <span className="text-muted-foreground">RATA Eligible</span>
+
+                            <div className="rounded-lg border border-slate-100 bg-white p-4 shadow-sm transition-colors hover:border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600">
+                                <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-slate-400">
+                                    <MapPin className="h-3.5 w-3.5" />
+                                    RATA Eligibility
+                                </p>
+                                <div className="mt-2">
+                                    <Badge
+                                        variant={employee.is_rata_eligible ? 'default' : 'secondary'}
+                                        className="px-3 py-1 text-sm"
+                                    >
+                                        {employee.is_rata_eligible ? 'Eligible' : 'Not Eligible'}
+                                    </Badge>
                                 </div>
-                                <Badge variant={employee.is_rata_eligible ? 'default' : 'secondary'}>
-                                    {employee.is_rata_eligible ? 'Yes' : 'No'}
-                                </Badge>
                             </div>
-                            <Separator />
-                            <div className="flex items-center justify-between rounded p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                <div className="flex items-center gap-2 text-sm">
-                                    <CoinsIcon className="text-muted-foreground h-4 w-4" />
-                                    <span className="text-muted-foreground">Source of Fund</span>
+
+                            <div className="rounded-lg border border-slate-100 bg-white p-4 shadow-sm transition-colors hover:border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600">
+                                <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-slate-400">
+                                    <CoinsIcon className="h-3.5 w-3.5" />
+                                    Source of Fund
+                                </p>
+                                <div className="mt-2">
+                                    <Badge className="border-blue-200 bg-blue-50 px-3 py-1 text-sm text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-400">
+                                        {employee.latest_salary?.source_of_fund_code?.code ?? 'Not Assigned'}
+                                    </Badge>
                                 </div>
-                                <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700">
-                                    {employee.latest_salary?.source_of_fund_code?.code ?? 'Not Assigned'}
-                                </Badge>
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Personal Info */}
+                    {(employee.contact_number || employee.email || employee.address || employee.birthdate) && (
+                        <Card className="overflow-hidden rounded-xl border shadow-sm">
+                            <CardHeader className="border-b bg-slate-50/50 px-5 py-3 dark:bg-slate-800/50">
+                                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                                    <Phone className="h-4 w-4 text-amber-600" />
+                                    Contact & Personal
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4 p-5">
+                                {employee.contact_number && (
+                                    <div className="rounded-lg border border-slate-100 bg-white p-4 shadow-sm transition-colors hover:border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600">
+                                        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-slate-400">
+                                            <Phone className="h-3.5 w-3.5" />
+                                            Contact Number
+                                        </p>
+                                        <p className="mt-1.5 text-base font-semibold text-slate-800 dark:text-slate-200">
+                                            {employee.contact_number}
+                                        </p>
+                                    </div>
+                                )}
+                                {employee.birthdate && (
+                                    <div className="rounded-lg border border-slate-100 bg-white p-4 shadow-sm transition-colors hover:border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600">
+                                        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-slate-400">
+                                            <Baby className="h-3.5 w-3.5" />
+                                            Birthdate
+                                        </p>
+                                        <p className="mt-1.5 text-base font-semibold text-slate-800 dark:text-slate-200">
+                                            {formatDate(employee.birthdate)}
+                                        </p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             </div>
         </div>
