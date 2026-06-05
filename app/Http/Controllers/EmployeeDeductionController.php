@@ -9,7 +9,6 @@ use App\Models\EmployeeDeduction;
 use App\Traits\HandlesDeletionRequests;
 use App\Models\EmploymentStatus;
 use App\Models\Office;
-use App\Services\PayrollService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -21,35 +20,32 @@ class EmployeeDeductionController extends Controller
 {
     use HandlesDeletionRequests;
 
-    public function __construct(
-        protected PayrollService $payrollService
-    ) {}
-
     public function index(Request $request): Response
     {
-        $month = $request->input('month'); // Can be null for "All Months"
+        $month = $request->input('month');
         $year = $request->input('year', now()->year);
         $officeId = $request->input('office_id');
         $employmentStatusId = $request->input('employment_status_id');
         $search = $request->input('search');
-        $hasDeductions = $request->input('has_deductions', true); // Default to show only employees with deductions
+        $hasDeductions = $request->input('has_deductions', true);
 
         $employees = Employee::query()
-            ->with(['employmentStatus', 'office'])
+            ->with(['employmentStatus', 'office', 'latestSalary'])
             // Only show employees who have deductions for the selected period
             ->when($hasDeductions, function ($query) use ($year, $month) {
                 $query->whereHas('employeeDeductions', function ($q) use ($year, $month) {
                     $q->where('pay_period_year', $year);
-                    // Only filter by month if it's provided (not "All Months")
                     if ($month) {
                         $q->where('pay_period_month', $month);
                     }
                 });
             })
             ->when($search, function ($query, $search) {
-                $query->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('middle_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%");
+                $query->where(function ($q) use ($search) {
+                    $q->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('middle_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%");
+                });
             })
             ->when($officeId, function ($query, $officeId) {
                 $query->where('office_id', $officeId);
@@ -57,34 +53,14 @@ class EmployeeDeductionController extends Controller
             ->when($employmentStatusId, function ($query, $employmentStatusId) {
                 $query->where('employment_status_id', $employmentStatusId);
             })
-            // Load latest salary, pera, rata for display
-            ->with(['latestSalary', 'latestPera', 'latestRata'])
-            // Load all compensation history (ordered by date)
-            ->with(['salaries' => function ($query) {
-                $query->orderBy('effective_date', 'desc');
-            }])
-            ->with(['peras' => function ($query) {
-                $query->orderBy('effective_date', 'desc');
-            }])
-            ->with(['ratas' => function ($query) {
-                $query->orderBy('effective_date', 'desc');
-            }])
-            // Load deductions for the selected month/year (or all months)
+            // Load salaries (used by frontend for display)
+            ->with(['salaries' => fn($q) => $q->orderBy('effective_date', 'desc')])
+            // Load deductions for the selected period
             ->with(['employeeDeductions' => function ($query) use ($year, $month) {
                 $query->where('pay_period_year', $year)
                     ->with('deductionType')
                     ->with('salary')
                     ->orderBy('pay_period_month', 'asc');
-                // Only filter by month if it's provided
-                if ($month) {
-                    $query->where('pay_period_month', $month);
-                }
-            }])
-            // Also load as 'deductions' for frontend compatibility
-            ->with(['deductions' => function ($query) use ($year, $month) {
-                $query->where('pay_period_year', $year)
-                    ->orderBy('created_at', 'desc');
-                // Only filter by month if it's provided
                 if ($month) {
                     $query->where('pay_period_month', $month);
                 }

@@ -4,15 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Adjustment;
 use App\Models\Claim;
-use App\Models\ClaimType;
 use App\Models\ClothingAllowance;
-use App\Models\DeductionType;
 use App\Models\DeleteRequest;
 use App\Models\Employee;
 use App\Models\EmployeeDeduction;
-use App\Models\EmploymentStatus;
-use App\Models\Office;
-use App\Models\SourceOfFundCode;
+use App\Services\ManageEmployeeService;
 use App\Traits\HandlesDeletionRequests;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -24,328 +20,128 @@ class ManageEmployeeController extends Controller
 {
     use HandlesDeletionRequests;
 
+    public function __construct(
+        private ManageEmployeeService $service
+    ) {}
+
+    /**
+     * Show the employee management page with tab-based data loading.
+     */
     public function index(Request $request, Employee $employee)
     {
         $this->authorize('view', $employee);
 
-        $filterMonth = $request->input('deduction_month');
-        $filterYear = $request->input('deduction_year');
-
-        // Clean and convert to integers
-        $filterMonth = is_numeric($filterMonth) ? (int) $filterMonth : null;
-        $filterYear = is_numeric($filterYear) ? (int) $filterYear : null;
-
-        $employee->load([
-            'office',
-            'employmentStatus',
-            'latestSalary',
-            'earliestSalary',
-            'latestPera',
-            'latestRata',
-            'latestHazardPay',
-            'latestClothingAllowance',
-            'salaries' => function ($query) {
-                $query->orderBy('effective_date', 'desc')
-                    ->with('sourceOfFundCode');
-            },
-            'peras' => function ($query) {
-                $query->orderBy('effective_date', 'desc');
-            },
-            'ratas' => function ($query) {
-                $query->orderBy('effective_date', 'desc');
-            },
-            'hazardPays' => function ($query) {
-                $query->orderBy('start_date', 'desc')
-                    ->with('sourceOfFundCode');
-            },
-            'clothingAllowances' => function ($query) {
-                $query->orderBy('start_date', 'desc')
-                    ->with('sourceOfFundCode');
-            },
-        ]);
-
         $tab = $request->query('tab', 'overview');
-        $deductionTypes = DeductionType::active()->get();
-        $sourceOfFundCodes = SourceOfFundCode::where('status', true)->orderBy('code')->get();
-        $employmentStatuses = EmploymentStatus::all();
-        $offices = Office::all();
+        $filterMonth = is_numeric($request->input('deduction_month'))
+            ? (int) $request->input('deduction_month')
+            : null;
+        $filterYear = is_numeric($request->input('deduction_year'))
+            ? (int) $request->input('deduction_year')
+            : null;
 
-        $periodsList = [];
-        $takenPeriods = [];
-        $availableYears = [];
-        $allPeriods = collect();
-        $groupedDeductions = [];
-        $deductions = [];
-        $adjustments = collect();
-        $deductionPagination = [
-            'current_page' => 1,
-            'last_page' => 1,
-            'per_page' => 50,
-            'total' => 0,
-        ];
+        // Load employee with all core relationships
+        $employee = $this->service->loadEmployee($employee);
 
-        $claims = null;
-        $claimTypes = [];
-        $availableClaimYears = [];
-        $claimMonth = $request->input('claim_month');
-        $claimYear = $request->input('claim_year');
-        $claimTypeId = $request->input('claim_type_id');
-        $claimFilters = [
-            'claim_month' => $claimMonth,
-            'claim_year' => $claimYear,
-            'claim_type_id' => $claimTypeId,
-        ];
+        // Reference data (always needed)
+        $refData = $this->service->getReferenceData();
 
-        $allDeductionsData = collect();
-        $allDeductions = [];
-        $allClaims = collect();
-        $allClaimsGrouped = [];
-        $allClothingAllowances = collect();
-        $totalDeductionsAllTime = 0;
-        $totalClaimsAllTime = 0;
-        $allAdjustmentsGrouped = [];
-        $adjustmentStatistics = [
-            'total_processed' => 0,
-            'total_amount' => 0,
-        ];
-
-        $allEmployees = collect();
-
+        // Determine which data blocks to load
         $loadOverviewData = in_array($tab, ['overview', 'reports', 'deductions'], true);
         $loadDeductionData = in_array($tab, ['deductions', 'overview'], true);
         $loadClaimsData = $tab === 'claims';
         $loadAdjustmentsData = in_array($tab, ['adjustments', 'overview', 'reports', 'deductions'], true);
         $loadReportData = $tab === 'reports';
 
+        // Shared data (claims + adjustments) — used by overview, deductions, reports
+        $allClaims = collect();
+        $adjustments = collect();
         if ($loadOverviewData || $loadDeductionData || $loadReportData || $loadAdjustmentsData) {
-            $allClaims = Claim::where('employee_id', $employee->id)
-                ->with('claimType')
-                ->orderBy('claim_date', 'desc')
-                ->get();
-
-            $adjustments = Adjustment::with(['adjustmentType', 'referenceType'])
-                ->where('employee_id', $employee->id)
-                ->orderBy('created_at', 'desc')
-                ->get();
+            $result = $this->service->getClaimsAndAdjustments($employee);
+            $allClaims = $result['allClaims'];
+            $adjustments = $result['adjustments'];
         }
+
+        // Deduction data (periods, grouped deductions, years)
+        $groupedDeductions = [];
+        $periodsList = [];
+        $takenPeriods = [];
+        $availableYears = [];
+        $allEmployees = collect();
+        $allClaimsGrouped = [];
+        $allAdjustmentsGrouped = [];
+        $deductionsData = collect();
+        $allPeriodsCount = 0;
 
         if ($loadDeductionData || $loadReportData) {
-            $periodsArray = [];
-
-            $deductionPeriods = EmployeeDeduction::where('employee_id', $employee->id)
-                ->select('pay_period_year', 'pay_period_month')
-                ->distinct()
-                ->get();
-            foreach ($deductionPeriods as $d) {
-                $monthStr = str_pad((int) $d->pay_period_month, 2, '0', STR_PAD_LEFT);
-                $periodsArray[] = $d->pay_period_year . '-' . $monthStr;
-            }
-
-            foreach ($allClaims as $c) {
-                if ($c->claim_date) {
-                    $periodsArray[] = Carbon::parse($c->claim_date)->format('Y-m');
-                }
-            }
-
-            foreach ($adjustments as $a) {
-                if ($a->pay_period_month && $a->pay_period_year) {
-                    $periodsArray[] = $a->pay_period_year . '-' . str_pad($a->pay_period_month, 2, '0', STR_PAD_LEFT);
-                }
-            }
-
-            foreach ($employee->clothingAllowances as $ca) {
-                if ($ca->start_date) {
-                    $periodsArray[] = Carbon::parse($ca->start_date)->format('Y-m');
-                }
-            }
-
-            $periodsArray = array_unique($periodsArray);
-            rsort($periodsArray);
-            $allPeriods = collect($periodsArray);
-
-            if ($filterMonth && $filterYear) {
-                $filteredPeriod = $filterYear . '-' . str_pad($filterMonth, 2, '0', STR_PAD_LEFT);
-                $filteredArr = array_filter($periodsArray, fn($p) => $p === $filteredPeriod);
-                $allPeriods = collect($filteredArr);
-            } elseif ($filterYear) {
-                $filteredArr = array_filter($periodsArray, fn($p) => str_starts_with($p, (string) $filterYear));
-                $allPeriods = collect($filteredArr);
-            } elseif ($filterMonth) {
-                $suffix = '-' . str_pad($filterMonth, 2, '0', STR_PAD_LEFT);
-                $filteredArr = array_filter($periodsArray, fn($p) => str_ends_with($p, $suffix));
-                $allPeriods = collect($filteredArr);
-            }
-
-            if ($filterMonth && ! $filterYear) {
-                $periodsList = array_values($allPeriods->toArray());
-            } else {
-                $allPeriodsPaginated = $allPeriods->forPage(1, 50);
-                $periodsList = array_values($allPeriodsPaginated->toArray());
-            }
-
-            $periodPairs = array_map(function ($periodKey) {
-                [$year, $month] = explode('-', $periodKey);
-
-                return ['year' => (int) $year, 'month' => (int) ltrim($month, '0') ?: (int) $month];
-            }, $periodsList);
-
-            $deductionsQuery = EmployeeDeduction::where('employee_id', $employee->id);
-
-            if (! empty($periodPairs)) {
-                $deductionsQuery->where(function ($q) use ($periodPairs) {
-                    foreach ($periodPairs as $pair) {
-                        $q->orWhere(function ($q2) use ($pair) {
-                            $q2->where('pay_period_year', $pair['year'])
-                                ->where('pay_period_month', $pair['month']);
-                        });
-                    }
-                });
-            }
-
-            $deductionsData = $deductionsQuery
-                ->with('deductionType')
-                ->with('salary')
-                ->orderBy('pay_period_year', 'desc')
-                ->orderBy('pay_period_month', 'desc')
-                ->get();
-
-            $groupedDeductions = $deductionsData->groupBy(function ($d) {
-                return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
-            })->map(function ($group) {
-                return $group->toArray();
-            })->toArray();
-
-            // Reuse already-fetched deduction periods to avoid duplicate query
-            $takenPeriods = $deductionPeriods->map(function ($d) {
-                return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
-            })->values()->toArray();
-
-            // Create a year range from 10 years ago to current year + 5 for flexibility
-            $currentYear = Carbon::now()->year;
-            $startYear = $currentYear - 10;
-            $endYear = $currentYear + 5;
-            $yearRange = range($startYear, $endYear);
-
-            // Also collect years from actual data
-            $dataYears = collect()
-                ->merge(EmployeeDeduction::where('employee_id', $employee->id)->select('pay_period_year as year')->distinct())
-                ->merge($allClaims->map(fn($c) => (object) ['year' => (int) Carbon::parse($c->claim_date)->format('Y')])->unique('year')->values())
-                ->merge($adjustments->filter(fn($a) => $a->pay_period_year)->map(fn($a) => (object) ['year' => $a->pay_period_year]))
-                ->merge($employee->clothingAllowances->map(fn($ca) => (object) ['year' => (int) Carbon::parse($ca->start_date)->format('Y')]))
-                ->pluck('year')
-                ->unique()
-                ->toArray();
-
-            // Merge year range with data years and deduplicate
-            $availableYears = collect($yearRange)
-                ->merge($dataYears)
-                ->unique()
-                ->sort()
-                ->reverse()
-                ->values()
-                ->toArray();
-
-            $allEmployees = Employee::with('office')
-                ->orderBy('last_name')
-                ->orderBy('first_name')
-                ->get(['id', 'first_name', 'last_name', 'office_id']);
-
-            $allClaimsGrouped = $allClaims->groupBy(function ($c) {
-                return Carbon::parse($c->claim_date)->format('Y-m');
-            })->map(function ($group) {
-                return $group->toArray();
-            })->toArray();
-
-            $allAdjustmentsGrouped = $adjustments->filter(function ($adj) {
-                return $adj->status !== 'rejected' && $adj->pay_period_month && $adj->pay_period_year;
-            })->groupBy(function ($adj) {
-                return "{$adj->pay_period_year}-" . str_pad($adj->pay_period_month, 2, '0', STR_PAD_LEFT);
-            })->map(function ($group) {
-                return $group->toArray();
-            })->toArray();
+            $dedResult = $this->service->getDeductionData(
+                $employee, $filterMonth, $filterYear, $allClaims, $adjustments
+            );
+            $groupedDeductions = $dedResult['groupedDeductions'];
+            $deductionsData = $dedResult['deductionsData'];
+            $periodsList = $dedResult['periodsList'];
+            $takenPeriods = $dedResult['takenPeriods'];
+            $availableYears = $dedResult['availableYears'];
+            $allEmployees = $dedResult['allEmployees'];
+            $allClaimsGrouped = $dedResult['allClaimsGrouped'];
+            $allAdjustmentsGrouped = $dedResult['allAdjustmentsGrouped'];
+            $allPeriodsCount = $dedResult['allPeriodsCount'];
         }
 
+        // Overview/summary data (all-time totals)
+        $allDeductions = [];
+        $allClothingAllowances = collect();
+        $totalDeductionsAllTime = 0;
+        $totalClaimsAllTime = 0;
+
         if ($loadOverviewData || $loadReportData) {
-            // Reuse the already-fetched deductions if available (overview tab loads both),
-            // otherwise do a dedicated fetch for all-time summary
-            if ($loadDeductionData && isset($deductionsData)) {
-                $allDeductionsData = $deductionsData;
-            } else {
-                $allDeductionsData = EmployeeDeduction::where('employee_id', $employee->id)
+            // Reuse deductionsData if already fetched (from deduction tab), otherwise fetch fresh
+            $sourceData = $deductionsData->isNotEmpty()
+                ? $deductionsData
+                : EmployeeDeduction::where('employee_id', $employee->id)
                     ->with(['deductionType', 'salary'])
                     ->orderBy('pay_period_year', 'desc')
                     ->orderBy('pay_period_month', 'desc')
                     ->get();
-            }
 
-            $allDeductions = $allDeductionsData->groupBy(function ($d) {
-                return "{$d->pay_period_year}-" . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
-            })->map(function ($group) {
-                return $group->toArray();
-            })->toArray();
-
-            $totalDeductionsAllTime = (float) $allDeductionsData->sum('amount');
-            $totalClaimsAllTime = (float) $allClaims->sum('amount');
-
-            $allClothingAllowances = $employee->clothingAllowances()
-                ->with('sourceOfFundCode')
-                ->orderBy('start_date', 'desc')
-                ->get();
+            $overviewResult = $this->service->getOverviewData($employee, $sourceData, $allClaims);
+            $allDeductions = $overviewResult['allDeductions'];
+            $totalDeductionsAllTime = $overviewResult['totalDeductionsAllTime'];
+            $totalClaimsAllTime = $overviewResult['totalClaimsAllTime'];
+            $allClothingAllowances = $overviewResult['allClothingAllowances'];
         }
+
+        // Claims tab data
+        $claims = null;
+        $claimTypes = [];
+        $availableClaimYears = [];
+        $claimMonth = null;
+        $claimYear = null;
+        $claimTypeId = null;
 
         if ($loadClaimsData) {
-            $claimMonth = $request->input('claim_month');
-            $claimYear = $request->input('claim_year');
-            $claimTypeId = $request->input('claim_type_id');
-
-            $claimsQuery = Claim::where('employee_id', $employee->id)
-                ->with('claimType')
-                ->orderBy('claim_date', 'desc');
-
-            if ($claimMonth) {
-                $claimsQuery->whereMonth('claim_date', $claimMonth);
-            }
-
-            if ($claimYear) {
-                $claimsQuery->whereYear('claim_date', $claimYear);
-            }
-
-            if ($claimTypeId) {
-                $claimsQuery->where('claim_type_id', $claimTypeId);
-            }
-
-            $claims = $claimsQuery->paginate(20)->withQueryString();
-            $claimTypes = ClaimType::active()->get();
-            $availableClaimYears = Claim::where('employee_id', $employee->id)
-                ->selectRaw('DISTINCT YEAR(claim_date) as year')
-                ->orderBy('year', 'desc')
-                ->pluck('year')
-                ->toArray();
-
-            $claimFilters = [
-                'claim_month' => $claimMonth,
-                'claim_year' => $claimYear,
-                'claim_type_id' => $claimTypeId,
-            ];
+            $claimsResult = $this->service->getClaimsData($employee, $request);
+            $claims = $claimsResult['claims'];
+            $claimTypes = $claimsResult['claimTypes'];
+            $availableClaimYears = $claimsResult['availableClaimYears'];
+            $claimFilters = $claimsResult['claimFilters'];
+            $claimMonth = $claimFilters['claim_month'];
+            $claimYear = $claimFilters['claim_year'];
+            $claimTypeId = $claimFilters['claim_type_id'];
         }
 
+        // Adjustment statistics
+        $adjustmentStatistics = ['total_processed' => 0, 'total_amount' => 0];
         if ($loadAdjustmentsData || $loadOverviewData || $loadReportData) {
-            $adjustmentStatistics = [
-                'total_processed' => Adjustment::where('employee_id', $employee->id)->processed()->count(),
-                'total_amount' => Adjustment::where('employee_id', $employee->id)->sum('amount'),
-            ];
+            $adjustmentStatistics = $this->service->getAdjustmentStats($employee);
         }
 
         return Inertia::render('employees/Manage/Manage', [
             'employee' => $employee,
-            // Explicitly include earliest_salary for the frontend props so components can
-            // read employee.earliest_salary directly without relying on implicit
-            // serializer behavior.
             'earliest_salary' => $employee->earliestSalary,
-            'employmentStatuses' => $employmentStatuses,
-            'offices' => $offices,
-            'deductionTypes' => $deductionTypes,
-            'sourceOfFundCodes' => $sourceOfFundCodes,
+            'employmentStatuses' => $refData['employmentStatuses'],
+            'offices' => $refData['offices'],
+            'deductionTypes' => $refData['deductionTypes'],
+            'sourceOfFundCodes' => $refData['sourceOfFundCodes'],
             'deductions' => $groupedDeductions,
             'periodsList' => $periodsList,
             'takenPeriods' => $takenPeriods,
@@ -357,11 +153,11 @@ class ManageEmployeeController extends Controller
             ],
             'deductionPagination' => [
                 'current_page' => 1,
-                'last_page' => ceil($allPeriods->count() / 50),
+                'last_page' => max(1, (int) ceil($allPeriodsCount / 50)),
                 'per_page' => 50,
-                'total' => $allPeriods->count(),
+                'total' => $allPeriodsCount,
             ],
-            'claims' => $claims,
+            'claims' => $claims ?? null,
             'claimTypes' => $claimTypes,
             'availableClaimYears' => $availableClaimYears,
             'claimFilters' => [
@@ -369,7 +165,7 @@ class ManageEmployeeController extends Controller
                 'claim_year' => $claimYear,
                 'claim_type_id' => $claimTypeId,
             ],
-            'allDeductions' => $allDeductionsData,
+            'allDeductions' => $allDeductions,
             'allClaims' => $allClaims,
             'allClaimsGrouped' => $allClaimsGrouped,
             'allClothingAllowances' => $allClothingAllowances,
@@ -387,6 +183,7 @@ class ManageEmployeeController extends Controller
     public function storeDeduction(Request $request, Employee $employee)
     {
         $this->authorize('update', $employee);
+
         $validated = $request->validate([
             'pay_period_month' => 'required|integer|min:1|max:12',
             'pay_period_year' => 'required|integer|min:2020|max:2100',
@@ -430,14 +227,9 @@ class ManageEmployeeController extends Controller
 
     public function destroyDeduction(Employee $employee, EmployeeDeduction $deduction)
     {
-        // Always require approval for deduction deletions (financial audit trail)
         return $this->handleDeletion($deduction, 'deductions.delete', null, true);
     }
 
-    /**
-     * Delete all deductions for a specific pay period for the given employee.
-     * Expects `pay_period_month` and `pay_period_year` as request inputs.
-     */
     public function destroyDeductionsForPeriod(Request $request, Employee $employee)
     {
         $this->authorize('update', $employee);
@@ -447,11 +239,9 @@ class ManageEmployeeController extends Controller
             'pay_period_year' => 'required|integer|min:2020|max:2100',
         ]);
 
-        // Create date range for the period
         $startOfMonth = Carbon::createFromDate($validated['pay_period_year'], $validated['pay_period_month'], 1)->startOfMonth();
         $endOfMonth = Carbon::createFromDate($validated['pay_period_year'], $validated['pay_period_month'], 1)->endOfMonth();
 
-        // Find deductions and adjustments to delete
         $deductions = EmployeeDeduction::where('employee_id', $employee->id)
             ->where('pay_period_month', $validated['pay_period_month'])
             ->where('pay_period_year', $validated['pay_period_year'])
@@ -462,7 +252,6 @@ class ManageEmployeeController extends Controller
             ->where('pay_period_year', $validated['pay_period_year'])
             ->get();
 
-        // Find clothing allowances within this period
         $clothingAllowances = ClothingAllowance::where('employee_id', $employee->id)
             ->whereBetween('start_date', [$startOfMonth, $endOfMonth])
             ->get();
@@ -475,9 +264,6 @@ class ManageEmployeeController extends Controller
 
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-
-        // For deductions (and related items), always require approval
-        // Find the first item to use for the deletion request
         $firstItem = $deductions->first() ?? $adjustments->first() ?? $clothingAllowances->first();
 
         if (!$firstItem) {
@@ -491,12 +277,14 @@ class ManageEmployeeController extends Controller
         $deductionCount = $deductions->count();
         $adjustmentCount = $adjustments->count();
         $clothingCount = $clothingAllowances->count();
-
         $hasEmployeeManagePermission = $user->can('employees.manage');
 
-        $canDeleteDeductions = $hasEmployeeManagePermission || $deductionCount === 0 || $user->can('deductions.manage') || $user->can('deductions.delete');
-        $canDeleteAdjustments = $hasEmployeeManagePermission || $adjustmentCount === 0 || $user->can('adjustments.manage') || $user->can('adjustments.delete');
-        $canDeleteClothingAllowances = $hasEmployeeManagePermission || $clothingCount === 0 || $user->can('clothing_allowances.delete');
+        $canDeleteDeductions = $hasEmployeeManagePermission || $deductionCount === 0
+            || $user->can('deductions.manage') || $user->can('deductions.delete');
+        $canDeleteAdjustments = $hasEmployeeManagePermission || $adjustmentCount === 0
+            || $user->can('adjustments.manage') || $user->can('adjustments.delete');
+        $canDeleteClothingAllowances = $hasEmployeeManagePermission || $clothingCount === 0
+            || $user->can('clothing_allowances.delete');
         $canDeleteAllItems = $canDeleteDeductions && $canDeleteAdjustments && $canDeleteClothingAllowances;
 
         if ($canDeleteAllItems) {
@@ -504,16 +292,19 @@ class ManageEmployeeController extends Controller
             $adjustments->each->delete();
             $clothingAllowances->each->delete();
 
-            return back()->with('success', "Deleted {$deductionCount} deduction(s), {$adjustmentCount} adjustment(s), and {$clothingCount} clothing allowance(s) for period {$validated['pay_period_month']}/{$validated['pay_period_year']}.");
+            return back()->with('success',
+                "Deleted {$deductionCount} deduction(s), {$adjustmentCount} adjustment(s), "
+                . "and {$clothingCount} clothing allowance(s) "
+                . "for period {$validated['pay_period_month']}/{$validated['pay_period_year']}."
+            );
         }
 
-        // Create deletion request with details about all items
         $itemDetails = [];
         if ($deductionCount > 0) $itemDetails[] = "{$deductionCount} deduction(s)";
         if ($adjustmentCount > 0) $itemDetails[] = "{$adjustmentCount} adjustment(s)";
         if ($clothingCount > 0) $itemDetails[] = "{$clothingCount} clothing allowance(s)";
 
-        $reason = request()->input('reason', 'Delete entire pay period - ' . implode(', ', $itemDetails));
+        $reason = $request->input('reason', 'Delete entire pay period - ' . implode(', ', $itemDetails));
 
         $deleteRequest = DeleteRequest::create([
             'requestable_type' => get_class($firstItem),
@@ -525,106 +316,67 @@ class ManageEmployeeController extends Controller
 
         $this->notifySuperAdminsOfDeletionRequest($deleteRequest, $firstItem, $user);
 
-        return back()->with('success', "Your deletion request for period {$validated['pay_period_month']}/{$validated['pay_period_year']} has been sent to administrators for approval.");
+        return back()->with('success',
+            "Your deletion request for period {$validated['pay_period_month']}/{$validated['pay_period_year']} "
+            . "has been sent to administrators for approval."
+        );
     }
 
     public function print(Request $request, Employee $employee)
     {
         $this->authorize('view', $employee);
+
         $filterMonth = $request->input('month');
         $filterYear = $request->input('year');
         $filterSalaryId = $request->input('salary_id');
         $printType = $request->input('type', 'all');
 
-        // Re-fetch employee with all relationships to ensure proper serialization
         $employee = Employee::with([
-            'office',
-            'employmentStatus',
-            'latestSalary',
-            'latestPera',
-            'latestRata',
-            'latestHazardPay',
-            'latestClothingAllowance',
-            'salaries' => function ($query) {
-                $query->orderBy('effective_date', 'desc');
-            },
-            'peras' => function ($query) {
-                $query->orderBy('effective_date', 'desc');
-            },
-            'ratas' => function ($query) {
-                $query->orderBy('effective_date', 'desc');
-            },
-            'hazardPays' => function ($query) {
-                $query->orderBy('start_date', 'desc');
-            },
-            'clothingAllowances' => function ($query) {
-                $query->orderBy('start_date', 'desc');
-            },
+            'office', 'employmentStatus',
+            'latestSalary', 'latestPera', 'latestRata', 'latestHazardPay', 'latestClothingAllowance',
+            'salaries' => fn($q) => $q->orderBy('effective_date', 'desc'),
+            'peras' => fn($q) => $q->orderBy('effective_date', 'desc'),
+            'ratas' => fn($q) => $q->orderBy('effective_date', 'desc'),
+            'hazardPays' => fn($q) => $q->orderBy('start_date', 'desc'),
+            'clothingAllowances' => fn($q) => $q->orderBy('start_date', 'desc'),
         ])->findOrFail($employee->id);
 
-        // Get all deductions
-        $deductionsQuery = EmployeeDeduction::with('deductionType', 'salary')
-            ->where('employee_id', $employee->id);
-
-        if ($filterMonth) {
-            $deductionsQuery->where('pay_period_month', $filterMonth);
-        }
-        if ($filterYear) {
-            $deductionsQuery->where('pay_period_year', $filterYear);
-        }
-        if ($filterSalaryId !== null && $filterSalaryId !== '') {
-            // If salary_id is 'null' string, filter for NULL values, otherwise filter by ID
-            if ($filterSalaryId === 'null') {
-                $deductionsQuery->whereNull('salary_id');
-            } else {
-                $deductionsQuery->where('salary_id', $filterSalaryId);
-            }
-        }
-
-        $allDeductions = $deductionsQuery->orderBy('pay_period_year', 'desc')
+        $allDeductions = EmployeeDeduction::with('deductionType', 'salary')
+            ->where('employee_id', $employee->id)
+            ->when($filterMonth, fn($q) => $q->where('pay_period_month', $filterMonth))
+            ->when($filterYear, fn($q) => $q->where('pay_period_year', $filterYear))
+            ->when($filterSalaryId !== null && $filterSalaryId !== '', function ($q) use ($filterSalaryId) {
+                $filterSalaryId === 'null'
+                    ? $q->whereNull('salary_id')
+                    : $q->where('salary_id', $filterSalaryId);
+            })
+            ->orderBy('pay_period_year', 'desc')
             ->orderBy('pay_period_month', 'desc')
             ->get();
 
-        // Get all claims
-        $claimsQuery = Claim::with('claimType')
-            ->where('employee_id', $employee->id);
-
-        if ($filterMonth) {
-            $claimsQuery->whereMonth('claim_date', $filterMonth);
-        }
-        if ($filterYear) {
-            $claimsQuery->whereYear('claim_date', $filterYear);
-        }
-
-        $allClaims = $claimsQuery->orderBy('claim_date', 'desc')->get();
-
-        // Get all adjustments (exclude rejected only) so pending adjustments also appear in reports/print
-        $adjustmentsQuery = Adjustment::with(['adjustmentType', 'referenceType'])
+        $allClaims = Claim::with('claimType')
             ->where('employee_id', $employee->id)
-            ->where('status', '!=', 'rejected');
+            ->when($filterMonth, fn($q) => $q->whereMonth('claim_date', $filterMonth))
+            ->when($filterYear, fn($q) => $q->whereYear('claim_date', $filterYear))
+            ->orderBy('claim_date', 'desc')
+            ->get();
 
-        if ($filterMonth) {
-            $adjustmentsQuery->where('pay_period_month', $filterMonth);
-        }
-        if ($filterYear) {
-            $adjustmentsQuery->where('pay_period_year', $filterYear);
-        }
+        $allAdjustments = Adjustment::with(['adjustmentType', 'referenceType'])
+            ->where('employee_id', $employee->id)
+            ->where('status', '!=', 'rejected')
+            ->when($filterMonth, fn($q) => $q->where('pay_period_month', $filterMonth))
+            ->when($filterYear, fn($q) => $q->where('pay_period_year', $filterYear))
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-        $allAdjustments = $adjustmentsQuery->orderBy('created_at', 'desc')->get();
-
-        // Get clothing allowances for the period
         $clothingAllowancesQuery = $employee->clothingAllowances();
-
         if ($filterMonth && $filterYear) {
             $periodStart = now()->setDate($filterYear, $filterMonth, 1)->startOfMonth();
             $periodEnd = now()->setDate($filterYear, $filterMonth, 1)->endOfMonth();
-            $clothingAllowancesQuery->where('start_date', '<=', $periodEnd)
-                ->where(function ($q) use ($periodStart) {
-                    $q->whereNull('end_date')
-                        ->orWhere('end_date', '>=', $periodStart);
-                });
+            $clothingAllowancesQuery
+                ->where('start_date', '<=', $periodEnd)
+                ->where(fn($q) => $q->whereNull('end_date')->orWhere('end_date', '>=', $periodStart));
         }
-
         $allClothingAllowances = $clothingAllowancesQuery->orderBy('start_date', 'desc')->get();
 
         return Inertia::render('employees/Manage/print', [
