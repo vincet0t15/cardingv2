@@ -213,6 +213,7 @@ class ManageEmployeeService
             ->get();
 
         $totalGrossAllTime = $this->computeTotalGrossAllTime($employee, $deductionsData, $allClaims);
+        $periodNetPaySummaries = $this->getPeriodNetPaySummaries($employee, $deductionsData);
 
         return [
             'allDeductions' => $deductionsData, // raw collection (frontend expects EmployeeDeduction[])
@@ -220,7 +221,62 @@ class ManageEmployeeService
             'totalClaimsAllTime' => (float) $allClaims->sum('amount'),
             'allClothingAllowances' => $allClothingAllowances,
             'totalGrossAllTime' => $totalGrossAllTime,
+            'periodNetPaySummaries' => $periodNetPaySummaries,
         ];
+    }
+
+    /**
+     * Compute per-period net pay summaries (gross, deductions, net) for the Overview table.
+     */
+    public function getPeriodNetPaySummaries(
+        Employee $employee,
+        Collection $deductionsData
+    ): array {
+        $grouped = $deductionsData->groupBy(function ($d) {
+            return $d->pay_period_year . '-' . str_pad((int) $d->pay_period_month, 2, '0', STR_PAD_LEFT);
+        });
+
+        $summaries = [];
+
+        foreach ($grouped as $period => $deductions) {
+            [$year, $month] = explode('-', $period);
+            $year = (int) $year;
+            $month = (int) ltrim($month, '0');
+
+            $salary = $this->payrollService->getEffectiveAmount(
+                $employee->salaries ?? collect(), $year, $month
+            );
+            $pera = $this->payrollService->getEffectiveAmount(
+                $employee->peras ?? collect(), $year, $month
+            );
+            $rata = $employee->is_rata_eligible
+                ? $this->payrollService->getEffectiveAmount(
+                    $employee->ratas ?? collect(), $year, $month
+                )
+                : 0;
+            $hazardPay = $this->payrollService->getEffectiveAmountForDateRange(
+                $employee->hazardPays ?? collect(), $year, $month
+            );
+            $clothing = $this->payrollService->getEffectiveAmountForDateRange(
+                $employee->clothingAllowances ?? collect(), $year, $month
+            );
+
+            $gross = $salary + $pera + $rata + $hazardPay + $clothing;
+            $totalDeductions = (float) $deductions->sum('amount');
+
+            $summaries[] = [
+                'period' => $period,
+                'period_label' => Carbon::create($year, $month, 1)->format('F Y'),
+                'gross' => round($gross, 2),
+                'deductions' => round($totalDeductions, 2),
+                'net' => round($gross - $totalDeductions, 2),
+            ];
+        }
+
+        // Sort by period descending (latest first)
+        usort($summaries, fn($a, $b) => $b['period'] <=> $a['period']);
+
+        return $summaries;
     }
 
     /**

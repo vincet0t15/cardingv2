@@ -66,6 +66,13 @@ interface EmployeeManageProps {
     totalDeductionsAllTime?: number;
     totalClaimsAllTime?: number;
     totalGrossAllTime?: number;
+    periodNetPaySummaries?: Array<{
+        period: string;
+        period_label: string;
+        gross: number;
+        deductions: number;
+        net: number;
+    }>;
     // Adjustments
     adjustments?: Adjustment[];
     allAdjustmentsGrouped?: Record<string, Adjustment[]>;
@@ -102,6 +109,7 @@ export default function EmployeeManagePage({
     totalDeductionsAllTime = 0,
     totalClaimsAllTime = 0,
     totalGrossAllTime = 0,
+    periodNetPaySummaries = [],
     adjustments = [],
     allAdjustmentsGrouped = {},
     adjustmentStatistics = { total_pending: 0, total_approved: 0, total_processed: 0, total_rejected: 0, total_amount: 0 },
@@ -300,6 +308,7 @@ export default function EmployeeManagePage({
                             totalDeductionsAllTime={totalDeductionsAllTime}
                             totalClaimsAllTime={totalClaimsAllTime}
                             totalGrossAllTime={totalGrossAllTime}
+                            periodNetPaySummaries={periodNetPaySummaries}
                             adjustments={adjustments}
                             availableYears={availableYears}
                         />

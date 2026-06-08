@@ -1,7 +1,9 @@
 import { CustomComboBox } from '@/components/CustomComboBox';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/standard-table';
 import type { Adjustment } from '@/types';
 import type { Claim } from '@/types/claim';
 import type { Employee } from '@/types/employee';
@@ -14,6 +16,8 @@ import {
     BadgeCheck,
     Building2,
     CalendarDays,
+    ChevronDown,
+    ChevronUp,
     CoinsIcon,
     CreditCard,
     HardHat,
@@ -26,7 +30,15 @@ import {
     User,
     Wallet,
 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+
+interface PeriodNetPaySummary {
+    period: string;
+    period_label: string;
+    gross: number;
+    deductions: number;
+    net: number;
+}
 
 interface OverviewProps {
     employee: Employee;
@@ -35,6 +47,7 @@ interface OverviewProps {
     totalDeductionsAllTime: number;
     totalClaimsAllTime: number;
     totalGrossAllTime: number;
+    periodNetPaySummaries?: PeriodNetPaySummary[];
     adjustments?: Adjustment[];
     availableYears?: number[];
 }
@@ -170,6 +183,7 @@ function Overview({
     totalDeductionsAllTime,
     totalClaimsAllTime,
     totalGrossAllTime,
+    periodNetPaySummaries = [],
     adjustments = [],
     availableYears = [],
 }: OverviewProps) {
@@ -256,6 +270,32 @@ function Overview({
     const monthlyHazard = Number(employee.latest_hazard_pay?.amount ?? 0);
     const monthlyClothing = Number(employee.latest_clothing_allowance?.amount ?? 0);
     const grossPay = monthlySalary + monthlyPera + monthlyRata + monthlyHazard + monthlyClothing;
+
+    // Month-by-Month Net Pay state
+    const [netPayViewAll, setNetPayViewAll] = useState(false);
+    const [netPayFilterMonth, setNetPayFilterMonth] = useState('');
+    const [netPayFilterYear, setNetPayFilterYear] = useState('');
+    const [netPayPage, setNetPayPage] = useState(1);
+    const NET_PAY_PER_PAGE = 10;
+
+    // Apply filters to period net pay summaries
+    const filteredNetPay = useMemo(() => {
+        let data = periodNetPaySummaries;
+        if (netPayFilterYear) {
+            data = data.filter((p) => p.period.startsWith(netPayFilterYear));
+        }
+        if (netPayFilterMonth) {
+            data = data.filter((p) => p.period.endsWith(netPayFilterMonth.padStart(2, '0')));
+        }
+        return data;
+    }, [periodNetPaySummaries, netPayFilterMonth, netPayFilterYear]);
+
+    const displayedNetPay = netPayViewAll ? filteredNetPay : filteredNetPay.slice(0, 5);
+    const totalNetPayPages = Math.max(1, Math.ceil(filteredNetPay.length / NET_PAY_PER_PAGE));
+    const paginatedNetPay = displayedNetPay.slice(
+        (netPayPage - 1) * NET_PAY_PER_PAGE,
+        netPayPage * NET_PAY_PER_PAGE,
+    );
 
     const hireDate =
         employee.earliest_salary?.effective_date ??
@@ -441,6 +481,130 @@ function Overview({
                     </div>
                 </CardContent>
             </Card>
+
+            {/* ── Month-by-Month Net Pay ── */}
+            {periodNetPaySummaries.length > 0 && (
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-violet-600" />
+                            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                Month-by-Month Net Pay
+                            </h3>
+                        </div>
+                        {periodNetPaySummaries.length > 5 && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                    setNetPayViewAll(!netPayViewAll);
+                                    setNetPayPage(1);
+                                }}
+                            >
+                                {netPayViewAll ? 'Show Less' : 'View All'}
+                                {netPayViewAll ? (
+                                    <ChevronUp className="ml-1 h-3 w-3" />
+                                ) : (
+                                    <ChevronDown className="ml-1 h-3 w-3" />
+                                )}
+                            </Button>
+                        )}
+                    </div>
+
+                    {netPayViewAll && (
+                        <div className="flex flex-wrap items-center gap-3">
+                            <CustomComboBox
+                                items={MONTHS}
+                                placeholder="All Months"
+                                value={netPayFilterMonth || null}
+                                onSelect={(v) => {
+                                    setNetPayFilterMonth(v ?? '');
+                                    setNetPayPage(1);
+                                }}
+                            />
+                            <CustomComboBox
+                                items={yearOptions}
+                                placeholder="All Years"
+                                value={netPayFilterYear || null}
+                                onSelect={(v) => {
+                                    setNetPayFilterYear(v ?? '');
+                                    setNetPayPage(1);
+                                }}
+                            />
+                            <span className="text-xs text-slate-400">
+                                {filteredNetPay.length} {filteredNetPay.length === 1 ? 'period' : 'periods'}
+                            </span>
+                        </div>
+                    )}
+
+                    <div className="rounded-md border">
+                        <Table>
+                            <TableHeader className="bg-muted/50">
+                                <TableRow>
+                                    <TableHead>Period</TableHead>
+                                    <TableHead className="text-right">Gross Pay</TableHead>
+                                    <TableHead className="text-right">Deductions</TableHead>
+                                    <TableHead className="text-right">Net Pay</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {(netPayViewAll ? paginatedNetPay : displayedNetPay).length > 0 ? (
+                                    (netPayViewAll ? paginatedNetPay : displayedNetPay).map((p) => (
+                                        <TableRow key={p.period}>
+                                            <TableCell className="font-medium">{p.period_label}</TableCell>
+                                            <TableCell className="text-right">{formatCurrency(p.gross)}</TableCell>
+                                            <TableCell className="text-right text-rose-600">
+                                                {formatCurrency(p.deductions)}
+                                            </TableCell>
+                                            <TableCell
+                                                className={`text-right font-medium ${
+                                                    p.net >= 0 ? 'text-green-600' : 'text-rose-600'
+                                                }`}
+                                            >
+                                                {formatCurrency(p.net)}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={4}>
+                                            <div className="text-muted-foreground py-12 text-center text-sm">
+                                                No data for the selected period.
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+
+                    {netPayViewAll && totalNetPayPages > 1 && (
+                        <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm text-slate-500">
+                                Page <strong>{netPayPage}</strong> of <strong>{totalNetPayPages}</strong>
+                            </p>
+                            <div className="flex gap-1">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={netPayPage <= 1}
+                                    onClick={() => setNetPayPage((p) => Math.max(1, p - 1))}
+                                >
+                                    Previous
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={netPayPage >= totalNetPayPages}
+                                    onClick={() => setNetPayPage((p) => Math.min(totalNetPayPages, p + 1))}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* ── Main Grid ── */}
             <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
