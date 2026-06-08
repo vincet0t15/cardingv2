@@ -2,6 +2,14 @@ import { CustomComboBox } from '@/components/CustomComboBox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/standard-table';
 import type { Claim } from '@/types/claim';
 import type { Employee } from '@/types/employee';
@@ -342,11 +350,12 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
         setFilterYear(null);
     };
 
-    const handlePrint = () => {
+    const buildPrintUrl = (type: string) => {
         const query = new URLSearchParams();
         if (filterMonth) query.append('month', filterMonth);
         if (filterYear) query.append('year', filterYear);
-        window.open(`/employees/${employee.id}/print?${query.toString()}`, '_blank');
+        query.append('type', type);
+        return route('employees.print', employee.id) + '?' + query.toString();
     };
 
     return (
@@ -372,10 +381,30 @@ function Reports({ employee, allDeductions, allClaims, adjustments = [] }: Repor
                     </Button>
                 )}
 
-                <Button onClick={handlePrint}>
-                    <Printer className="mr-2 h-4 w-4" />
-                    Print Report
-                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button>
+                            <Printer className="mr-2 h-4 w-4" />
+                            Print Report
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Print Options</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => window.open(buildPrintUrl('all'), '_blank')}>
+                            <Printer className="mr-2 h-4 w-4" />
+                            All (Full Report)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => window.open(buildPrintUrl('deductions'), '_blank')}>
+                            <TrendingDown className="mr-2 h-4 w-4 text-rose-500" />
+                            Deductions Only
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => window.open(buildPrintUrl('claims'), '_blank')}>
+                            <Receipt className="mr-2 h-4 w-4 text-emerald-500" />
+                            Claims Only
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
 
             {/* Summary Cards */}
