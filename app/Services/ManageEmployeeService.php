@@ -12,12 +12,17 @@ use App\Models\EmployeeDeduction;
 use App\Models\EmploymentStatus;
 use App\Models\Office;
 use App\Models\SourceOfFundCode;
+use App\Services\PayrollService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 class ManageEmployeeService
 {
+    public function __construct(
+        private PayrollService $payrollService
+    ) {}
+
     /**
      * Load employee with all relationships needed across tabs.
      */
@@ -207,12 +212,78 @@ class ManageEmployeeService
             ->orderBy('start_date', 'desc')
             ->get();
 
+        $totalGrossAllTime = $this->computeTotalGrossAllTime($employee, $deductionsData, $allClaims);
+
         return [
             'allDeductions' => $deductionsData, // raw collection (frontend expects EmployeeDeduction[])
             'totalDeductionsAllTime' => (float) $deductionsData->sum('amount'),
             'totalClaimsAllTime' => (float) $allClaims->sum('amount'),
             'allClothingAllowances' => $allClothingAllowances,
+            'totalGrossAllTime' => $totalGrossAllTime,
         ];
+    }
+
+    /**
+     * Compute the total gross pay across all periods with records.
+     * Uses PayrollService to determine the effective salary/allowances per period.
+     */
+    private function computeTotalGrossAllTime(
+        Employee $employee,
+        Collection $deductionsData,
+        Collection $allClaims
+    ): float {
+        $periods = collect();
+
+        // Collect periods from deductions
+        foreach ($deductionsData as $d) {
+            $periods->push($d->pay_period_year . '-' . str_pad((int) $d->pay_period_month, 2, '0', STR_PAD_LEFT));
+        }
+
+        // Collect periods from claims
+        foreach ($allClaims as $c) {
+            if ($c->claim_date) {
+                $periods->push(Carbon::parse($c->claim_date)->format('Y-m'));
+            }
+        }
+
+        // Collect periods from clothing allowances
+        foreach ($employee->clothingAllowances as $ca) {
+            if ($ca->start_date) {
+                $periods->push(Carbon::parse($ca->start_date)->format('Y-m'));
+            }
+        }
+
+        $periods = $periods->unique()->values();
+
+        $totalGross = 0.0;
+
+        foreach ($periods as $period) {
+            [$year, $month] = explode('-', $period);
+            $year = (int) $year;
+            $month = (int) ltrim($month, '0');
+
+            $salary = $this->payrollService->getEffectiveAmount(
+                $employee->salaries ?? collect(), $year, $month
+            );
+            $pera = $this->payrollService->getEffectiveAmount(
+                $employee->peras ?? collect(), $year, $month
+            );
+            $rata = $employee->is_rata_eligible
+                ? $this->payrollService->getEffectiveAmount(
+                    $employee->ratas ?? collect(), $year, $month
+                )
+                : 0;
+            $hazardPay = $this->payrollService->getEffectiveAmountForDateRange(
+                $employee->hazardPays ?? collect(), $year, $month
+            );
+            $clothing = $this->payrollService->getEffectiveAmountForDateRange(
+                $employee->clothingAllowances ?? collect(), $year, $month
+            );
+
+            $totalGross += $salary + $pera + $rata + $hazardPay + $clothing;
+        }
+
+        return $totalGross;
     }
 
     /**

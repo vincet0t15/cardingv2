@@ -92,6 +92,7 @@ class ManageEmployeeController extends Controller
         $allClothingAllowances = collect();
         $totalDeductionsAllTime = 0;
         $totalClaimsAllTime = 0;
+        $totalGrossAllTime = 0;
 
         if ($loadOverviewData || $loadReportData) {
             // Reuse deductionsData if already fetched (from deduction tab), otherwise fetch fresh
@@ -108,6 +109,7 @@ class ManageEmployeeController extends Controller
             $totalDeductionsAllTime = $overviewResult['totalDeductionsAllTime'];
             $totalClaimsAllTime = $overviewResult['totalClaimsAllTime'];
             $allClothingAllowances = $overviewResult['allClothingAllowances'];
+            $totalGrossAllTime = $overviewResult['totalGrossAllTime'];
         }
 
         // Claims tab data
@@ -171,6 +173,7 @@ class ManageEmployeeController extends Controller
             'allClothingAllowances' => $allClothingAllowances,
             'totalDeductionsAllTime' => $totalDeductionsAllTime,
             'totalClaimsAllTime' => $totalClaimsAllTime,
+            'totalGrossAllTime' => $totalGrossAllTime,
             'adjustments' => $adjustments,
             'allAdjustmentsGrouped' => $allAdjustmentsGrouped,
             'adjustmentStatistics' => $adjustmentStatistics,

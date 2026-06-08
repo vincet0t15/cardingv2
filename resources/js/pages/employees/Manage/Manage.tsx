@@ -65,6 +65,7 @@ interface EmployeeManageProps {
     }[];
     totalDeductionsAllTime?: number;
     totalClaimsAllTime?: number;
+    totalGrossAllTime?: number;
     // Adjustments
     adjustments?: Adjustment[];
     allAdjustmentsGrouped?: Record<string, Adjustment[]>;
@@ -100,6 +101,7 @@ export default function EmployeeManagePage({
     allClothingAllowances = [],
     totalDeductionsAllTime = 0,
     totalClaimsAllTime = 0,
+    totalGrossAllTime = 0,
     adjustments = [],
     allAdjustmentsGrouped = {},
     adjustmentStatistics = { total_pending: 0, total_approved: 0, total_processed: 0, total_rejected: 0, total_amount: 0 },
@@ -297,6 +299,7 @@ export default function EmployeeManagePage({
                             claims={allClaims}
                             totalDeductionsAllTime={totalDeductionsAllTime}
                             totalClaimsAllTime={totalClaimsAllTime}
+                            totalGrossAllTime={totalGrossAllTime}
                             adjustments={adjustments}
                             availableYears={availableYears}
                         />

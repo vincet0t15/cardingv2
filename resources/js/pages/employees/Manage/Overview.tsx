@@ -34,6 +34,7 @@ interface OverviewProps {
     claims: Claim[];
     totalDeductionsAllTime: number;
     totalClaimsAllTime: number;
+    totalGrossAllTime: number;
     adjustments?: Adjustment[];
     availableYears?: number[];
 }
@@ -168,6 +169,7 @@ function Overview({
     claims,
     totalDeductionsAllTime,
     totalClaimsAllTime,
+    totalGrossAllTime,
     adjustments = [],
     availableYears = [],
 }: OverviewProps) {
@@ -367,29 +369,33 @@ function Overview({
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard
                     title="Gross Monthly"
-                    value={formatCurrency(grossPay)}
-                    subtitle={`${monthlySalary ? 'includes salary + allowances' : 'no salary data'}`}
+                    value={formatCurrency(hasActiveFilter ? grossPay : totalGrossAllTime)}
+                    subtitle={hasActiveFilter ? 'Current monthly rate' : 'All periods total (salary + allowances)'}
                     icon={Wallet}
                     color="blue"
                 />
                 <StatCard
                     title="Deductions"
-                    value={formatCurrency(displayDeductionTotal || totalDeductionsAllTime)}
-                    subtitle={hasActiveFilter ? `This period` : 'All-time total'}
+                    value={formatCurrency(hasActiveFilter ? displayDeductionTotal : totalDeductionsAllTime)}
+                    subtitle={hasActiveFilter ? 'This period' : 'All-time total'}
                     icon={TrendingDown}
                     color="rose"
                 />
                 <StatCard
                     title="Claims"
-                    value={formatCurrency(displayClaimsTotal || totalClaimsAllTime)}
-                    subtitle={hasActiveFilter ? `This period` : 'All-time total'}
+                    value={formatCurrency(hasActiveFilter ? displayClaimsTotal : totalClaimsAllTime)}
+                    subtitle={hasActiveFilter ? 'This period' : 'All-time total'}
                     icon={Receipt}
                     color="emerald"
                 />
                 <StatCard
                     title="Net Monthly"
-                    value={formatCurrency(grossPay - (displayDeductionTotal || totalDeductionsAllTime))}
-                    subtitle="After all deductions"
+                    value={formatCurrency(
+                        hasActiveFilter
+                            ? grossPay - displayDeductionTotal
+                            : totalGrossAllTime - totalDeductionsAllTime
+                    )}
+                    subtitle={hasActiveFilter ? 'After all deductions' : 'All-time net after deductions'}
                     icon={CoinsIcon}
                     color="violet"
                 />

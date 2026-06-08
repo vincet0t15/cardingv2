@@ -29,7 +29,10 @@ class EmployeeDeductionController extends Controller
         $search = $request->input('search');
         $hasDeductions = $request->input('has_deductions', true);
 
-        $employees = Employee::query()
+        $perPage = $request->input('per_page', 50);
+
+        // Build the base query for filtering (used for both stats and paginated results)
+        $baseQuery = Employee::query()
             ->with(['employmentStatus', 'office', 'latestSalary'])
             // Only show employees who have deductions for the selected period
             ->when($hasDeductions, function ($query) use ($year, $month) {
@@ -52,7 +55,10 @@ class EmployeeDeductionController extends Controller
             })
             ->when($employmentStatusId, function ($query, $employmentStatusId) {
                 $query->where('employment_status_id', $employmentStatusId);
-            })
+            });
+
+        // Get paginated results
+        $employees = $baseQuery->clone()
             // Load salaries (used by frontend for display)
             ->with(['salaries' => fn($q) => $q->orderBy('effective_date', 'desc')])
             // Load deductions for the selected period
@@ -66,7 +72,23 @@ class EmployeeDeductionController extends Controller
                 }
             }])
             ->orderBy('last_name')
-            ->get();
+            ->paginate($perPage)
+            ->withQueryString();
+
+        // Compute statistics from the full filtered dataset (unpaginated)
+        $employeeIds = $baseQuery->clone()->pluck('id');
+
+        $statistics = [
+            'total_employees' => $employeeIds->count(),
+            'total_deductions_amount' => EmployeeDeduction::whereIn('employee_id', $employeeIds)
+                ->where('pay_period_year', $year)
+                ->when($month, fn($q) => $q->where('pay_period_month', $month))
+                ->sum('amount'),
+            'highest_deduction' => EmployeeDeduction::whereIn('employee_id', $employeeIds)
+                ->where('pay_period_year', $year)
+                ->when($month, fn($q) => $q->where('pay_period_month', $month))
+                ->max('amount') ?? 0,
+        ];
 
         $deductionTypes = DeductionType::where('is_active', true)->orderBy('name')->get();
 
@@ -90,6 +112,7 @@ class EmployeeDeductionController extends Controller
                 'search' => $search,
                 'has_deductions' => $hasDeductions,
             ],
+            'statistics' => $statistics,
         ]);
     }
 

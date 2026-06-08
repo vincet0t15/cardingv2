@@ -1,5 +1,6 @@
 import { CustomComboBox } from '@/components/CustomComboBox';
 import Heading from '@/components/heading';
+import Pagination from '@/components/paginationData';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,8 @@ import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import type { EmploymentStatus } from '@/types/employmentStatuses';
 import type { Office } from '@/types/office';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import type { PaginatedDataResponse } from '@/types/pagination';
+import { Head, Link, router } from '@inertiajs/react';
 import { Printer, Search, TrendingDown, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -53,11 +55,12 @@ interface DeductionType {
 interface EmployeeDeduction {
     id: number;
     amount: number;
+    pay_period_month: number;
     deduction_type?: DeductionType;
 }
 
 interface IndexProps {
-    employees: {
+    employees: PaginatedDataResponse<{
         id: number;
         first_name: string;
         middle_name: string;
@@ -69,7 +72,7 @@ interface IndexProps {
         office: Office | null;
         salaries: Salary[];
         employee_deductions?: EmployeeDeduction[];
-    }[];
+    }>;
     offices: Office[];
     employmentStatuses: EmploymentStatus[];
     filters: {
@@ -79,13 +82,16 @@ interface IndexProps {
         employment_status_id: number | null;
         search: string | null;
     };
+    statistics: {
+        total_employees: number;
+        total_deductions_amount: number;
+        highest_deduction: number;
+    };
 }
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Employee Deductions', href: '/employee-deductions' }];
 
-export default function Index({ employees, offices, employmentStatuses, filters }: IndexProps) {
-    const { url } = usePage();
-
+export default function Index({ employees, offices, employmentStatuses, filters, statistics }: IndexProps) {
     // Get initial filters from URL or defaults
     const getInitialFilters = () => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -156,11 +162,11 @@ export default function Index({ employees, offices, employmentStatuses, filters 
         return salary?.amount || 0;
     };
 
-    const getTotalDeductions = (deductions: any[]) => {
+    const getTotalDeductions = (deductions: { amount: number | string }[] | undefined) => {
         return deductions?.reduce((sum, d) => sum + Number(d.amount || 0), 0) || 0;
     };
 
-    const getDeductionMonths = (deductions: any[]) => {
+    const getDeductionMonths = (deductions: { pay_period_month: number }[] | undefined) => {
         if (!deductions || deductions.length === 0) return [];
 
         // Get unique months from deductions
@@ -186,12 +192,11 @@ export default function Index({ employees, offices, employmentStatuses, filters 
         return new Intl.NumberFormat('en-PH').format(num);
     };
 
-    // Calculate statistics
-    const totalEmployees = employees.length;
-    const employeesWithDeductions = employees.filter((e) => (e.employee_deductions?.length || 0) > 0).length;
-    const totalDeductionsAll = employees.reduce((sum, e) => sum + getTotalDeductions(e.employee_deductions as any[]), 0);
-    const averageDeduction = employeesWithDeductions > 0 ? totalDeductionsAll / employeesWithDeductions : 0;
-    const highestDeduction = Math.max(...employees.map((e) => getTotalDeductions(e.employee_deductions as any[])));
+    // Calculate statistics (using server-side totals for full dataset, not just current page)
+    const totalEmployees = statistics.total_employees;
+    const employeesWithDeductions = employees.data.filter((e) => (e.employee_deductions?.length || 0) > 0).length;
+    const averageDeduction = statistics.total_employees > 0 ? statistics.total_deductions_amount / statistics.total_employees : 0;
+    const highestDeduction = statistics.highest_deduction;
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -218,7 +223,7 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                             <TrendingDown className="h-5 w-5 opacity-90" />
                         </CardHeader>
                         <CardContent className="bg-transparent">
-                            <div className="text-3xl font-extrabold text-amber-50">{formatCurrency(totalDeductionsAll)}</div>
+                            <div className="text-3xl font-extrabold text-amber-50">{formatCurrency(statistics.total_deductions_amount)}</div>
                             <p className="text-sm opacity-90">Monthly total</p>
                         </CardContent>
                     </Card>
@@ -230,7 +235,7 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                         </CardHeader>
                         <CardContent className="bg-transparent">
                             <div className="text-3xl font-extrabold">{formatCurrency(averageDeduction)}</div>
-                            <p className="text-sm opacity-90">Per employee</p>
+                            <p className="text-sm opacity-90">Across all employees</p>
                         </CardContent>
                     </Card>
 
@@ -357,8 +362,8 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                             </TableRow>
                         </TableHeader>
                         <TableBody className="divide-y divide-slate-200 dark:divide-slate-700">
-                            {employees.length > 0 ? (
-                                employees.map((employee) => (
+                            {employees.data.length > 0 ? (
+                                employees.data.map((employee) => (
                                     <TableRow key={employee.id} className="hover:bg-muted/30">
                                         <TableCell>
                                             <div className="flex items-center gap-2">
@@ -394,7 +399,7 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                                         </TableCell>
                                         <TableCell>
                                             {(() => {
-                                                const deductionMonths = getDeductionMonths(employee.employee_deductions as any[]);
+                                                const deductionMonths = getDeductionMonths(employee.employee_deductions);
 
                                                 if (deductionMonths.length === 0) {
                                                     return (
@@ -428,7 +433,7 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                                             {formatCurrency(getLatestSalary(employee.salaries?.[0]))}
                                         </TableCell>
                                         <TableCell className="text-right font-medium">
-                                            {formatCurrency(getTotalDeductions(employee.employee_deductions as any[]))}
+                                            {formatCurrency(getTotalDeductions(employee.employee_deductions))}
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -449,9 +454,7 @@ export default function Index({ employees, offices, employmentStatuses, filters 
                     </Table>
                 </div>
 
-                <div className="text-muted-foreground text-sm">
-                    Showing {employees.length} employee{employees.length !== 1 ? 's' : ''}
-                </div>
+                <Pagination data={employees} />
             </div>
         </AppLayout>
     );

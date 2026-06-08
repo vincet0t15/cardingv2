@@ -48,16 +48,36 @@ class EmployeeDashboardService
 
     /**
      * Get a payroll breakdown for a specific period using backend PayrollService.
+     * Falls back to latest amounts when no effective record exists for the period.
      */
     public function getPayrollForPeriod(Employee $employee, int $year, int $month): array
     {
         $salary = $this->payrollService->getEffectiveAmount(collect($employee->salaries ?? []), $year, $month);
+        if ($salary === 0.0) {
+            $salary = (float) ($employee->latestSalary?->amount ?? 0);
+        }
+
         $pera = $this->payrollService->getEffectiveAmount(collect($employee->peras ?? []), $year, $month);
+        if ($pera === 0.0) {
+            $pera = (float) ($employee->latestPera?->amount ?? 0);
+        }
+
         $rata = $employee->is_rata_eligible
             ? $this->payrollService->getEffectiveAmount(collect($employee->ratas ?? []), $year, $month)
             : 0;
+        if ($rata === 0.0 && $employee->is_rata_eligible) {
+            $rata = (float) ($employee->latestRata?->amount ?? 0);
+        }
+
         $hazardPay = $this->payrollService->getEffectiveAmountForDateRange(collect($employee->hazardPays ?? []), $year, $month);
+        if ($hazardPay === 0.0) {
+            $hazardPay = (float) ($employee->latestHazardPay?->amount ?? 0);
+        }
+
         $clothing = $this->payrollService->getEffectiveAmountForDateRange(collect($employee->clothingAllowances ?? []), $year, $month);
+        if ($clothing === 0.0) {
+            $clothing = (float) ($employee->latestClothingAllowance?->amount ?? 0);
+        }
 
         $grossPay = $salary + $pera + $rata + $hazardPay + $clothing;
 
@@ -121,6 +141,7 @@ class EmployeeDashboardService
     {
         $periods = [];
 
+        // Periods from deduction records
         $dedPeriods = EmployeeDeduction::where('employee_id', $employee->id)
             ->select('pay_period_year', 'pay_period_month')
             ->distinct()
@@ -130,6 +151,7 @@ class EmployeeDashboardService
             $periods[] = $d->pay_period_year . '-' . str_pad($d->pay_period_month, 2, '0', STR_PAD_LEFT);
         }
 
+        // Periods from claim records
         $claimPeriods = Claim::where('employee_id', $employee->id)
             ->whereNotNull('claim_date')
             ->get()
@@ -139,6 +161,7 @@ class EmployeeDashboardService
             $periods[] = $p;
         }
 
+        // Periods from adjustment records
         $adjPeriods = Adjustment::where('employee_id', $employee->id)
             ->whereNotNull('pay_period_year')
             ->whereNotNull('pay_period_month')
@@ -147,6 +170,24 @@ class EmployeeDashboardService
 
         foreach ($adjPeriods as $p) {
             $periods[] = $p;
+        }
+
+        // Also include periods from salary history
+        foreach ($employee->salaries ?? [] as $s) {
+            $date = Carbon::parse($s->effective_date);
+            $periods[] = $date->format('Y-m');
+        }
+
+        // Also include periods from PERA history
+        foreach ($employee->peras ?? [] as $p) {
+            $date = Carbon::parse($p->effective_date);
+            $periods[] = $date->format('Y-m');
+        }
+
+        // Also include periods from RATA history
+        foreach ($employee->ratas ?? [] as $r) {
+            $date = Carbon::parse($r->effective_date);
+            $periods[] = $date->format('Y-m');
         }
 
         return collect($periods)->unique()->sort()->reverse()->values()->toArray();

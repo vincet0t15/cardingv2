@@ -2,7 +2,7 @@ import { CustomComboBox } from '@/components/CustomComboBox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Toaster } from '@/components/ui/sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/standard-table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,20 +11,13 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowRight,
     Banknote,
-    Calendar,
     Calculator,
-    CheckCircle2,
-    Clock,
+    Calendar,
     Coins,
-    CreditCard,
-    DollarSign,
-    Download,
     FileText,
     Landmark,
-    Loader2,
     LucideIcon,
     MapPin,
-    Percent,
     Printer,
     Receipt,
     ScrollText,
@@ -34,7 +27,7 @@ import {
     UserPen,
     Wallet,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -185,11 +178,23 @@ function StatCard({
 
 // ─── Quick Action Button ─────────────────────────────────────────────
 
-function QuickAction({ title, description, icon: Icon, href, color }: { title: string; description: string; icon: LucideIcon; href: string; color: string }) {
+function QuickAction({
+    title,
+    description,
+    icon: Icon,
+    href,
+    color,
+}: {
+    title: string;
+    description: string;
+    icon: LucideIcon;
+    href: string;
+    color: string;
+}) {
     return (
         <Link
             href={href}
-            className={`group relative flex items-center gap-4 rounded-xl border bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${color}`}
+            className={`group relative flex items-center gap-4 rounded-xl border bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${color}`}
         >
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white/80 shadow-sm">
                 <Icon className="h-6 w-6" />
@@ -198,7 +203,7 @@ function QuickAction({ title, description, icon: Icon, href, color }: { title: s
                 <p className="text-sm font-semibold">{title}</p>
                 <p className="text-xs text-slate-500">{description}</p>
             </div>
-            <ArrowRight className="h-4 w-4 shrink-0 opacity-0 transition-all group-hover:opacity-100 group-hover:translate-x-0.5" />
+            <ArrowRight className="h-4 w-4 shrink-0 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
         </Link>
     );
 }
@@ -254,7 +259,7 @@ function PayrollCard({ period, data }: { period: string; data: PayrollPeriod }) 
 
             {/* Expanded Details */}
             {expanded && (
-                <div className="border-t bg-slate-50/50 p-4 space-y-4">
+                <div className="space-y-4 border-t bg-slate-50/50 p-4">
                     {/* Deductions */}
                     {data.deductions.length > 0 && (
                         <div>
@@ -341,7 +346,8 @@ export default function EmployeeDashboard({
     // ── Render: Deductions Tab ────────────────────────────────────
     const renderDeductions = () => {
         const entries = Object.entries(deductions);
-        if (entries.length === 0) return <EmptyState icon={TrendingDown} title="No Deductions" message="No deduction records found for the selected period." />;
+        if (entries.length === 0)
+            return <EmptyState icon={TrendingDown} title="No Deductions" message="No deduction records found for the selected period." />;
 
         return (
             <div className="space-y-4">
@@ -350,12 +356,17 @@ export default function EmployeeDashboard({
                         <div className="flex items-center justify-between border-b bg-slate-50 px-4 py-3">
                             <div className="flex items-center gap-2">
                                 <Receipt className="h-4 w-4 text-slate-500" />
-                                <span className="font-medium text-sm">{getPeriodLabel(period)}</span>
-                                <Badge variant="secondary" className="text-xs">{items.length} items</Badge>
+                                <span className="text-sm font-medium">{getPeriodLabel(period)}</span>
+                                <Badge variant="secondary" className="text-xs">
+                                    {items.length} items
+                                </Badge>
                             </div>
                             <div className="flex items-center gap-3">
                                 <span className="text-sm text-slate-600">
-                                    Total: <span className="font-semibold text-red-600">{formatCurrency(items.reduce((s: number, i: any) => s + getAmountValue(i.amount), 0))}</span>
+                                    Total:{' '}
+                                    <span className="font-semibold text-red-600">
+                                        {formatCurrency(items.reduce((s: number, i: any) => s + getAmountValue(i.amount), 0))}
+                                    </span>
                                 </span>
                                 <Button variant="ghost" size="sm" onClick={() => handlePrint(period, 'deductions')}>
                                     <Printer className="h-3.5 w-3.5" />
@@ -373,7 +384,9 @@ export default function EmployeeDashboard({
                                 {items.map((d: any) => (
                                     <TableRow key={d.id}>
                                         <TableCell className="font-medium">{d.deduction_type?.name || 'Unknown'}</TableCell>
-                                        <TableCell className="text-right font-medium text-red-600">- {formatCurrency(getAmountValue(d.amount))}</TableCell>
+                                        <TableCell className="text-right font-medium text-red-600">
+                                            - {formatCurrency(getAmountValue(d.amount))}
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -396,12 +409,17 @@ export default function EmployeeDashboard({
                         <div className="flex items-center justify-between border-b bg-slate-50 px-4 py-3">
                             <div className="flex items-center gap-2">
                                 <FileText className="h-4 w-4 text-slate-500" />
-                                <span className="font-medium text-sm">{getPeriodLabel(period)}</span>
-                                <Badge variant="secondary" className="text-xs">{items.length} items</Badge>
+                                <span className="text-sm font-medium">{getPeriodLabel(period)}</span>
+                                <Badge variant="secondary" className="text-xs">
+                                    {items.length} items
+                                </Badge>
                             </div>
                             <div className="flex items-center gap-3">
                                 <span className="text-sm text-slate-600">
-                                    Total: <span className="font-semibold text-emerald-600">{formatCurrency(items.reduce((s: number, i: any) => s + getAmountValue(i.amount), 0))}</span>
+                                    Total:{' '}
+                                    <span className="font-semibold text-emerald-600">
+                                        {formatCurrency(items.reduce((s: number, i: any) => s + getAmountValue(i.amount), 0))}
+                                    </span>
                                 </span>
                                 <Button variant="ghost" size="sm" onClick={() => handlePrint(period, 'claims')}>
                                     <Printer className="h-3.5 w-3.5" />
@@ -420,12 +438,26 @@ export default function EmployeeDashboard({
                                 {items.map((c: any) => (
                                     <TableRow key={c.id}>
                                         <TableCell>
-                                            <Badge variant={c.claim_type?.code === 'TRAVEL' ? 'default' : c.claim_type?.code === 'OVERTIME' ? 'secondary' : 'outline'}>
+                                            <Badge
+                                                variant={
+                                                    c.claim_type?.code === 'TRAVEL'
+                                                        ? 'default'
+                                                        : c.claim_type?.code === 'OVERTIME'
+                                                          ? 'secondary'
+                                                          : 'outline'
+                                                }
+                                            >
                                                 {c.claim_type?.name || c.claim_type?.code || 'Unknown'}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-slate-500 text-sm">
-                                            {c.claim_date ? new Date(c.claim_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                                        <TableCell className="text-sm text-slate-500">
+                                            {c.claim_date
+                                                ? new Date(c.claim_date).toLocaleDateString('en-US', {
+                                                      month: 'short',
+                                                      day: 'numeric',
+                                                      year: 'numeric',
+                                                  })
+                                                : '-'}
                                         </TableCell>
                                         <TableCell className="text-right font-medium">{formatCurrency(getAmountValue(c.amount))}</TableCell>
                                     </TableRow>
@@ -441,7 +473,8 @@ export default function EmployeeDashboard({
     // ── Render: Adjustments Tab ────────────────────────────────────
     const renderAdjustments = () => {
         const entries = Object.entries(adjustments);
-        if (entries.length === 0) return <EmptyState icon={Calculator} title="No Adjustments" message="No adjustment records found for the selected period." />;
+        if (entries.length === 0)
+            return <EmptyState icon={Calculator} title="No Adjustments" message="No adjustment records found for the selected period." />;
 
         return (
             <div className="space-y-4">
@@ -450,12 +483,17 @@ export default function EmployeeDashboard({
                         <div className="flex items-center justify-between border-b bg-slate-50 px-4 py-3">
                             <div className="flex items-center gap-2">
                                 <Calculator className="h-4 w-4 text-slate-500" />
-                                <span className="font-medium text-sm">{getPeriodLabel(period)}</span>
-                                <Badge variant="secondary" className="text-xs">{items.length} items</Badge>
+                                <span className="text-sm font-medium">{getPeriodLabel(period)}</span>
+                                <Badge variant="secondary" className="text-xs">
+                                    {items.length} items
+                                </Badge>
                             </div>
                             <div className="flex items-center gap-3">
                                 <span className="text-sm text-slate-600">
-                                    Total: <span className="font-semibold text-purple-600">{formatCurrency(items.reduce((s: number, i: any) => s + getAmountValue(i.amount), 0))}</span>
+                                    Total:{' '}
+                                    <span className="font-semibold text-purple-600">
+                                        {formatCurrency(items.reduce((s: number, i: any) => s + getAmountValue(i.amount), 0))}
+                                    </span>
                                 </span>
                                 <Button variant="ghost" size="sm" onClick={() => handlePrint(period, 'adjustments')}>
                                     <Printer className="h-3.5 w-3.5" />
@@ -475,11 +513,15 @@ export default function EmployeeDashboard({
                                     <TableRow key={a.id}>
                                         <TableCell className="font-medium">{a.adjustment_type?.name || 'Unknown'}</TableCell>
                                         <TableCell>
-                                            <Badge variant={a.status === 'approved' ? 'default' : a.status === 'rejected' ? 'destructive' : 'secondary'}>
+                                            <Badge
+                                                variant={a.status === 'approved' ? 'default' : a.status === 'rejected' ? 'destructive' : 'secondary'}
+                                            >
                                                 {a.status || 'N/A'}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className={`text-right font-medium ${getAmountValue(a.amount) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        <TableCell
+                                            className={`text-right font-medium ${getAmountValue(a.amount) >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                                        >
                                             {formatCurrency(getAmountValue(a.amount))}
                                         </TableCell>
                                     </TableRow>
@@ -495,6 +537,55 @@ export default function EmployeeDashboard({
     // ── Render: Overview Tab ──────────────────────────────────────
     const renderOverview = () => {
         const payrollEntries = Object.entries(payrollSummaries);
+
+        // Compute yearly summary from payroll data
+        const yearlySummary = useMemo(() => {
+            const allEntries = Object.entries(payrollSummaries);
+            const yearMap: Record<
+                number,
+                {
+                    salary: number;
+                    pera: number;
+                    rata: number;
+                    hazardPay: number;
+                    clothing: number;
+                    grossPay: number;
+                    totalDeductions: number;
+                    totalAdjustments: number;
+                    netPay: number;
+                }
+            > = {};
+
+            allEntries.forEach(([period, data]: [string, any]) => {
+                const year = parseInt(period.split('-')[0]);
+                if (!yearMap[year]) {
+                    yearMap[year] = {
+                        salary: 0,
+                        pera: 0,
+                        rata: 0,
+                        hazardPay: 0,
+                        clothing: 0,
+                        grossPay: 0,
+                        totalDeductions: 0,
+                        totalAdjustments: 0,
+                        netPay: 0,
+                    };
+                }
+                yearMap[year].salary += data.salary || 0;
+                yearMap[year].pera += data.pera || 0;
+                yearMap[year].rata += data.rata || 0;
+                yearMap[year].hazardPay += data.hazardPay || 0;
+                yearMap[year].clothing += data.clothingAllowance || 0;
+                yearMap[year].grossPay += data.grossPay || 0;
+                yearMap[year].totalDeductions += data.totalDeductions || 0;
+                yearMap[year].totalAdjustments += data.totalAdjustments || 0;
+                yearMap[year].netPay += data.netPay || 0;
+            });
+
+            return Object.entries(yearMap)
+                .map(([year, totals]) => ({ year: parseInt(year), ...totals }))
+                .sort((a, b) => b.year - a.year);
+        }, [payrollSummaries]);
 
         return (
             <div className="space-y-8">
@@ -524,29 +615,144 @@ export default function EmployeeDashboard({
                     {/* Pagination */}
                     {pagination.totalPages > 1 && (
                         <div className="mt-4 flex items-center justify-center gap-2">
-                            <Button variant="outline" size="sm" disabled={pagination.currentPage === 1} onClick={() => handlePageChange(pagination.currentPage - 1)}>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={pagination.currentPage === 1}
+                                onClick={() => handlePageChange(pagination.currentPage - 1)}
+                            >
                                 Previous
                             </Button>
                             {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((p) => (
-                                <Button key={p} variant={p === pagination.currentPage ? 'default' : 'outline'} size="sm" onClick={() => handlePageChange(p)}>
+                                <Button
+                                    key={p}
+                                    variant={p === pagination.currentPage ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => handlePageChange(p)}
+                                >
                                     {p}
                                 </Button>
                             ))}
-                            <Button variant="outline" size="sm" disabled={pagination.currentPage === pagination.totalPages} onClick={() => handlePageChange(pagination.currentPage + 1)}>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={pagination.currentPage === pagination.totalPages}
+                                onClick={() => handlePageChange(pagination.currentPage + 1)}
+                            >
                                 Next
                             </Button>
                         </div>
                     )}
                 </div>
 
+                {/* Yearly Summary Table */}
+                {yearlySummary.length > 1 && (
+                    <div>
+                        <h3 className="mb-4 text-lg font-semibold">Yearly Summary</h3>
+                        <Card className="overflow-hidden shadow-sm">
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader className="bg-muted/50">
+                                        <TableRow>
+                                            <TableHead className="font-bold">Year</TableHead>
+                                            <TableHead className="text-right font-bold">Salary</TableHead>
+                                            <TableHead className="text-right font-bold">PERA</TableHead>
+                                            <TableHead className="text-right font-bold">RATA</TableHead>
+                                            <TableHead className="text-right font-bold">Gross Pay</TableHead>
+                                            <TableHead className="text-right font-bold text-red-600">Deductions</TableHead>
+                                            <TableHead className="text-right font-bold text-purple-600">Adjustments</TableHead>
+                                            <TableHead className="text-right font-bold text-emerald-600">Net Pay</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {yearlySummary.map((yearData) => (
+                                            <TableRow key={yearData.year} className="hover:bg-muted/30">
+                                                <TableCell className="font-bold">{yearData.year}</TableCell>
+                                                <TableCell className="text-right">{formatCurrency(yearData.salary)}</TableCell>
+                                                <TableCell className="text-right">{formatCurrency(yearData.pera)}</TableCell>
+                                                <TableCell className="text-right">{formatCurrency(yearData.rata)}</TableCell>
+                                                <TableCell className="text-right font-semibold">{formatCurrency(yearData.grossPay)}</TableCell>
+                                                <TableCell className="text-right font-semibold text-red-600">
+                                                    - {formatCurrency(yearData.totalDeductions)}
+                                                </TableCell>
+                                                <TableCell
+                                                    className={`text-right font-semibold ${yearData.totalAdjustments >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                                                >
+                                                    {formatCurrency(yearData.totalAdjustments)}
+                                                </TableCell>
+                                                <TableCell
+                                                    className={`text-right text-lg font-bold ${yearData.netPay >= 0 ? 'text-emerald-600' : 'text-red-600'}`}
+                                                >
+                                                    {formatCurrency(yearData.netPay)}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {/* Grand Total Row */}
+                                        <TableRow className="bg-muted/30 font-bold">
+                                            <TableCell className="font-bold">TOTAL</TableCell>
+                                            <TableCell className="text-right">
+                                                {formatCurrency(yearlySummary.reduce((s, y) => s + y.salary, 0))}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                {formatCurrency(yearlySummary.reduce((s, y) => s + y.pera, 0))}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                {formatCurrency(yearlySummary.reduce((s, y) => s + y.rata, 0))}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                {formatCurrency(yearlySummary.reduce((s, y) => s + y.grossPay, 0))}
+                                            </TableCell>
+                                            <TableCell className="text-right text-red-600">
+                                                - {formatCurrency(yearlySummary.reduce((s, y) => s + y.totalDeductions, 0))}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                {formatCurrency(yearlySummary.reduce((s, y) => s + y.totalAdjustments, 0))}
+                                            </TableCell>
+                                            <TableCell
+                                                className={`text-right text-lg ${yearlySummary.reduce((s, y) => s + y.netPay, 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}
+                                            >
+                                                {formatCurrency(yearlySummary.reduce((s, y) => s + y.netPay, 0))}
+                                            </TableCell>
+                                        </TableRow>
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </Card>
+                    </div>
+                )}
+
                 {/* All-time Statistics */}
                 <div>
                     <h3 className="mb-4 text-lg font-semibold">All-Time Summary</h3>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <StatCard title="Total Deductions" value={formatCurrency(totals.totalDeductions)} icon={TrendingDown} color="red" subtitle={`${totals.deductionCount} transactions`} />
-                        <StatCard title="Total Claims" value={formatCurrency(totals.totalClaims)} icon={FileText} color="blue" subtitle={`${totals.claimCount} submissions`} />
-                        <StatCard title="Total Adjustments" value={formatCurrency(totals.totalAdjustments)} icon={Calculator} color="purple" subtitle={`${totals.adjustmentCount} entries`} />
-                        <StatCard title="Net Financial Impact" value={formatCurrency(totals.totalClaims + totals.totalAdjustments - totals.totalDeductions)} icon={TrendingUp} color={totals.totalClaims + totals.totalAdjustments - totals.totalDeductions >= 0 ? 'emerald' : 'red'} subtitle="Claims + Adj - Deductions" />
+                        <StatCard
+                            title="Total Deductions"
+                            value={formatCurrency(totals.totalDeductions)}
+                            icon={TrendingDown}
+                            color="red"
+                            subtitle={`${totals.deductionCount} transactions`}
+                        />
+                        <StatCard
+                            title="Total Claims"
+                            value={formatCurrency(totals.totalClaims)}
+                            icon={FileText}
+                            color="blue"
+                            subtitle={`${totals.claimCount} submissions`}
+                        />
+                        <StatCard
+                            title="Total Adjustments"
+                            value={formatCurrency(totals.totalAdjustments)}
+                            icon={Calculator}
+                            color="purple"
+                            subtitle={`${totals.adjustmentCount} entries`}
+                        />
+                        <StatCard
+                            title="Net Financial Impact"
+                            value={formatCurrency(totals.totalClaims + totals.totalAdjustments - totals.totalDeductions)}
+                            icon={TrendingUp}
+                            color={totals.totalClaims + totals.totalAdjustments - totals.totalDeductions >= 0 ? 'emerald' : 'red'}
+                            subtitle="Claims + Adj - Deductions"
+                        />
                     </div>
                 </div>
             </div>
@@ -570,10 +776,14 @@ export default function EmployeeDashboard({
                             {/* Avatar */}
                             <div className="flex shrink-0 justify-center lg:justify-start">
                                 <div className="relative">
-                                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-400 to-emerald-400 blur-sm opacity-50" />
+                                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-400 to-emerald-400 opacity-50 blur-sm" />
                                     <Avatar className="relative h-24 w-24 border-4 border-white/20 shadow-xl md:h-28 md:w-28">
                                         {employee.image_path ? (
-                                            <AvatarImage src={employee.image_path} alt={`${employee.first_name} ${employee.last_name}`} className="object-cover" />
+                                            <AvatarImage
+                                                src={employee.image_path}
+                                                alt={`${employee.first_name} ${employee.last_name}`}
+                                                className="object-cover"
+                                            />
                                         ) : (
                                             <AvatarFallback className="bg-gradient-to-br from-blue-500 to-emerald-500 text-2xl font-bold text-white">
                                                 {getInitials(employee)}
@@ -586,7 +796,8 @@ export default function EmployeeDashboard({
                             {/* Info */}
                             <div className="flex-1 text-center lg:text-left">
                                 <h1 className="text-2xl font-bold text-white md:text-3xl">
-                                    {employee.first_name} {employee.middle_name?.[0] ? employee.middle_name[0] + '. ' : ''}{employee.last_name}
+                                    {employee.first_name} {employee.middle_name?.[0] ? employee.middle_name[0] + '. ' : ''}
+                                    {employee.last_name}
                                     {getSuffix(employee)}
                                 </h1>
                                 <p className="mt-1 text-lg text-slate-300">{employee.position}</p>
@@ -624,10 +835,34 @@ export default function EmployeeDashboard({
 
                     {/* ============ STATS CARDS ============ */}
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <StatCard title="Basic Salary" value={formatCurrency(employee.latest_salary?.amount ?? 0)} icon={Banknote} color="blue" subtitle="Current monthly rate" />
-                        <StatCard title="PERA" value={formatCurrency(employee.latest_pera?.amount ?? 0)} icon={Coins} color="green" subtitle="Monthly allowance" />
-                        <StatCard title="RATA" value={formatCurrency(employee.is_rata_eligible ? (employee.latest_rata?.amount ?? 0) : 0)} icon={Landmark} color="amber" subtitle={employee.is_rata_eligible ? 'Monthly allowance' : 'Not eligible'} />
-                        <StatCard title="Hazard Pay" value={formatCurrency(employee.latest_hazard_pay?.amount ?? 0)} icon={Shield} color="purple" subtitle={employee.latest_hazard_pay ? 'Current rate' : 'Not applicable'} />
+                        <StatCard
+                            title="Basic Salary"
+                            value={formatCurrency(employee.latest_salary?.amount ?? 0)}
+                            icon={Banknote}
+                            color="blue"
+                            subtitle="Current monthly rate"
+                        />
+                        <StatCard
+                            title="PERA"
+                            value={formatCurrency(employee.latest_pera?.amount ?? 0)}
+                            icon={Coins}
+                            color="green"
+                            subtitle="Monthly allowance"
+                        />
+                        <StatCard
+                            title="RATA"
+                            value={formatCurrency(employee.is_rata_eligible ? (employee.latest_rata?.amount ?? 0) : 0)}
+                            icon={Landmark}
+                            color="amber"
+                            subtitle={employee.is_rata_eligible ? 'Monthly allowance' : 'Not eligible'}
+                        />
+                        <StatCard
+                            title="Hazard Pay"
+                            value={formatCurrency(employee.latest_hazard_pay?.amount ?? 0)}
+                            icon={Shield}
+                            color="purple"
+                            subtitle={employee.latest_hazard_pay ? 'Current rate' : 'Not applicable'}
+                        />
                     </div>
 
                     {/* ============ QUICK ACTIONS ============ */}
@@ -681,7 +916,12 @@ export default function EmployeeDashboard({
                             className="w-40"
                         />
                         {filterApplied && (
-                            <Button variant="ghost" size="sm" onClick={() => router.get(route('employee.dashboard'), {}, { preserveState: true })} className="text-xs">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => router.get(route('employee.dashboard'), {}, { preserveState: true })}
+                                className="text-xs"
+                            >
                                 Clear Filters
                             </Button>
                         )}
