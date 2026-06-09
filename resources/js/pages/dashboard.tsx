@@ -588,7 +588,7 @@ export default function Dashboard({
                                     <Receipt className="h-5 w-5" />
                                     Top 10 Employees with Most Trips
                                 </CardTitle>
-                                <Button variant="ghost" size="sm" onClick={() => router.get(route('claims.report', { type: 'travel' }))}>
+                                <Button variant="ghost" size="sm" onClick={() => router.get(route('claims.report', { type: 'travel', sort_by: 'count' }))}>
                                     View All
                                     <ArrowUpRight className="ml-1 h-3 w-3" />
                                 </Button>

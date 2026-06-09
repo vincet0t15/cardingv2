@@ -108,6 +108,7 @@ class ClaimController extends Controller
         $filterMonth = $request->input('month');
         $filterYear = $request->input('year', now()->year);
         $filterType = $request->input('type');
+        $filterSortBy = $request->input('sort_by'); // 'amount' or 'count'
         $filterOffice = $request->input('office');
         $filterEmployee = $request->input('employee');
 
@@ -194,7 +195,22 @@ class ClaimController extends Controller
             ];
         });
 
-        $employees = $employeesWithClaims->sortByDesc('total_amount')->values();
+        // Sort based on type filter and sort_by preference
+        if ($filterType === 'travel') {
+            if ($filterSortBy === 'count') {
+                $employees = $employeesWithClaims->sortByDesc('travel_count')->values();
+            } else {
+                $employees = $employeesWithClaims->sortByDesc('travel_amount')->values();
+            }
+        } elseif ($filterType === 'overtime') {
+            if ($filterSortBy === 'count') {
+                $employees = $employeesWithClaims->sortByDesc('overtime_count')->values();
+            } else {
+                $employees = $employeesWithClaims->sortByDesc('overtime_amount')->values();
+            }
+        } else {
+            $employees = $employeesWithClaims->sortByDesc('total_amount')->values();
+        }
 
         $summary = [
             'total_employees' => $employees->count(),
@@ -225,6 +241,7 @@ class ClaimController extends Controller
             'month' => $filterMonth,
             'year' => $filterYear,
             'type' => $filterType,
+            'sort_by' => $filterSortBy,
             'office' => $filterOffice,
             'employee' => $filterEmployee,
             'per_page' => $request->input('per_page'),
@@ -280,6 +297,7 @@ class ClaimController extends Controller
                 'month' => $filterMonth,
                 'year' => $filterYear,
                 'type' => $filterType,
+                'sort_by' => $filterSortBy,
                 'office' => $filterOffice,
                 'employee' => $filterEmployee,
                 'per_page' => $request->input('per_page') === 'all' ? null : ($request->input('per_page') ? (int) $request->input('per_page') : 25),
@@ -301,6 +319,7 @@ class ClaimController extends Controller
         $filterMonth = $request->input('month');
         $filterYear = $request->input('year', now()->year);
         $filterType = $request->input('type'); // 'travel', 'overtime', or null for all
+        $filterSortBy = $request->input('sort_by'); // 'amount' or 'count'
         $filterOffice = $request->input('office'); // office_id filter
 
         // Build query for employees with claims
@@ -378,7 +397,24 @@ class ClaimController extends Controller
                 'other_count' => $claims->whereNotIn('claimType.code', ['TRAVEL', 'OVERTIME'])->count(),
                 'other_amount' => $claims->whereNotIn('claimType.code', ['TRAVEL', 'OVERTIME'])->sum('amount'),
             ];
-        })->sortByDesc('total_amount')->values();
+        })->values();
+
+        // Sort based on type filter and sort_by preference
+        if ($filterType === 'travel') {
+            if ($filterSortBy === 'count') {
+                $employees = $employees->sortByDesc('travel_count')->values();
+            } else {
+                $employees = $employees->sortByDesc('travel_amount')->values();
+            }
+        } elseif ($filterType === 'overtime') {
+            if ($filterSortBy === 'count') {
+                $employees = $employees->sortByDesc('overtime_count')->values();
+            } else {
+                $employees = $employees->sortByDesc('overtime_amount')->values();
+            }
+        } else {
+            $employees = $employees->sortByDesc('total_amount')->values();
+        }
 
         // Get summary statistics
         $summary = [
@@ -398,6 +434,7 @@ class ClaimController extends Controller
                 'month' => $filterMonth,
                 'year' => $filterYear,
                 'type' => $filterType,
+                'sort_by' => $filterSortBy,
                 'office' => $filterOffice,
             ],
         ]);
