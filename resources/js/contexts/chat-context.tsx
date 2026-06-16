@@ -1,5 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { router } from '@inertiajs/react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 export interface ChatUser {
     id: number;
@@ -160,23 +159,22 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         setOpenChats((prev) => prev.map((c) => (c.chatId === chatId ? { ...c, conversation } : c)));
     }, []);
 
-    return (
-        <ChatContext.Provider
-            value={{
-                openChats,
-                openChat,
-                openGroupChat,
-                openChatForIncoming,
-                closeChat,
-                closeAllChats,
-                toggleMinimize,
-                focusChat,
-                setConversation,
-            }}
-        >
-            {children}
-        </ChatContext.Provider>
+    const contextValue = useMemo(
+        () => ({
+            openChats,
+            openChat,
+            openGroupChat,
+            openChatForIncoming,
+            closeChat,
+            closeAllChats,
+            toggleMinimize,
+            focusChat,
+            setConversation,
+        }),
+        [openChats, openChat, openGroupChat, openChatForIncoming, closeChat, closeAllChats, toggleMinimize, focusChat, setConversation],
     );
+
+    return <ChatContext.Provider value={contextValue}>{children}</ChatContext.Provider>;
 }
 
 export function useChatContext() {
