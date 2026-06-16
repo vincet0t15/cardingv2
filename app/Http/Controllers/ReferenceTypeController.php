@@ -75,6 +75,6 @@ class ReferenceTypeController extends Controller
             return redirect()->back()->with('error', 'Cannot delete reference type that has adjustments assigned.');
         }
 
-        return $this->handleDeletion($referenceType, 'reference-types.delete');
+        return $this->handleDeletion($referenceType, 'reference_types.delete');
     }
 }

@@ -106,7 +106,7 @@ class SourceOfFundCodeController extends Controller
             return redirect()->back()->with('error', 'Cannot delete source of fund code that has child codes. Delete child codes first.');
         }
 
-        return $this->handleDeletion($sourceOfFundCode, 'source-of-fund-codes.delete');
+        return $this->handleDeletion($sourceOfFundCode, 'source_of_fund_codes.delete');
     }
 
     public function edit(SourceOfFundCode $sourceOfFundCode)

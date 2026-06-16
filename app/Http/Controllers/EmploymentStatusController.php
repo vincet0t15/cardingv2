@@ -60,6 +60,6 @@ class EmploymentStatusController extends Controller
             return redirect()->back()->with('error', 'Cannot delete employment status that has employees assigned.');
         }
 
-        return $this->handleDeletion($employmentStatus, 'employment-statuses.delete');
+        return $this->handleDeletion($employmentStatus, 'employment_statuses.delete');
     }
 }

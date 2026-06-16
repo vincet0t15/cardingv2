@@ -75,6 +75,6 @@ class DeductionTypeController extends Controller
             return redirect()->back()->with('error', 'Cannot delete deduction type that has existing employee deductions.');
         }
 
-        return $this->handleDeletion($deductionType, 'deduction-types.delete');
+        return $this->handleDeletion($deductionType, 'deduction_types.delete');
     }
 }

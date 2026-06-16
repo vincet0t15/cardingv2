@@ -79,6 +79,6 @@ class AdjustmentTypeController extends Controller
             return redirect()->back()->with('error', 'Cannot delete adjustment type that has adjustments assigned.');
         }
 
-        return $this->handleDeletion($adjustmentType, 'adjustment-types.delete');
+        return $this->handleDeletion($adjustmentType, 'adjustment_types.delete');
     }
 }

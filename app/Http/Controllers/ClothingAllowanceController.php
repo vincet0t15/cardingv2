@@ -172,6 +172,6 @@ class ClothingAllowanceController extends Controller
     {
         $this->authorize('delete', $clothingAllowance);
 
-        return $this->handleDeletion($clothingAllowance, 'clothing-allowances.delete');
+        return $this->handleDeletion($clothingAllowance, 'clothing_allowances.delete');
     }
 }

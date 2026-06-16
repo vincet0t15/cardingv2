@@ -67,6 +67,6 @@ class GeneralFundController extends Controller
             return redirect()->back()->with('error', 'Cannot delete General Fund that has source of fund codes assigned.');
         }
 
-        return $this->handleDeletion($generalFund, 'general-funds.delete');
+        return $this->handleDeletion($generalFund, 'general_funds.delete');
     }
 }

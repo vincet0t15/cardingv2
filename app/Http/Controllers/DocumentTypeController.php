@@ -66,6 +66,6 @@ class DocumentTypeController extends Controller
 
     public function destroy(DocumentType $documentType)
     {
-        return $this->handleDeletion($documentType, 'document-types.delete');
+        return $this->handleDeletion($documentType, 'document_types.delete');
     }
 }

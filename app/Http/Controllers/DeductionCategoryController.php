@@ -84,6 +84,6 @@ class DeductionCategoryController extends Controller
             return redirect()->back()->with('error', 'Cannot delete category that has associated deduction types.');
         }
 
-        return $this->handleDeletion($deductionCategory, 'deduction-categories.delete');
+        return $this->handleDeletion($deductionCategory, 'deduction_categories.delete');
     }
 }

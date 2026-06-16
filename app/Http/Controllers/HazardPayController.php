@@ -170,6 +170,6 @@ class HazardPayController extends Controller
 
     public function destroy(HazardPay $hazardPay)
     {
-        return $this->handleDeletion($hazardPay, 'hazard-pays.delete');
+        return $this->handleDeletion($hazardPay, 'hazard_pays.delete');
     }
 }
