@@ -24,7 +24,6 @@ class SupplierController extends Controller
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
             })
-            ->orderBy('id', 'desc')
             ->orderBy('name')
             ->paginate(20)
             ->withQueryString();
