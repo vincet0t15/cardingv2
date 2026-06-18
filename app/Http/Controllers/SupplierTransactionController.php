@@ -19,7 +19,7 @@ class SupplierTransactionController extends Controller
      */
     public function show(Request $request, Supplier $supplier): Response
     {
-        $query = SupplierTransaction::where('supplier_id', $supplier->id)->orderBy('id', 'desc');
+        $query = SupplierTransaction::where('supplier_id', $supplier->id);
         $search = $request->input('search');
         $year = $request->input('year');
         $month = $request->input('month');
@@ -44,11 +44,11 @@ class SupplierTransactionController extends Controller
             $query->whereMonth('pr_date', $month);
         }
 
-        $transactions = $query->orderBy('pr_date', 'desc')->paginate(15);
+        $transactions = $query->orderBy('id', 'desc')->paginate(15);
 
         $yearOptions = SupplierTransaction::where('supplier_id', $supplier->id)
             ->whereNotNull('pr_date')
-            ->orderBy('pr_date', 'desc')
+            ->orderBy('id', 'desc')
             ->pluck('pr_date')
             ->map(fn($date) => Carbon::parse($date)->year)
             ->unique()
