@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan:*)",
+      "Bash(npx tsc:*)",
+      "Bash(php:*)",
+      "Bash(php -r \"try { $c = new PDO\\(''mysql:host=127.0.0.1;dbname=carding_db'', ''root'', ''''\\); $s = $c->query\\(''SELECT id, name, code FROM claim_types''\\); foreach\\($s as $r\\) echo json_encode\\($r\\).\"\"\\\\n\"\"; } catch\\(Exception $e\\) { echo $e->getMessage\\(\\); }\")"
+    ]
+  }
+}
