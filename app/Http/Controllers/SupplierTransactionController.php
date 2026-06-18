@@ -19,7 +19,7 @@ class SupplierTransactionController extends Controller
      */
     public function show(Request $request, Supplier $supplier): Response
     {
-        $query = SupplierTransaction::where('supplier_id', $supplier->id);
+        $query = SupplierTransaction::where('supplier_id', $supplier->id)->orderBy('id', 'desc');
         $search = $request->input('search');
         $year = $request->input('year');
         $month = $request->input('month');
