@@ -179,47 +179,8 @@ class DashboardController extends Controller
             ->orderBy('code')
             ->get();
 
-        $salariesQuery = Salary::selectRaw('source_of_fund_codes.general_fund_id, SUM(salaries.amount) as total_amount')
-            ->join('source_of_fund_codes', 'salaries.source_of_fund_code_id', '=', 'source_of_fund_codes.id');
-
-        if ($useFilters) {
-            $salariesQuery->whereYear('salaries.effective_date', $year);
-            if ($month) {
-                $salariesQuery->whereMonth('salaries.effective_date', $month);
-            }
-        }
-
-        $salariesByGeneralFund = $salariesQuery
-            ->groupBy('source_of_fund_codes.general_fund_id')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'general_fund_id' => $item->general_fund_id,
-                    'total_amount' => (float) $item->total_amount,
-                ];
-            });
-
-        // Merge with all general funds to include those with 0 amounts
-        $salariesByFund = $allGeneralFunds->map(function ($fund) use ($salariesByGeneralFund) {
-            $existing = $salariesByGeneralFund->firstWhere('general_fund_id', $fund->id);
-
-            if ($existing) {
-                return [
-                    'id' => $fund->id,
-                    'code' => $fund->code,
-                    'description' => $fund->description,
-                    'total_amount' => $existing['total_amount'],
-                ];
-            }
-
-            // Return fund with 0 amount
-            return [
-                'id' => $fund->id,
-                'code' => $fund->code,
-                'description' => $fund->description,
-                'total_amount' => 0.0,
-            ];
-        })->values();
+        // Will compute salariesByFund after salaryDistribution is built below
+        $salariesByFund = [];
 
         // Salary Distribution by Fund and Code
         $allSourceOfFundCodes = SourceOfFundCode::where('status', true)
@@ -227,29 +188,50 @@ class DashboardController extends Controller
             ->orderBy('code')
             ->get();
 
-        $salariesDistributionQuery = Salary::selectRaw('source_of_fund_codes.id as code_id, source_of_fund_codes.code, source_of_fund_codes.description as code_description, source_of_fund_codes.general_fund_id, SUM(salaries.amount) as total_amount, COUNT(DISTINCT salaries.employee_id) as employee_count')
-            ->join('source_of_fund_codes', 'salaries.source_of_fund_code_id', '=', 'source_of_fund_codes.id');
+        // Compute cumulative salaries by source of fund code (amount × months active)
+        $salaryRecords = Salary::with('sourceOfFundCode')->get();
+        $salariesByCode = [];
 
-        if ($useFilters) {
-            $salariesDistributionQuery->whereYear('salaries.effective_date', $year);
-            if ($month) {
-                $salariesDistributionQuery->whereMonth('salaries.effective_date', $month);
+        $salaryGrouped = $salaryRecords->groupBy('employee_id');
+        foreach ($salaryGrouped as $empId => $empRecords) {
+            $sorted = $empRecords->sortBy('effective_date')->values();
+            for ($i = 0; $i < $sorted->count(); $i++) {
+                $rec = $sorted[$i];
+                $codeId = $rec->source_of_fund_code_id;
+                if (! $codeId) continue;
+
+                $start = \Carbon\Carbon::parse($rec->effective_date)->startOfMonth();
+                if ($rec->end_date) {
+                    $end = \Carbon\Carbon::parse($rec->end_date)->startOfMonth();
+                } elseif ($i + 1 < $sorted->count()) {
+                    $end = \Carbon\Carbon::parse($sorted[$i + 1]->effective_date)->startOfMonth();
+                } else {
+                    $end = now()->startOfMonth();
+                }
+                $months = max(1, $start->diffInMonths($end));
+                $cumulative = $rec->amount * $months;
+
+                if (! isset($salariesByCode[$codeId])) {
+                    $codeInfo = $allSourceOfFundCodes->firstWhere('id', $codeId);
+                    $salariesByCode[$codeId] = [
+                        'code_id' => $codeId,
+                        'code' => $codeInfo->code ?? '',
+                        'code_description' => $codeInfo->description ?? '',
+                        'general_fund_id' => $codeInfo->general_fund_id ?? null,
+                        'total_amount' => 0,
+                        'employee_count' => [],
+                    ];
+                }
+                $salariesByCode[$codeId]['total_amount'] += $cumulative;
+                $salariesByCode[$codeId]['employee_count'][$empId] = true;
             }
         }
 
-        $salariesByCode = $salariesDistributionQuery
-            ->groupBy('source_of_fund_codes.id', 'source_of_fund_codes.code', 'source_of_fund_codes.description', 'source_of_fund_codes.general_fund_id')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'code_id' => $item->code_id,
-                    'code' => $item->code,
-                    'code_description' => $item->code_description,
-                    'general_fund_id' => $item->general_fund_id,
-                    'total_amount' => (float) $item->total_amount,
-                    'employee_count' => (int) $item->employee_count,
-                ];
-            });
+        // Convert employee_count arrays to counts and reindex
+        $salariesByCode = collect(array_values($salariesByCode))->map(function ($item) {
+            $item['employee_count'] = count($item['employee_count']);
+            return $item;
+        });
 
         // Group by General Fund
         $salariesByFundDistribution = $allSourceOfFundCodes->groupBy('general_fund_id')->map(function ($codes) use ($salariesByCode) {
@@ -289,6 +271,16 @@ class DashboardController extends Controller
                 'employee_count' => $existing ? $existing['employee_count'] : 0,
             ];
         })->values();
+
+        // Build salariesByFund from salaryDistribution (cumulative totals by general fund)
+        $salariesByFund = $salaryDistribution->map(function ($fund) {
+            return [
+                'id' => $fund['id'],
+                'code' => $fund['code'],
+                'description' => $fund['description'],
+                'total_amount' => $fund['total_amount'],
+            ];
+        });
 
         // Recent activity (placeholder - can be enhanced with actual activity log)
         $recentActivity = [];
