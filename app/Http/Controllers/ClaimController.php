@@ -111,7 +111,7 @@ class ClaimController extends Controller
         $filterSortBy = $request->input('sort_by'); // 'amount' or 'count'
         $filterOffice = $request->input('office');
         $filterEmployee = $request->input('employee');
-        $filterClaimTypes = $request->input('claim_types'); // comma-separated codes like "TRAVEL,MEAL,CASH_ADVANCE"
+        $filterClaimTypes = $request->input('claim_types'); // comma-separated codes like "TRAVEL,MEAL,CASH_ADVANCE_TRAVEL"
 
         // Determine available claim types for the filter (only relevant ones)
         if ($filterClaimTypes) {
@@ -119,8 +119,8 @@ class ClaimController extends Controller
             $codes = array_map('trim', explode(',', $filterClaimTypes));
             $availableClaimTypes = ClaimType::whereIn('code', $codes)->get(['id', 'code', 'name']);
         } elseif ($filterType === 'travel') {
-            // Default to TRAVEL, MEAL, CASH_ADVANCE for backward compat
-            $availableClaimTypes = ClaimType::whereIn('code', ['TRAVEL', 'MEAL', 'CASH_ADVANCE'])->get(['id', 'code', 'name']);
+            // Default to TRAVEL, MEAL, CASH_ADVANCE_TRAVEL for backward compat
+            $availableClaimTypes = ClaimType::whereIn('code', ['TRAVEL', 'MEAL', 'CASH_ADVANCE_TRAVEL'])->get(['id', 'code', 'name']);
         } else {
             $availableClaimTypes = collect();
         }
@@ -130,7 +130,7 @@ class ClaimController extends Controller
         if ($filterClaimTypes) {
             $selectedClaimTypes = array_map('trim', explode(',', $filterClaimTypes));
         } elseif ($filterType === 'travel') {
-            $selectedClaimTypes = ['TRAVEL', 'MEAL', 'CASH_ADVANCE'];
+            $selectedClaimTypes = ['TRAVEL', 'MEAL', 'CASH_ADVANCE_TRAVEL'];
         }
 
         $offices = Office::orderBy('name')->get();
@@ -337,7 +337,7 @@ class ClaimController extends Controller
         if ($filterClaimTypes) {
             $selectedClaimTypes = array_map('trim', explode(',', $filterClaimTypes));
         } elseif ($filterType === 'travel') {
-            $selectedClaimTypes = ['TRAVEL', 'MEAL', 'CASH_ADVANCE'];
+            $selectedClaimTypes = ['TRAVEL', 'MEAL', 'CASH_ADVANCE_TRAVEL'];
         }
 
         // Build query for employees with claims

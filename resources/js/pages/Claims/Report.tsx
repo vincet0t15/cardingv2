@@ -126,7 +126,7 @@ export default function ClaimsReport({ employees, summary, offices, filters, ava
     const selectedClaimTypes = filters.claim_types
         ? filters.claim_types.split(',')
         : filters.type === 'travel'
-          ? ['TRAVEL', 'MEAL', 'CASH_ADVANCE']
+          ? ['TRAVEL', 'MEAL', 'CASH_ADVANCE_TRAVEL']
           : [];
 
     const handleClaimTypeToggle = (code: string) => {
