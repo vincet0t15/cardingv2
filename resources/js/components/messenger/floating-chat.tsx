@@ -1,11 +1,12 @@
 import { type OpenChat, useChatContext, initializedConversations } from '@/contexts/chat-context';
+import { useAuthContext } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
-import { usePage } from '@inertiajs/react';
 import { echo } from '@laravel/echo-react';
 import { CornerUpLeft, Minus, Paperclip, Send, Upload, Users, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MemoizedChatMessage } from './chat-message';
 import { GroupMembersDialog } from './group-members-dialog';
+import { getCachedMessages, setCachedMessages, hasCachedMessages, appendCachedMessage, removeCachedMessage, prependCachedMessages } from '@/utils/message-cache';
 
 interface MessageType {
     id: number;
@@ -79,10 +80,11 @@ interface Props {
 }
 
 export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
-    const { auth } = usePage().props as unknown as { auth: { user: { id: number; name: string } } };
+    const { user: authUser } = useAuthContext();
+    const auth = useMemo(() => ({ user: authUser ?? { id: 0, name: '' } }), [authUser]);
     const { closeChat, toggleMinimize, setConversation } = useChatContext();
 
-    const [messages, setMessages] = useState<MessageType[]>([]);
+    const [messages, setMessages] = useState<MessageType[]>(() => getCachedMessages(chat.chatId) as MessageType[]);
     const [input, setInput] = useState('');
     const [sending, setSending] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -159,11 +161,15 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             // Clear scroll tracking for new conversation
             hasScrolledRef.current.delete(convId!);
 
-            const res = await fetch(`/messenger/${convId}/messages`);
-            if (res.ok) {
-                const data = await res.json();
-                setMessages(data.messages);
-                setHasMore(data.messages.length === 50);
+            // Only fetch if we don't have cached messages for this chat
+            if (!hasCachedMessages(chat.chatId)) {
+                const res = await fetch(`/messenger/${convId}/messages`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setMessages(data.messages);
+                    setCachedMessages(chat.chatId, data.messages);
+                    setHasMore(data.messages.length === 50);
+                }
             }
             setLoading(false);
         };
@@ -250,13 +256,11 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             const data = await res.json();
             if (data.messages.length > 0) {
                 const newHasMore = data.messages.length === 50;
+                prependCachedMessages(chat.chatId, data.messages);
                 setMessages((prev) => {
-                    // Deduplicate by creating a set of existing IDs
                     const existingIds = new Set(prev.map((m) => m.id));
-                    // Only add new messages that don't already exist
                     const newMessages = data.messages.filter((m: MessageType) => !existingIds.has(m.id));
-                    const updated = [...newMessages, ...prev];
-                    return updated;
+                    return [...newMessages, ...prev];
                 });
                 setHasMore(newHasMore);
                 requestAnimationFrame(() => {
@@ -288,8 +292,9 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
 
         ch.listen('ConversationMessageSent', (event: { message: MessageType }) => {
             setMessages((prev) => {
-                const updated = prev.some((m) => m.id === event.message.id) ? prev : [...prev, event.message];
-                return updated;
+                if (prev.some((m) => m.id === event.message.id)) return prev;
+                appendCachedMessage(chat.chatId, event.message);
+                return [...prev, event.message];
             });
             if (event.message.user.id !== auth.user.id && conversationId) {
                 fetch(`/messenger/${conversationId}/messages/${event.message.id}/seen`, {
@@ -301,8 +306,8 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
 
         ch.listen('ConversationMessageDeleted', (event: { message_id: number }) => {
             setMessages((prev) => {
-                const updated = prev.filter((m) => m.id !== event.message_id);
-                return updated;
+                removeCachedMessage(chat.chatId, event.message_id);
+                return prev.filter((m) => m.id !== event.message_id);
             });
         });
 
@@ -351,10 +356,9 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
             if (res.ok) {
                 const json = await res.json();
                 setMessages((prev) => {
-                    // Avoid duplicate if message already exists
-                    const hasDuplicate = prev.some((m) => m.id === json.message.id);
-                    const updated = hasDuplicate ? prev : [...prev, json.message];
-                    return updated;
+                    if (prev.some((m) => m.id === json.message.id)) return prev;
+                    appendCachedMessage(chat.chatId, json.message);
+                    return [...prev, json.message];
                 });
                 setInput('');
                 setSelectedFile(null);
@@ -381,8 +385,8 @@ export function FloatingChat({ chat, index, extraRight = 0 }: Props) {
         async (msgId: number) => {
             if (!conversationId) return;
             setMessages((prev) => {
-                const updated = prev.filter((m) => m.id !== msgId);
-                return updated;
+                removeCachedMessage(chat.chatId, msgId);
+                return prev.filter((m) => m.id !== msgId);
             });
             await fetch(`/messenger/${conversationId}/messages/${msgId}`, {
                 method: 'DELETE',

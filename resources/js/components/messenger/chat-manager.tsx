@@ -1,4 +1,5 @@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useAuthContext } from '@/contexts/auth-context';
 import { useChatContext } from '@/contexts/chat-context';
 import { X } from 'lucide-react';
 import { useState } from 'react';
@@ -12,7 +13,11 @@ const RAIL_WIDTH = 56;
 
 export function ChatManager() {
     const { openChats, closeAllChats, focusChat, toggleMinimize } = useChatContext();
+    const { user: authUser } = useAuthContext();
     const [showPopover, setShowPopover] = useState(false);
+
+    // Don't render floating chats until auth has been synced from Inertia
+    if (!authUser) return null;
 
     if (openChats.length === 0) return <GlobalMessageListener />;
 

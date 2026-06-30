@@ -159,7 +159,7 @@ export default function EmployeeClaimsDetailPrint({ employee, claims, summary, f
                                 <tr key={claim.id}>
                                     <td className="border border-black px-2 py-1 text-center text-[10px]">{index + 1}</td>
                                     <td className="border border-black px-2 py-1 text-[10px]">{formatDate(claim.claim_date)}</td>
-                                    <td className="border border-black px-2 py-1 text-[10px] font-medium uppercase">
+                                    <td className={`border border-black px-2 py-1 text-[10px] font-medium uppercase ${claim.claim_type.code === 'MEAL' ? 'text-amber-600' : claim.claim_type.code === 'CASH_ADVANCE_TRAVEL' ? 'text-violet-600' : ''}`}>
                                         {claim.claim_type.name ?? '—'}
                                     </td>
                                     <td className="border border-black px-2 py-1 text-[10px]">{claim.purpose}</td>

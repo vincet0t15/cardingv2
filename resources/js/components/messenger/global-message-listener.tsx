@@ -8,7 +8,7 @@
  *  – opens it minimised (side-rail) when the 3-window cap is already reached.
  */
 import { useChatContext } from '@/contexts/chat-context';
-import { usePage } from '@inertiajs/react';
+import { useAuthContext } from '@/contexts/auth-context';
 import { echo } from '@laravel/echo-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -32,7 +32,8 @@ interface AuthUser {
 
 export function GlobalMessageListener() {
     const { openChats, openChatForIncoming } = useChatContext();
-    const { auth } = usePage().props as unknown as { auth: { user: AuthUser } };
+    const { user: authUser } = useAuthContext();
+    const auth = { user: authUser ?? { id: 0, name: '' } };
     const [conversations, setConversations] = useState<ConversationType[]>([]);
     const fetchedRef = useRef(false);
 
