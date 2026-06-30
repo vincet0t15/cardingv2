@@ -3,7 +3,6 @@
 namespace App\Ai\Tools;
 
 use App\Models\Claim;
-use App\Models\ClaimType;
 use App\Models\DeductionType;
 use App\Models\Employee;
 use App\Models\EmployeeDeduction;
@@ -11,31 +10,24 @@ use App\Models\Office;
 use App\Models\Pera;
 use App\Models\Rata;
 use App\Models\Salary;
-use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Illuminate\Support\Facades\DB;
-use Laravel\Ai\Contracts\Tool;
-use Laravel\Ai\Tools\Request;
-use Stringable;
 
-class PayrollQueryTool implements Tool
+class PayrollQueryTool
 {
-    public function description(): Stringable|string
+    /**
+     * Execute a query and return results as a string.
+     */
+    public function handle(array $params): string
     {
-        return 'Query payroll data: employees, salaries, PERA, RATA, claims, deductions, offices. Supports totals, counts, top lists, and filtered queries by month/year.';
-    }
-
-    public function handle(Request $request): Stringable|string
-    {
-        $query = $request['query'];
-        $month = $request['month'] ?? null;
-        $year = $request['year'] ?? now()->year;
+        $query = $params['query'] ?? '';
+        $month = $params['month'] ?? null;
+        $year = $params['year'] ?? (int) now()->year;
 
         return match ($query) {
             'total_salaries' => $this->totalSalaries(),
             'total_pera' => $this->totalPera(),
             'total_rata' => $this->totalRata(),
             'total_compensation' => $this->totalCompensation(),
-            'employee_count' => $this->employeeCount($request),
+            'employee_count' => $this->employeeCount($params),
             'office_count' => (string) Office::count(),
             'total_claims' => $this->totalClaims($month, $year),
             'total_deductions' => $this->totalDeductions($month, $year),
@@ -47,19 +39,6 @@ class PayrollQueryTool implements Tool
             'monthly_payroll_cost' => $this->monthlyPayrollCost(),
             default => "Unknown query: $query. Available queries: total_salaries, total_pera, total_rata, total_compensation, employee_count, office_count, total_claims, total_deductions, top_claimants, top_deductions, top_travel_claims, claims_by_type, employees_by_office, monthly_payroll_cost",
         };
-    }
-
-    public function schema(JsonSchema $schema): array
-    {
-        return [
-            'query' => $schema->string()
-                ->required()
-                ->description('The type of query to run'),
-            'month' => $schema->integer()
-                ->description('Month number (1-12, optional)'),
-            'year' => $schema->integer()
-                ->description('Year (optional, defaults to current year)'),
-        ];
     }
 
     private function totalSalaries(): string
@@ -89,10 +68,10 @@ class PayrollQueryTool implements Tool
         return "Total monthly compensation: ₱" . number_format($total, 2) . " (Salaries: ₱" . number_format($salaries, 2) . ", PERA: ₱" . number_format($pera, 2) . ", RATA: ₱" . number_format($rata, 2) . ")";
     }
 
-    private function employeeCount(Request $request): string
+    private function employeeCount(array $params): string
     {
-        $officeId = $request->input('office_id');
-        $statusId = $request->input('employment_status_id');
+        $officeId = $params['office_id'] ?? null;
+        $statusId = $params['employment_status_id'] ?? null;
 
         $query = Employee::query();
         if ($officeId) {

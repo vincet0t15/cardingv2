@@ -3,18 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Ai\Tools\PayrollQueryTool;
+use App\Models\AgentConversation;
+use App\Models\AgentConversationMessage;
 use App\Models\AiSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
-use Laravel\Ai\Models\Conversation;
-use Laravel\Ai\Models\ConversationMessage;
 
 class SmartAssistantController extends Controller
 {
     public function index()
     {
-        $conversations = Conversation::where('user_id', auth()->id())
+        $conversations = AgentConversation::where('user_id', auth()->id())
             ->orderBy('updated_at', 'desc')
             ->limit(20)
             ->get();
@@ -88,7 +88,7 @@ class SmartAssistantController extends Controller
 
         // Create or find conversation
         if (! $conversationId) {
-            $conversation = Conversation::create([
+            $conversation = AgentConversation::create([
                 'id' => (string) \Illuminate\Support\Str::uuid(),
                 'user_id' => $user->id,
                 'title' => mb_substr($message, 0, 100),
@@ -97,7 +97,7 @@ class SmartAssistantController extends Controller
         }
 
         // Get conversation history for context
-        $historyMessages = ConversationMessage::where('conversation_id', $conversationId)
+        $historyMessages = AgentConversationMessage::where('conversation_id', $conversationId)
             ->latest()
             ->limit(10)
             ->get()
@@ -109,7 +109,7 @@ class SmartAssistantController extends Controller
             ->toArray();
 
         // Save user message
-        ConversationMessage::create([
+        AgentConversationMessage::create([
             'id' => (string) \Illuminate\Support\Str::uuid(),
             'conversation_id' => $conversationId,
             'user_id' => $user->id,
@@ -162,7 +162,7 @@ I will execute it and return results for you to summarize.',
             }
 
             // Save assistant message
-            ConversationMessage::create([
+            AgentConversationMessage::create([
                 'id' => (string) \Illuminate\Support\Str::uuid(),
                 'conversation_id' => $conversationId,
                 'user_id' => $user->id,
@@ -177,7 +177,7 @@ I will execute it and return results for you to summarize.',
             ]);
 
             // Update conversation timestamp
-            $conversation = Conversation::find($conversationId);
+            $conversation = AgentConversation::find($conversationId);
             if ($conversation) {
                 $conversation->touch();
             }
@@ -201,7 +201,7 @@ I will execute it and return results for you to summarize.',
 
     public function history(Request $request, string $conversationId)
     {
-        $messages = ConversationMessage::where('conversation_id', $conversationId)
+        $messages = AgentConversationMessage::where('conversation_id', $conversationId)
             ->orderBy('created_at')
             ->get(['role', 'content', 'created_at']);
 
@@ -269,7 +269,7 @@ I will execute it and return results for you to summarize.',
 
         // Execute the query using the PayrollQueryTool
         $tool = new PayrollQueryTool();
-        $result = $tool->handle(new \Laravel\Ai\Tools\Request(['query' => $queryName]));
+        $result = $tool->handle(['query' => $queryName]);
         $result = trim((string) $result);
 
         // Send the result back to the AI for interpretation
@@ -290,7 +290,7 @@ I will execute it and return results for you to summarize.',
      */
     private function saveAssistantMessage(string $conversationId, int $userId, string $content): void
     {
-        ConversationMessage::create([
+        AgentConversationMessage::create([
             'id' => (string) \Illuminate\Support\Str::uuid(),
             'conversation_id' => $conversationId,
             'user_id' => $userId,
