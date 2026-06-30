@@ -111,6 +111,27 @@ class ClaimController extends Controller
         $filterSortBy = $request->input('sort_by'); // 'amount' or 'count'
         $filterOffice = $request->input('office');
         $filterEmployee = $request->input('employee');
+        $filterClaimTypes = $request->input('claim_types'); // comma-separated codes like "TRAVEL,MEAL,CASH_ADVANCE"
+
+        // Determine available claim types for the filter (only relevant ones)
+        if ($filterClaimTypes) {
+            // Only show the claim types that are in the filter
+            $codes = array_map('trim', explode(',', $filterClaimTypes));
+            $availableClaimTypes = ClaimType::whereIn('code', $codes)->get(['id', 'code', 'name']);
+        } elseif ($filterType === 'travel') {
+            // Default to TRAVEL, MEAL, CASH_ADVANCE for backward compat
+            $availableClaimTypes = ClaimType::whereIn('code', ['TRAVEL', 'MEAL', 'CASH_ADVANCE'])->get(['id', 'code', 'name']);
+        } else {
+            $availableClaimTypes = collect();
+        }
+
+        // Default claim types when type=travel is passed (backward compatibility)
+        $selectedClaimTypes = null;
+        if ($filterClaimTypes) {
+            $selectedClaimTypes = array_map('trim', explode(',', $filterClaimTypes));
+        } elseif ($filterType === 'travel') {
+            $selectedClaimTypes = ['TRAVEL', 'MEAL', 'CASH_ADVANCE'];
+        }
 
         $offices = Office::orderBy('name')->get();
 
@@ -140,10 +161,10 @@ class ClaimController extends Controller
             });
         }
 
-        if ($filterType === 'travel') {
-            $summaryQuery->whereHas('claims', function ($query) {
-                $query->whereHas('claimType', function ($q) {
-                    $q->where('code', 'TRAVEL');
+        if ($selectedClaimTypes) {
+            $summaryQuery->whereHas('claims', function ($query) use ($selectedClaimTypes) {
+                $query->whereHas('claimType', function ($q) use ($selectedClaimTypes) {
+                    $q->whereIn('code', $selectedClaimTypes);
                 });
             });
         } elseif ($filterType === 'overtime') {
@@ -154,9 +175,7 @@ class ClaimController extends Controller
             });
         }
 
-        $totalEmployees = (clone $summaryQuery)->count();
-
-        $employeesWithClaims = (clone $summaryQuery)->with(['office'])->get()->map(function ($employee) use ($filterMonth, $filterYear, $filterType) {
+        $employeesWithClaims = (clone $summaryQuery)->with(['office'])->get()->map(function ($employee) use ($filterMonth, $filterYear, $filterType, $selectedClaimTypes) {
             $claimsQuery = $employee->claims()
                 ->with(['claimType', 'salary'])
                 ->orderBy('claim_date', 'desc');
@@ -168,9 +187,9 @@ class ClaimController extends Controller
                 $claimsQuery->whereYear('claim_date', $filterYear);
             }
 
-            if ($filterType === 'travel') {
-                $claimsQuery->whereHas('claimType', function ($q) {
-                    $q->where('code', 'TRAVEL');
+            if ($selectedClaimTypes) {
+                $claimsQuery->whereHas('claimType', function ($q) use ($selectedClaimTypes) {
+                    $q->whereIn('code', $selectedClaimTypes);
                 });
             } elseif ($filterType === 'overtime') {
                 $claimsQuery->whereHas('claimType', function ($q) {
@@ -180,34 +199,25 @@ class ClaimController extends Controller
 
             $claims = $claimsQuery->get();
 
+            // Per-type breakdown counts
+            $claimTypeCounts = [];
+            foreach ($selectedClaimTypes ?? [] as $code) {
+                $claimTypeCounts[$code] = $claims->where('claimType.code', $code)->count();
+            }
+
             return [
                 'id' => $employee->id,
                 'name' => $employee->last_name . ', ' . $employee->first_name,
                 'office' => $employee->office?->name ?? 'N/A',
                 'total_amount' => $claims->sum('amount'),
                 'claim_count' => $claims->count(),
-                'travel_count' => $claims->where('claimType.code', 'TRAVEL')->count(),
-                'travel_amount' => $claims->where('claimType.code', 'TRAVEL')->sum('amount'),
-                'overtime_count' => $claims->where('claimType.code', 'OVERTIME')->count(),
-                'overtime_amount' => $claims->where('claimType.code', 'OVERTIME')->sum('amount'),
-                'other_count' => $claims->whereNotIn('claimType.code', ['TRAVEL', 'OVERTIME'])->count(),
-                'other_amount' => $claims->whereNotIn('claimType.code', ['TRAVEL', 'OVERTIME'])->sum('amount'),
+                'claim_type_counts' => $claimTypeCounts,
             ];
         });
 
-        // Sort based on type filter and sort_by preference
-        if ($filterType === 'travel') {
-            if ($filterSortBy === 'count') {
-                $employees = $employeesWithClaims->sortByDesc('travel_count')->values();
-            } else {
-                $employees = $employeesWithClaims->sortByDesc('travel_amount')->values();
-            }
-        } elseif ($filterType === 'overtime') {
-            if ($filterSortBy === 'count') {
-                $employees = $employeesWithClaims->sortByDesc('overtime_count')->values();
-            } else {
-                $employees = $employeesWithClaims->sortByDesc('overtime_amount')->values();
-            }
+        // Sort by count or amount
+        if ($filterSortBy === 'count') {
+            $employees = $employeesWithClaims->sortByDesc('claim_count')->values();
         } else {
             $employees = $employeesWithClaims->sortByDesc('total_amount')->values();
         }
@@ -216,10 +226,6 @@ class ClaimController extends Controller
             'total_employees' => $employees->count(),
             'total_claims' => $employees->sum('claim_count'),
             'total_amount' => $employees->sum('total_amount'),
-            'total_travel_claims' => $employees->sum('travel_count'),
-            'total_travel_amount' => $employees->sum('travel_amount'),
-            'total_overtime_claims' => $employees->sum('overtime_count'),
-            'total_overtime_amount' => $employees->sum('overtime_amount'),
         ];
 
         // Pagination with per_page support
@@ -244,6 +250,7 @@ class ClaimController extends Controller
             'sort_by' => $filterSortBy,
             'office' => $filterOffice,
             'employee' => $filterEmployee,
+            'claim_types' => $filterClaimTypes,
             'per_page' => $request->input('per_page'),
         ], fn($v) => $v !== null && $v !== '' && $v !== 'all');
 
@@ -300,8 +307,10 @@ class ClaimController extends Controller
                 'sort_by' => $filterSortBy,
                 'office' => $filterOffice,
                 'employee' => $filterEmployee,
+                'claim_types' => $filterClaimTypes,
                 'per_page' => $request->input('per_page') === 'all' ? null : ($request->input('per_page') ? (int) $request->input('per_page') : 25),
             ],
+            'availableClaimTypes' => $availableClaimTypes,
             'pagination' => [
                 'current_page' => (int) $currentPage,
                 'total_pages' => $totalPages,
@@ -321,6 +330,15 @@ class ClaimController extends Controller
         $filterType = $request->input('type'); // 'travel', 'overtime', or null for all
         $filterSortBy = $request->input('sort_by'); // 'amount' or 'count'
         $filterOffice = $request->input('office'); // office_id filter
+        $filterClaimTypes = $request->input('claim_types'); // comma-separated codes
+
+        // Determine claim type codes for filtering
+        $selectedClaimTypes = null;
+        if ($filterClaimTypes) {
+            $selectedClaimTypes = array_map('trim', explode(',', $filterClaimTypes));
+        } elseif ($filterType === 'travel') {
+            $selectedClaimTypes = ['TRAVEL', 'MEAL', 'CASH_ADVANCE'];
+        }
 
         // Build query for employees with claims
         $employeesQuery = Employee::with(['office'])
@@ -344,10 +362,10 @@ class ClaimController extends Controller
         }
 
         // Filter by claim type if specified
-        if ($filterType === 'travel') {
-            $employeesQuery->whereHas('claims', function ($query) {
-                $query->whereHas('claimType', function ($q) {
-                    $q->where('code', 'TRAVEL');
+        if ($selectedClaimTypes) {
+            $employeesQuery->whereHas('claims', function ($query) use ($selectedClaimTypes) {
+                $query->whereHas('claimType', function ($q) use ($selectedClaimTypes) {
+                    $q->whereIn('code', $selectedClaimTypes);
                 });
             });
         } elseif ($filterType === 'overtime') {
@@ -358,7 +376,7 @@ class ClaimController extends Controller
             });
         }
 
-        $employees = $employeesQuery->get()->map(function ($employee) use ($filterMonth, $filterYear, $filterType) {
+        $employees = $employeesQuery->get()->map(function ($employee) use ($filterMonth, $filterYear, $filterType, $selectedClaimTypes) {
             // Build claims query for this employee
             $claimsQuery = $employee->claims()
                 ->with(['claimType', 'salary'])
@@ -372,9 +390,9 @@ class ClaimController extends Controller
             }
 
             // Filter by type if specified
-            if ($filterType === 'travel') {
-                $claimsQuery->whereHas('claimType', function ($q) {
-                    $q->where('code', 'TRAVEL');
+            if ($selectedClaimTypes) {
+                $claimsQuery->whereHas('claimType', function ($q) use ($selectedClaimTypes) {
+                    $q->whereIn('code', $selectedClaimTypes);
                 });
             } elseif ($filterType === 'overtime') {
                 $claimsQuery->whereHas('claimType', function ($q) {

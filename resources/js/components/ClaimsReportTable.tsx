@@ -1,8 +1,7 @@
 import Pagination from '@/components/paginationData';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { PaginatedDataResponse } from '@/types/pagination';
-import { Clock, FileText, Receipt, TrendingUp, Users } from 'lucide-react';
+import { FileText, Receipt, TrendingUp, Users } from 'lucide-react';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -18,22 +17,13 @@ interface EmployeeClaims {
     office: string;
     total_amount: number;
     claim_count: number;
-    travel_count: number;
-    travel_amount: number;
-    overtime_count: number;
-    overtime_amount: number;
-    other_count: number;
-    other_amount: number;
+    claim_type_counts: Record<string, number>;
 }
 
 interface Summary {
     total_employees: number;
     total_claims: number;
     total_amount: number;
-    total_travel_claims: number;
-    total_travel_amount: number;
-    total_overtime_claims: number;
-    total_overtime_amount: number;
 }
 
 interface Filters {
@@ -43,6 +33,7 @@ interface Filters {
     sort_by?: string | null;
     office: string | null;
     employee: string | null;
+    claim_types: string | null;
     per_page: number | null;
 }
 
@@ -54,34 +45,15 @@ interface ClaimsReportTableProps {
 }
 
 export default function ClaimsReportTable({ employees, summary, filters, onEmployeeClick }: ClaimsReportTableProps) {
-    const selectedType = filters.type || 'all';
+    const selectedClaimTypes = filters.claim_types ? filters.claim_types.split(',') : [];
+    const claimTypesLabel = selectedClaimTypes.length > 0 ? selectedClaimTypes.join(', ') : 'All';
 
-    const filteredEmployees = employees.data.filter((emp) => {
-        if (selectedType === 'travel') return emp.travel_count > 0;
-        if (selectedType === 'overtime') return emp.overtime_count > 0;
-        return true;
-    });
+    const filteredEmployees = employees.data.filter((emp) => emp.claim_count > 0);
 
-    const getFilteredSummary = () => {
-        if (selectedType === 'travel') {
-            return {
-                count: summary.total_travel_claims,
-                amount: summary.total_travel_amount,
-            };
-        }
-        if (selectedType === 'overtime') {
-            return {
-                count: summary.total_overtime_claims,
-                amount: summary.total_overtime_amount,
-            };
-        }
-        return {
-            count: summary.total_claims,
-            amount: summary.total_amount,
-        };
+    const filteredSummary = {
+        count: summary.total_claims,
+        amount: summary.total_amount,
     };
-
-    const filteredSummary = getFilteredSummary();
 
     return (
         <>
@@ -94,9 +66,7 @@ export default function ClaimsReportTable({ employees, summary, filters, onEmplo
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{filteredEmployees.length}</div>
-                        <p className="text-muted-foreground text-xs">
-                            With {selectedType === 'travel' ? 'travel' : selectedType === 'overtime' ? 'overtime' : ''} claims
-                        </p>
+                        <p className="text-muted-foreground text-xs">With claims</p>
                     </CardContent>
                 </Card>
 
@@ -113,23 +83,23 @@ export default function ClaimsReportTable({ employees, summary, filters, onEmplo
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Travel Claims</CardTitle>
+                        <CardTitle className="text-sm font-medium">Claim Types</CardTitle>
                         <Receipt className="h-4 w-4 text-blue-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-blue-600">{summary.total_travel_claims}</div>
-                        <p className="text-muted-foreground text-xs">{formatCurrency(summary.total_travel_amount)}</p>
+                        <div className="text-2xl font-bold text-blue-600">{filteredSummary.count}</div>
+                        <p className="text-muted-foreground text-xs">{claimTypesLabel}</p>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Overtime Claims</CardTitle>
-                        <Clock className="h-4 w-4 text-emerald-500" />
+                        <CardTitle className="text-sm font-medium">Total Amount</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-emerald-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-emerald-600">{summary.total_overtime_claims}</div>
-                        <p className="text-muted-foreground text-xs">{formatCurrency(summary.total_overtime_amount)}</p>
+                        <div className="text-2xl font-bold text-emerald-600">{formatCurrency(filteredSummary.amount)}</div>
+                        <p className="text-muted-foreground text-xs">Total claims amount</p>
                     </CardContent>
                 </Card>
             </div>
@@ -142,11 +112,7 @@ export default function ClaimsReportTable({ employees, summary, filters, onEmplo
                         Employee Claims Breakdown
                     </CardTitle>
                     <CardDescription>
-                        {selectedType === 'travel'
-                            ? 'Employees with travel claims'
-                            : selectedType === 'overtime'
-                              ? 'Employees with overtime claims'
-                              : 'Detailed breakdown of claims by employee'}
+                        Employees ranked by total claim amount &mdash; Filtered by: {claimTypesLabel}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -158,24 +124,13 @@ export default function ClaimsReportTable({ employees, summary, filters, onEmplo
                                         <th className="border px-3 py-2 text-left text-xs font-semibold tracking-wide uppercase">#</th>
                                         <th className="border px-3 py-2 text-left text-xs font-semibold tracking-wide uppercase">Employee</th>
                                         <th className="border px-3 py-2 text-left text-xs font-semibold tracking-wide uppercase">Office</th>
-                                        <th className="border px-3 py-2 text-right text-xs font-semibold tracking-wide uppercase">
-                                            {selectedType === 'travel'
-                                                ? 'Travel Trips'
-                                                : selectedType === 'overtime'
-                                                  ? 'Overtime Claims'
-                                                  : 'Total Claims'}
-                                        </th>
-                                        <th className="border px-3 py-2 text-right text-xs font-semibold tracking-wide uppercase">
-                                            {selectedType === 'all' ? 'Total Amount' : 'Amount'}
-                                        </th>
-                                        {selectedType === 'all' && (
-                                            <>
-                                                <th className="border px-3 py-2 text-right text-xs font-semibold tracking-wide uppercase">Travel</th>
-                                                <th className="border px-3 py-2 text-right text-xs font-semibold tracking-wide uppercase">
-                                                    Overtime
-                                                </th>
-                                            </>
-                                        )}
+                                        {selectedClaimTypes.map((code) => (
+                                            <th key={code} className="border px-3 py-2 text-right text-xs font-semibold tracking-wide uppercase">
+                                                {code}
+                                            </th>
+                                        ))}
+                                        <th className="border px-3 py-2 text-right text-xs font-semibold tracking-wide uppercase">No. of Claims</th>
+                                        <th className="border px-3 py-2 text-right text-xs font-semibold tracking-wide uppercase">Total Amount</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -200,46 +155,19 @@ export default function ClaimsReportTable({ employees, summary, filters, onEmplo
                                                     {employee.office}
                                                 </p>
                                             </td>
+                                            {selectedClaimTypes.map((code) => (
+                                                <td key={code} className="border px-3 py-2 text-right">
+                                                    <span className="text-sm font-semibold">
+                                                        {employee.claim_type_counts?.[code] ?? 0}
+                                                    </span>
+                                                </td>
+                                            ))}
                                             <td className="border px-3 py-2 text-right">
-                                                <span className="text-sm font-semibold">
-                                                    {selectedType === 'travel'
-                                                        ? employee.travel_count
-                                                        : selectedType === 'overtime'
-                                                          ? employee.overtime_count
-                                                          : employee.claim_count}
-                                                </span>
+                                                <span className="text-sm font-semibold">{employee.claim_count}</span>
                                             </td>
                                             <td className="border px-3 py-2 text-right">
-                                                <span className="text-sm font-semibold">
-                                                    {formatCurrency(
-                                                        selectedType === 'travel'
-                                                            ? employee.travel_amount
-                                                            : selectedType === 'overtime'
-                                                              ? employee.overtime_amount
-                                                              : employee.total_amount,
-                                                    )}
-                                                </span>
+                                                <span className="text-sm font-semibold">{formatCurrency(employee.total_amount)}</span>
                                             </td>
-                                            {selectedType === 'all' && (
-                                                <>
-                                                    <td className="border px-3 py-2 text-right">
-                                                        <Badge
-                                                            variant="outline"
-                                                            className="border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900 dark:text-blue-300"
-                                                        >
-                                                            {employee.travel_count} • {formatCurrency(employee.travel_amount)}
-                                                        </Badge>
-                                                    </td>
-                                                    <td className="border px-3 py-2 text-right">
-                                                        <Badge
-                                                            variant="outline"
-                                                            className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900 dark:text-emerald-300"
-                                                        >
-                                                            {employee.overtime_count} • {formatCurrency(employee.overtime_amount)}
-                                                        </Badge>
-                                                    </td>
-                                                </>
-                                            )}
                                         </tr>
                                     ))}
                                 </tbody>
@@ -248,18 +176,13 @@ export default function ClaimsReportTable({ employees, summary, filters, onEmplo
                                         <td className="border px-3 py-2 text-right" colSpan={3}>
                                             TOTALS:
                                         </td>
+                                        {selectedClaimTypes.map((code) => (
+                                            <td key={code} className="border px-3 py-2 text-right">
+                                                {filteredEmployees.reduce((sum, emp) => sum + (emp.claim_type_counts?.[code] ?? 0), 0)}
+                                            </td>
+                                        ))}
                                         <td className="border px-3 py-2 text-right">{filteredSummary.count}</td>
                                         <td className="border px-3 py-2 text-right">{formatCurrency(filteredSummary.amount)}</td>
-                                        {selectedType === 'all' && (
-                                            <>
-                                                <td className="border px-3 py-2 text-right">
-                                                    {summary.total_travel_claims} • {formatCurrency(summary.total_travel_amount)}
-                                                </td>
-                                                <td className="border px-3 py-2 text-right">
-                                                    {summary.total_overtime_claims} • {formatCurrency(summary.total_overtime_amount)}
-                                                </td>
-                                            </>
-                                        )}
                                     </tr>
                                 </tfoot>
                             </table>

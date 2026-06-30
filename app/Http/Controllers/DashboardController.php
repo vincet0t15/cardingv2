@@ -317,9 +317,9 @@ class DashboardController extends Controller
                 ];
             });
 
-        // Top 10 Employees with Most Travel Claims (by amount) - Includes Travel Reimbursement + Meal Allowance
+        // Top 10 Employees with Most Travel Claims (by amount) - Includes Travel Reimbursement + Meal Allowance + Cash Advance
         $mostTravelClaimsQuery = Claim::whereHas('claimType', function ($query) {
-            $query->whereIn('code', ['TRAVEL', 'MEAL']);
+            $query->whereIn('code', ['TRAVEL', 'MEAL', 'CASH_ADVANCE']);
         })->with(['employee.office']);
 
         if ($useFilters) {
@@ -343,9 +343,9 @@ class DashboardController extends Controller
                 ];
             });
 
-        // Top 10 Employees with Most Travel Trips (by count, not amount) - Travel Reimbursement only
+        // Top 10 Employees with Most Travel Trips (by count, not amount) - Travel Reimbursement + Cash Advance
         $mostTripsQuery = Claim::whereHas('claimType', function ($query) {
-            $query->where('code', 'TRAVEL');
+            $query->whereIn('code', ['TRAVEL', 'CASH_ADVANCE']);
         })->with(['employee.office']);
 
         if ($useFilters) {

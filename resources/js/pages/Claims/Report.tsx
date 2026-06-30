@@ -32,22 +32,13 @@ interface EmployeeClaims {
     office: string;
     total_amount: number;
     claim_count: number;
-    travel_count: number;
-    travel_amount: number;
-    overtime_count: number;
-    overtime_amount: number;
-    other_count: number;
-    other_amount: number;
+    claim_type_counts: Record<string, number>;
 }
 
 interface Summary {
     total_employees: number;
     total_claims: number;
     total_amount: number;
-    total_travel_claims: number;
-    total_travel_amount: number;
-    total_overtime_claims: number;
-    total_overtime_amount: number;
 }
 
 interface ReportProps {
@@ -64,8 +55,14 @@ interface ReportProps {
         sort_by?: string | null;
         office: string | null;
         employee: string | null;
+        claim_types: string | null;
         per_page: number | null;
     };
+    availableClaimTypes: {
+        id: number;
+        code: string;
+        name: string;
+    }[];
     pagination: {
         current_page: number;
         total_pages: number;
@@ -74,7 +71,7 @@ interface ReportProps {
     };
 }
 
-export default function ClaimsReport({ employees, summary, offices, filters }: ReportProps) {
+export default function ClaimsReport({ employees, summary, offices, filters, availableClaimTypes }: ReportProps) {
     const { data: searchData, setData } = useForm({
         search: filters.employee || '',
     });
@@ -125,6 +122,37 @@ export default function ClaimsReport({ employees, summary, offices, filters }: R
         }
     };
 
+    // Selected claim types from filters (only for type=travel mode)
+    const selectedClaimTypes = filters.claim_types
+        ? filters.claim_types.split(',')
+        : filters.type === 'travel'
+          ? ['TRAVEL', 'MEAL', 'CASH_ADVANCE']
+          : [];
+
+    const handleClaimTypeToggle = (code: string) => {
+        let newSelection: string[];
+        if (selectedClaimTypes.includes(code)) {
+            // Don't allow deselecting all - keep at least one
+            if (selectedClaimTypes.length <= 1) return;
+            newSelection = selectedClaimTypes.filter((c) => c !== code);
+        } else {
+            newSelection = [...selectedClaimTypes, code];
+        }
+
+        router.get(
+            route('claims.report'),
+            {
+                ...filters,
+                claim_types: newSelection.join(','),
+                page: 1,
+            },
+            {
+                preserveState: false,
+                preserveScroll: true,
+            },
+        );
+    };
+
     // Dynamic year range: fixed start year (2020) to current year + 5
     const currentYear = new Date().getFullYear();
     const startYear = 2020;
@@ -138,10 +166,20 @@ export default function ClaimsReport({ employees, summary, offices, filters }: R
 
     const selectedType = filters.type || 'all';
 
+    // Get label for selected claim types
+    const getSelectedTypesLabel = () => {
+        const names = selectedClaimTypes.map(code => {
+            const ct = availableClaimTypes.find(t => t.code === code);
+            return ct ? ct.name : code;
+        });
+        if (names.length <= 2) return names.join(' and ');
+        return names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
+    };
+
     // Determine page title based on type and sort_by
     const getPageTitle = () => {
         if (selectedType === 'travel') {
-            return filters.sort_by === 'count' ? 'Employees with Most Trips' : 'Top Travel Claims by Employee';
+            return filters.sort_by === 'count' ? 'Employees Ranked by Trip Count' : 'Top Travel Claims by Employee';
         }
         if (selectedType === 'overtime') {
             return filters.sort_by === 'count' ? 'Employees with Most Overtime' : 'Top Overtime Claims by Employee';
@@ -152,10 +190,11 @@ export default function ClaimsReport({ employees, summary, offices, filters }: R
     const getPageDescription = () => {
         const monthLabel = filters.month ? months.find((m) => m.value === filters.month)?.label : 'All Months';
         const yearLabel = filters.year || currentYear;
+        const typesLabel = getSelectedTypesLabel();
         if (selectedType === 'travel') {
             return filters.sort_by === 'count'
-                ? `Employees ranked by number of travel trips for ${monthLabel} ${yearLabel}`
-                : `Employees ranked by travel claim amount for ${monthLabel} ${yearLabel}`;
+                ? `Employees ranked by number of trips (${typesLabel}) for ${monthLabel} ${yearLabel}`
+                : `Employees ranked by total claim amount (${typesLabel}) for ${monthLabel} ${yearLabel}`;
         }
         if (selectedType === 'overtime') {
             return `Employees ranked by overtime compensation for ${monthLabel} ${yearLabel}`;
@@ -263,6 +302,41 @@ export default function ClaimsReport({ employees, summary, offices, filters }: R
                                 />
                             </div>
                         </div>
+
+                        {filters.type === 'travel' && (
+                            /* Claim Type Filter */
+                            <div className="mt-4 border-t pt-4">
+                                <label className="mb-3 block text-sm font-medium">Claim Types</label>
+                                <div className="flex flex-wrap gap-4">
+                                    {availableClaimTypes.map((ct) => {
+                                        const isSelected = selectedClaimTypes.includes(ct.code);
+                                        return (
+                                            <label
+                                                key={ct.code}
+                                                className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
+                                                    isSelected
+                                                        ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                                                        : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                                                }`}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                    checked={isSelected}
+                                                    onChange={() => handleClaimTypeToggle(ct.code)}
+                                                />
+                                                {ct.name}
+                                                <span className="text-muted-foreground text-xs">({ct.code})</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                                <p className="text-muted-foreground mt-2 text-xs">
+                                    Select which claim types to include in the computation.
+                                    {selectedClaimTypes.length}/{availableClaimTypes.length} selected
+                                </p>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
