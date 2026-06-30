@@ -37,6 +37,7 @@ use App\Http\Controllers\RataController;
 use App\Http\Controllers\ReferenceTypeController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SmartAssistantController;
 use App\Http\Controllers\SalaryController;
 use App\Http\Controllers\SourceOfFundCodeController;
 use App\Http\Controllers\SupplierController;
@@ -78,6 +79,19 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
         // EMPLOYEE DETAIL - View individual employee claims with filters and print
         Route::get('/employee/{employee}', [ClaimController::class, 'employeeDetail'])->name('claims.employee.detail');
         Route::get('/employee/{employee}/print', [ClaimController::class, 'employeeDetailPrint'])->name('claims.employee.detail.print');
+    });
+
+    // SMART ASSISTANT - AI-powered payroll assistant
+    Route::prefix('ai')->group(function () {
+        Route::get('/', [SmartAssistantController::class, 'index'])->name('ai.assistant');
+        Route::post('/chat', [SmartAssistantController::class, 'chat'])->name('ai.chat');
+        Route::get('/history/{conversationId}', [SmartAssistantController::class, 'history'])->name('ai.history');
+
+        // AI Settings - Super Admin only
+        Route::middleware(['permission:ai_settings.manage'])->group(function () {
+            Route::get('/settings', [SmartAssistantController::class, 'settings'])->name('ai.settings');
+            Route::post('/settings', [SmartAssistantController::class, 'updateSettings'])->name('ai.settings.update');
+        });
     });
 
     // TOTAL CLAIMS - Claims by type with totals

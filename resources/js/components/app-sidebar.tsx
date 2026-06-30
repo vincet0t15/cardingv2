@@ -7,6 +7,7 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     Banknote,
     BarChart3,
+    Bot,
     Building2,
     Calculator,
     CoinsIcon,
@@ -56,6 +57,11 @@ const mainNavItems: NavGroup[] = [
                 title: 'Employee List by Source of Fund',
                 href: '/reports/employees-by-source-of-fund',
                 icon: Receipt,
+            },
+            {
+                title: 'AI Assistant',
+                href: '/ai',
+                icon: Bot,
             },
         ],
     },
@@ -166,7 +172,7 @@ const mainNavItems: NavGroup[] = [
     },
     {
         title: 'Super Admin',
-        icon: Settings,
+        icon: Shield,
         children: [
             {
                 title: 'Accounts',
@@ -182,6 +188,11 @@ const mainNavItems: NavGroup[] = [
                 title: 'Permissions',
                 href: '/permissions',
                 icon: Key,
+            },
+            {
+                title: 'AI Settings',
+                href: '/ai/settings',
+                icon: Bot,
             },
         ],
     },
@@ -234,7 +245,7 @@ const employeeNavItems: NavGroup[] = [
 
 export function AppSidebar() {
     const pageProps = usePage().props as {
-        auth?: { user?: { is_employee?: boolean; is_admin?: boolean; should_use_employee_portal?: boolean } | null };
+        auth?: { user?: { is_employee?: boolean; is_admin?: boolean; should_use_employee_portal?: boolean; permissions?: string[] } | null };
         performanceMetrics?: Array<{
             user_id: number;
             user_name: string;
@@ -245,10 +256,30 @@ export function AppSidebar() {
         }>;
     };
     const authUser = pageProps.auth?.user;
+    const userPermissions = authUser?.permissions ?? [];
 
     // Use the backend's unified decision: should this user see the employee portal?
     const isEmployeeOnly = authUser?.should_use_employee_portal === true;
-    const navItems = isEmployeeOnly ? employeeNavItems : mainNavItems;
+
+    // Filter nav items based on permissions
+    const filterByPermission = (items: NavGroup[]): NavGroup[] => {
+        if (!isEmployeeOnly) {
+            return items.map(group => ({
+                ...group,
+                children: (group.children || []).filter(child => {
+                    // Hide Super Admin section items if user lacks permissions
+                    if (child.href === '/accounts' && !userPermissions.includes('accounts.manage')) return false;
+                    if (child.href === '/roles' && !userPermissions.includes('roles.manage')) return false;
+                    if (child.href === '/permissions' && !userPermissions.includes('permissions.manage')) return false;
+                    if (child.href === '/ai/settings' && !userPermissions.includes('ai_settings.manage')) return false;
+                    return true;
+                }),
+            })).filter(group => (group.children || []).length > 0);
+        }
+        return items;
+    };
+
+    const navItems = filterByPermission(isEmployeeOnly ? employeeNavItems : mainNavItems);
     const dashboardHref = isEmployeeOnly ? '/employee/dashboard' : '/dashboard';
 
     return (

@@ -55,7 +55,7 @@ class HandleInertiaRequests extends Middleware
                     'username' => $user->username,
                     'is_active' => $user->is_active,
                     'roles' => $user->getRoleNames(),
-                    'permissions' => $user->getPermissionNames(),
+                    'permissions' => $user->getAllPermissions()->pluck('name'),
                     'is_employee' => $user->isEmployee(),
                     'is_admin' => $user->isAdmin(),
                     'should_use_employee_portal' => $user->shouldUseEmployeePortal(),

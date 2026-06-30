@@ -179,6 +179,9 @@ class RoleSeeder extends Seeder
             'reference_types.edit',
             'reference_types.delete',
             'reference_types.manage',
+
+            // AI Settings permissions
+            'ai_settings.manage',
         ];
 
         foreach ($permissions as $permission) {
