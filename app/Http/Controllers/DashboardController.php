@@ -145,10 +145,34 @@ class DashboardController extends Controller
         $totalClaims = $claimsQuery->count();
         $totalClaimsAmount = $claimsQuery->sum('amount');
 
-        // Compensation totals (current year only)
-        $totalSalaries = Salary::whereYear('effective_date', $currentYear)->sum('amount');
-        $totalPera = Pera::whereYear('effective_date', $currentYear)->sum('amount');
-        $totalRata = Rata::whereYear('effective_date', $currentYear)->sum('amount');
+        // Helper: compute cumulative total from monthly records grouped by employee
+        $cumulativeTotal = function ($records, $hasEndDate = false) {
+            $total = 0;
+            $grouped = $records->groupBy('employee_id');
+            foreach ($grouped as $empId => $empRecords) {
+                $sorted = $empRecords->sortBy('effective_date')->values();
+                for ($i = 0; $i < $sorted->count(); $i++) {
+                    $rec = $sorted[$i];
+                    $start = \Carbon\Carbon::parse($rec->effective_date)->startOfMonth();
+                    if ($hasEndDate && $rec->end_date) {
+                        $end = \Carbon\Carbon::parse($rec->end_date)->startOfMonth();
+                    } elseif ($i + 1 < $sorted->count()) {
+                        // Next record's effective_date is this record's end
+                        $end = \Carbon\Carbon::parse($sorted[$i + 1]->effective_date)->startOfMonth();
+                    } else {
+                        $end = now()->startOfMonth();
+                    }
+                    $months = max(1, $start->diffInMonths($end));
+                    $total += $rec->amount * $months;
+                }
+            }
+            return $total;
+        };
+
+        // Compensation totals — cumulative based on effective periods
+        $totalSalaries = $cumulativeTotal(Salary::all(), true);   // has end_date
+        $totalPera = $cumulativeTotal(Pera::all(), false);       // no end_date
+        $totalRata = $cumulativeTotal(Rata::all(), false);       // no end_date
 
         // Salaries by General Fund breakdown for selected month/year (or all if no filter)
         $allGeneralFunds = GeneralFund::where('status', true)

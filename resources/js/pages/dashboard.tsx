@@ -252,7 +252,7 @@ export default function Dashboard({
             route: null,
         },
         {
-            title: `${currentPeriod.monthName} Deductions`,
+            title: 'Deductions',
             value: formatCurrency(stats.monthlyDeductionsTotal),
             description: `${formatNumber(stats.monthlyDeductionsCount)} entries • ${formatNumber(stats.employeesWithDeductions)} employees`,
             icon: MinusCircle,
