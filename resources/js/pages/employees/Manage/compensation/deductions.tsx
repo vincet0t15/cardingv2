@@ -4,9 +4,8 @@ import EditDeductionDialog from '@/components/EditDeductionDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/standard-table';
-import type { Claim } from '@/types/claim';
 import type { DeductionType } from '@/types/deductionType';
-import type { Employee, Employee as EmployeeType } from '@/types/employee';
+import type { Employee } from '@/types/employee';
 import type { EmployeeDeduction } from '@/types/employeeDeduction';
 import { router, usePage } from '@inertiajs/react';
 import { PencilIcon, Plus, Printer, Trash2, X } from 'lucide-react';
@@ -32,7 +31,7 @@ interface CompensationDeductionsProps {
         per_page: number;
         total: number;
     };
-    allEmployees?: EmployeeType[];
+    allEmployees?: Employee[];
     allClothingAllowances?: {
         id: number;
         amount: string | number;
@@ -40,7 +39,7 @@ interface CompensationDeductionsProps {
         end_date: string | null;
         source_of_fund_code?: { code: string; description: string | null } | null;
     }[];
-    allClaimsGrouped?: Record<string, Claim[]>;
+    allClaimsGrouped?: Record<string, any[]>;
     allAdjustmentsGrouped?: Record<string, any[]>;
 }
 
@@ -61,7 +60,7 @@ export function CompensationDeductions({
     const { props } = usePage();
     const [lastFlashMessage, setLastFlashMessage] = useState<string | null>(null);
     const [localFilters, setLocalFilters] = useState<{ deduction_month?: string; deduction_year?: string }>(filters);
-    const debounceRef = useRef<NodeJS.Timeout | null>(null);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Sync local state when filters prop changes
     useEffect(() => {
@@ -188,7 +187,6 @@ export function CompensationDeductions({
         const [year, month] = periodKey.split('-');
         const params: Record<string, any> = { month, year, type: 'deductions' };
         if (salaryId !== undefined) {
-            // Use 'null' string for NULL salary_id, otherwise use the actual ID
             params.salary_id = salaryId === null ? 'null' : salaryId;
         }
         window.open(route('employees.print', [employee.id, params]), '_blank');
@@ -200,50 +198,6 @@ export function CompensationDeductions({
     const periods = useMemo(() => Array.isArray(periodsList) ? periodsList : [], [periodsList]);
     const currentPage = pagination?.current_page ?? 1;
     const lastPage = pagination?.last_page ?? 1;
-    const isEmpty = useMemo(() => periods.length === 0, [periods]);
-
-    // Memoize compensation data lookups
-    const getClothingAllowancesForPeriod = useCallback((periodYear: number, periodMonth: number) => {
-        if (!allClothingAllowances || allClothingAllowances.length === 0) return [];
-
-        const periodStart = new Date(periodYear, periodMonth - 1, 1);
-        const periodEnd = new Date(periodYear, periodMonth, 0);
-
-        return allClothingAllowances.filter((ca) => {
-            const startDate = new Date(ca.start_date);
-            const endDate = ca.end_date ? new Date(ca.end_date) : null;
-
-            return startDate <= periodEnd && (!endDate || endDate >= periodStart);
-        });
-    }, [allClothingAllowances]);
-
-    const getHazardPaysForPeriod = useCallback((periodYear: number, periodMonth: number) => {
-        if (!employee.hazard_pays || employee.hazard_pays.length === 0) return [];
-
-        const periodStart = new Date(periodYear, periodMonth - 1, 1);
-        const periodEnd = new Date(periodYear, periodMonth, 0);
-
-        return employee.hazard_pays.filter((hp) => {
-            const startDate = new Date(hp.start_date);
-            const endDate = hp.end_date ? new Date(hp.end_date) : null;
-
-            return startDate <= periodEnd && (!endDate || endDate >= periodStart);
-        });
-    }, [employee.hazard_pays]);
-
-    const getClaimsForPeriod = useCallback((periodYear: number, periodMonth: number): Claim[] => {
-        if (!allClaimsGrouped) return [];
-        const key = `${periodYear}-${String(periodMonth).padStart(2, '0')}`;
-        const claims = allClaimsGrouped[key];
-        return Array.isArray(claims) ? claims : [];
-    }, [allClaimsGrouped]);
-
-    const getAdjustmentsForPeriod = useCallback((periodYear: number, periodMonth: number) => {
-        if (!allAdjustmentsGrouped) return [];
-        const key = `${periodYear}-${String(periodMonth).padStart(2, '0')}`;
-        const adjustments = allAdjustmentsGrouped[key];
-        return Array.isArray(adjustments) ? adjustments : [];
-    }, [allAdjustmentsGrouped]);
 
     const groupDeductionsBySalary = useCallback((deductionList: EmployeeDeduction[]) => {
         const grouped = new Map<string | number, { salaryId: string | number | null; salary: any; deductions: EmployeeDeduction[] }>();
@@ -268,25 +222,6 @@ export function CompensationDeductions({
         new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(amount),
         []
     );
-
-    // Memoized adjustment calculator
-    const computeSignedAdjustment = useCallback((adj: any) => {
-        const amt = Number(adj.amount) || 0;
-        const effect = (
-            (adj.adjustmentType && adj.adjustmentType.effect) ||
-            (typeof adj.adjustment_type === 'object' && adj.adjustment_type?.effect) ||
-            adj.effect ||
-            ''
-        )
-            .toString()
-            .toLowerCase();
-
-        if (effect.includes('neg') || effect === '-' || effect.includes('subtract')) {
-            return -amt;
-        }
-
-        return amt;
-    }, []);
 
     return (
         <div className="space-y-4">
@@ -329,153 +264,92 @@ export function CompensationDeductions({
                         const periodYear = parseInt(year);
                         const periodMonth = parseInt(month);
                         const periodDeductions = deductions[periodKey] ?? [];
-                        const periodClothingAllowances = getClothingAllowancesForPeriod(periodYear, periodMonth);
-                        const periodClaims = getClaimsForPeriod(periodYear, periodMonth);
-                        const periodAdjustments = getAdjustmentsForPeriod(periodYear, periodMonth);
-
-                        // Calculate gross pay using historical data for the specific period
                         const salary = getEffectiveAmount(employee.salaries, periodYear, periodMonth);
-                        const pera = getEffectiveAmount(employee.peras, periodYear, periodMonth);
-                        const rata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, periodYear, periodMonth) : 0;
 
-                        {
-                            /* Salary-Grouped Deduction Cards - Each with its own header */
-                        }
                         return groupDeductionsBySalary(periodDeductions).map((group) => {
                             const salaryAmount = group.salary ? Number(group.salary.amount) : salary;
                             const salaryLabel = group.salary
                                 ? `${formatCurrency(Number(group.salary.amount))} (${new Date(group.salary.effective_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`
                                 : `${formatCurrency(salaryAmount)} (Current)`;
                             const salaryDeductions = group.deductions.reduce((sum, d) => sum + Number(d.amount), 0);
-                            const salaryClothingAllowance = periodClothingAllowances.reduce((sum, ca) => sum + Number(ca.amount), 0);
-                            const salaryHazardPay = getHazardPaysForPeriod(periodYear, periodMonth).reduce((sum, hp) => sum + Number(hp.amount), 0);
-                            const salaryGrossPay =
-                                salaryAmount + pera + (employee.is_rata_eligible ? rata : 0) + salaryHazardPay + salaryClothingAllowance;
-                            const salaryTotalAdjustments = periodAdjustments.reduce((sum, adj) => sum + computeSignedAdjustment(adj), 0);
-                            const salaryNetPay = salaryGrossPay - salaryDeductions + salaryTotalAdjustments;
 
                             return (
-                                <div key={`${periodKey}-salary-${group.salaryId}`} className="overflow-hidden rounded-sm border shadow-sm">
-                                    <div className="bg-muted/50 flex items-center justify-between px-4 py-2">
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant="default" className="text-md rounded-sm font-semibold">
+                                <div key={`${periodKey}-salary-${group.salaryId}`} className="overflow-hidden rounded-md border shadow-sm">
+                                    {/* --- Period & Actions Header --- */}
+                                    <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-slate-50 px-4 py-2.5">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Badge variant="default" className="rounded-md px-3 py-1 text-sm font-semibold">
                                                 {MONTHS[parseInt(month) - 1]} {year}
                                             </Badge>
-                                            <span className="text-muted-foreground text-xs">{group.deductions.length} deduction(s)</span>
-                                            {periodClothingAllowances.length > 0 && (
-                                                <span className="text-muted-foreground text-xs">| {periodClothingAllowances.length} clothing</span>
-                                            )}
-                                            {periodClaims.length > 0 && (
-                                                <span className="text-muted-foreground text-xs">| {periodClaims.length} claim(s)</span>
-                                            )}
-                                            {periodAdjustments.length > 0 && (
-                                                <span className="text-muted-foreground text-xs">| {periodAdjustments.length} adj(s)</span>
-                                            )}
+                                            <span className="text-muted-foreground text-xs">
+                                                {group.deductions.length} deduction{group.deductions.length !== 1 ? 's' : ''}
+                                            </span>
+                                            <span className="text-muted-foreground ml-2 hidden text-xs sm:inline">
+                                                Salary: <span className="font-semibold text-slate-700">{salaryLabel}</span>
+                                            </span>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <div className="text-right text-xs text-slate-600">
-                                                Salary: <span className="font-semibold text-slate-800">{salaryLabel}</span>
-                                            </div>
-                                            <Button variant="outline" onClick={() => handlePrintDeductions(periodKey, group.salaryId)}>
-                                                <Printer className="h-3 w-3" />
+                                        <div className="flex items-center gap-1.5">
+                                            <Button variant="ghost" size="sm" className="h-8" onClick={() => handlePrintDeductions(periodKey, group.salaryId)}>
+                                                <Printer className="mr-1 h-3.5 w-3.5" />
                                                 Print
                                             </Button>
-                                            <Button variant="outline" onClick={() => setDeletingPeriodKey(periodKey)}>
-                                                <Trash2 className="h-3 w-3 text-red-500" />
-                                                Delete
-                                            </Button>
-                                            <Button variant="outline" onClick={() => openPeriodEditPage(periodKey, group.salaryId)}>
-                                                <PencilIcon className="h-3 w-3" />
+                                            <Button variant="ghost" size="sm" className="h-8" onClick={() => openPeriodEditPage(periodKey, group.salaryId)}>
+                                                <PencilIcon className="mr-1 h-3.5 w-3.5" />
                                                 Edit
+                                            </Button>
+                                            <Button variant="ghost" size="sm" className="h-8 text-red-500 hover:text-red-700" onClick={() => setDeletingPeriodKey(periodKey)}>
+                                                <Trash2 className="mr-1 h-3.5 w-3.5" />
+                                                Delete
                                             </Button>
                                         </div>
                                     </div>
-                                    <div className="overflow-hidden rounded-sm border shadow-sm">
-                                        <div className="border-b bg-blue-50 px-4 py-2">
-                                            <p className="text-sm font-semibold text-blue-900">Deductions & Summary</p>
-                                        </div>
-                                        <Table className="rounded-t-none">
-                                            <TableHeader className="bg-muted/20">
+
+                                    {/* --- Deductions Table (clean & focused) --- */}
+                                    <div className="px-0">
+                                        <Table>
+                                            <TableHeader className="bg-slate-100">
                                                 <TableRow>
-                                                    <TableHead>Type</TableHead>
-                                                    <TableHead className="text-right">Amount</TableHead>
-                                                    <TableHead className="w-[100px]"></TableHead>
+                                                    <TableHead className="text-xs uppercase tracking-wider">Deduction Type</TableHead>
+                                                    <TableHead className="w-36 text-right text-xs uppercase tracking-wider">Amount</TableHead>
+                                                    <TableHead className="w-24 text-center text-xs uppercase tracking-wider">Actions</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
                                                 {group.deductions.map((d) => (
-                                                    <TableRow key={d.id}>
+                                                    <TableRow key={d.id} className="group hover:bg-slate-50">
                                                         <TableCell className="font-medium">{d.deduction_type?.name ?? '—'}</TableCell>
-                                                        <TableCell className="text-right text-red-600">
-                                                            - {formatCurrency(Number(d.amount))}
+                                                        <TableCell className="text-right font-mono text-red-600">
+                                                            -{formatCurrency(Number(d.amount))}
                                                         </TableCell>
-                                                        <TableCell className="flex gap-2">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-7 w-7 text-slate-600 hover:text-slate-800"
-                                                                onClick={() => setEditingDeduction(d)}
-                                                            >
-                                                                <PencilIcon className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-7 w-7 text-red-500 hover:text-red-700"
-                                                                onClick={() => handleDeleteDeduction(d.id)}
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
+                                                        <TableCell className="text-center">
+                                                            <div className="flex items-center justify-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-7 w-7 text-slate-500 hover:text-slate-800"
+                                                                    onClick={() => setEditingDeduction(d)}
+                                                                >
+                                                                    <PencilIcon className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-7 w-7 text-red-400 hover:text-red-700"
+                                                                    onClick={() => handleDeleteDeduction(d.id)}
+                                                                >
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            </div>
                                                         </TableCell>
                                                     </TableRow>
                                                 ))}
-                                                <TableRow className="bg-muted/30 font-semibold">
-                                                    <TableCell>Subtotal (This Salary)</TableCell>
-                                                    <TableCell className="text-right">- {formatCurrency(salaryDeductions)}</TableCell>
+                                                {/* Total row */}
+                                                <TableRow className="bg-red-50/80 font-semibold">
+                                                    <TableCell className="text-sm text-red-700">Total Deductions</TableCell>
+                                                    <TableCell className="text-right font-mono text-sm font-bold text-red-700">
+                                                        -{formatCurrency(salaryDeductions)}
+                                                    </TableCell>
                                                     <TableCell></TableCell>
-                                                </TableRow>
-                                                <TableRow className="bg-slate-100 font-semibold">
-                                                    <TableCell className="text-xs text-slate-600">Basic Salary</TableCell>
-                                                    <TableCell className="text-right text-slate-700">{formatCurrency(salaryAmount)}</TableCell>
-                                                </TableRow>
-                                                <TableRow className="bg-slate-100 font-semibold">
-                                                    <TableCell className="text-xs text-slate-600">PERA</TableCell>
-                                                    <TableCell className="text-right text-slate-700">+ {formatCurrency(pera)}</TableCell>
-                                                </TableRow>
-                                                {employee.is_rata_eligible && (
-                                                    <TableRow className="bg-slate-100 font-semibold">
-                                                        <TableCell className="text-xs text-slate-600">RATA</TableCell>
-                                                        <TableCell className="text-right text-slate-700">+ {formatCurrency(rata)}</TableCell>
-                                                    </TableRow>
-                                                )}
-                                                <TableRow className="bg-slate-100 font-semibold">
-                                                    <TableCell className="text-xs text-slate-600">Hazard Pay</TableCell>
-                                                    <TableCell className="text-right text-slate-700">+ {formatCurrency(salaryHazardPay)}</TableCell>
-                                                </TableRow>
-                                                <TableRow className="bg-slate-100 font-semibold">
-                                                    <TableCell className="text-xs text-slate-600">Clothing Allow.</TableCell>
-                                                    <TableCell className="text-right text-slate-700">
-                                                        + {formatCurrency(salaryClothingAllowance)}
-                                                    </TableCell>
-                                                </TableRow>
-                                                <TableRow className="bg-slate-200 font-bold">
-                                                    <TableCell className="text-sm text-slate-800">Gross Pay</TableCell>
-                                                    <TableCell className="text-right text-slate-900">{formatCurrency(salaryGrossPay)}</TableCell>
-                                                </TableRow>
-                                                <TableRow className="bg-violet-50 font-semibold">
-                                                    <TableCell className="text-xs text-violet-800">Adjustments</TableCell>
-                                                    <TableCell className="text-right text-violet-800">
-                                                        {salaryTotalAdjustments >= 0 ? '+ ' : '- '}
-                                                        {formatCurrency(Math.abs(salaryTotalAdjustments))}
-                                                    </TableCell>
-                                                </TableRow>
-                                                <TableRow className="bg-red-50 font-semibold">
-                                                    <TableCell className="text-xs text-red-600">Total Deductions</TableCell>
-                                                    <TableCell className="text-right text-red-600">- {formatCurrency(salaryDeductions)}</TableCell>
-                                                </TableRow>
-                                                <TableRow className="bg-green-100 font-bold">
-                                                    <TableCell className="text-sm text-green-800">Net Pay</TableCell>
-                                                    <TableCell className="text-right text-green-700">{formatCurrency(salaryNetPay)}</TableCell>
                                                 </TableRow>
                                             </TableBody>
                                         </Table>

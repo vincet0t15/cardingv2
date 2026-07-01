@@ -8,7 +8,7 @@ import type { Adjustment } from '@/types';
 import type { Claim } from '@/types/claim';
 import type { Employee } from '@/types/employee';
 import type { EmployeeDeduction } from '@/types/employeeDeduction';
-import { router, useForm } from '@inertiajs/react';
+import { Link, router, useForm } from '@inertiajs/react';
 import {
     ArrowDown,
     ArrowUp,
@@ -25,6 +25,7 @@ import {
     Phone,
     Receipt,
     Shirt,
+    ExternalLink,
     TrendingDown,
     TrendingUp,
     User,
@@ -261,6 +262,29 @@ function Overview({
     const displayClaimsTotal = useMemo(
         () => displayClaims.reduce((sum, c) => sum + Number(c.amount), 0),
         [displayClaims],
+    );
+
+    // Latest period deductions (for quick-view card)
+    const latestPeriodDeductions = useMemo(() => {
+        const periodKeys = Object.keys(deductions || {});
+        if (periodKeys.length === 0) return [];
+        const sorted = [...periodKeys].sort().reverse();
+        const latestKey = sorted[0];
+        return deductions[latestKey] ?? [];
+    }, [deductions]);
+
+    const latestPeriodLabel = useMemo(() => {
+        const periodKeys = Object.keys(deductions || {});
+        if (periodKeys.length === 0) return '';
+        const sorted = [...periodKeys].sort().reverse();
+        const latestKey = sorted[0];
+        const [year, month] = latestKey.split('-');
+        return `${MONTHS[parseInt(month) - 1].label} ${year}`;
+    }, [deductions]);
+
+    const latestPeriodTotal = useMemo(
+        () => latestPeriodDeductions.reduce((sum, d) => sum + Number(d.amount), 0),
+        [latestPeriodDeductions],
     );
 
     // Financial summary
@@ -654,24 +678,32 @@ function Overview({
                         </Card>
                     )}
 
-                    {/* ── Deductions Breakdown ── */}
-                    {displayDeductions.length > 0 && (
+                    {/* ── Deductions Breakdown (Latest Period Only) ── */}
+                    {latestPeriodDeductions.length > 0 && (
                         <Card className="overflow-hidden rounded-xl border shadow-sm">
                             <CardHeader className="border-b bg-slate-50/50 px-5 py-3 dark:bg-slate-800/50">
-                                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                                    <TrendingDown className="h-4 w-4 text-rose-600" />
-                                    Deductions Breakdown
-                                </CardTitle>
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                                        <TrendingDown className="h-4 w-4 text-rose-600" />
+                                        Deductions Breakdown
+                                    </CardTitle>
+                                    <Button variant="ghost" size="sm" asChild>
+                                        <Link href={route('manage.employees.index', { employee: employee.id, tab: 'deductions' })}>
+                                            View All
+                                            <ExternalLink className="ml-1 h-3 w-3" />
+                                        </Link>
+                                    </Button>
+                                </div>
                             </CardHeader>
                             <CardContent className="p-5">
                                 <div className="mb-4 flex items-center justify-between text-sm text-slate-500">
-                                    <span>{displayPeriodLabel}</span>
+                                    <span>{latestPeriodLabel}</span>
                                     <span>
-                                        {displayDeductions.length} item{displayDeductions.length !== 1 ? 's' : ''}
+                                        {latestPeriodDeductions.length} item{latestPeriodDeductions.length !== 1 ? 's' : ''}
                                     </span>
                                 </div>
                                 <div className="space-y-3">
-                                    {displayDeductions.map((deduction) => {
+                                    {latestPeriodDeductions.map((deduction) => {
                                         const amount = Number(deduction.amount);
                                         const pct = grossPay > 0 ? (amount / grossPay) * 100 : 0;
                                         return (
@@ -700,12 +732,12 @@ function Overview({
                                         Total Deductions
                                     </span>
                                     <span className="text-lg font-bold text-rose-600">
-                                        {formatCurrency(displayDeductionTotal)}
+                                        {formatCurrency(latestPeriodTotal)}
                                     </span>
                                 </div>
                                 {grossPay > 0 && (
                                     <div className="mt-1 text-right text-xs text-slate-400">
-                                        {(displayDeductionTotal / grossPay) * 100}% of gross pay
+                                        {(latestPeriodTotal / grossPay) * 100}% of gross pay
                                     </div>
                                 )}
                             </CardContent>
