@@ -287,6 +287,20 @@ function Overview({
         [latestPeriodDeductions],
     );
 
+    // ── Deductions grouped by type (respects current filter) ──
+    const deductionsByType = useMemo(() => {
+        const grouped: Record<string, { name: string; total: number; count: number }> = {};
+        displayDeductions.forEach((d) => {
+            const name = d.deduction_type?.name ?? 'Unknown';
+            if (!grouped[name]) {
+                grouped[name] = { name, total: 0, count: 0 };
+            }
+            grouped[name].total += Number(d.amount);
+            grouped[name].count += 1;
+        });
+        return Object.values(grouped).sort((a, b) => b.total - a.total);
+    }, [displayDeductions]);
+
     // Financial summary
     const monthlySalary = Number(employee.latest_salary?.amount ?? 0);
     const monthlyPera = Number(employee.latest_pera?.amount ?? 0);
@@ -678,8 +692,8 @@ function Overview({
                         </Card>
                     )}
 
-                    {/* ── Deductions Breakdown (Latest Period Only) ── */}
-                    {latestPeriodDeductions.length > 0 && (
+                    {/* ── Deductions Breakdown (Grouped by Type) ── */}
+                    {deductionsByType.length > 0 && (
                         <Card className="overflow-hidden rounded-xl border shadow-sm">
                             <CardHeader className="border-b bg-slate-50/50 px-5 py-3 dark:bg-slate-800/50">
                                 <div className="flex items-center justify-between">
@@ -697,23 +711,23 @@ function Overview({
                             </CardHeader>
                             <CardContent className="p-5">
                                 <div className="mb-4 flex items-center justify-between text-sm text-slate-500">
-                                    <span>{latestPeriodLabel}</span>
+                                    <span>{displayPeriodLabel}</span>
                                     <span>
-                                        {latestPeriodDeductions.length} item{latestPeriodDeductions.length !== 1 ? 's' : ''}
+                                        {displayDeductions.length} item{displayDeductions.length !== 1 ? 's' : ''}
                                     </span>
                                 </div>
                                 <div className="space-y-3">
-                                    {latestPeriodDeductions.map((deduction) => {
-                                        const amount = Number(deduction.amount);
-                                        const pct = grossPay > 0 ? (amount / grossPay) * 100 : 0;
+                                    {deductionsByType.map((group) => {
+                                        const pct = displayDeductionTotal > 0 ? (group.total / displayDeductionTotal) * 100 : 0;
                                         return (
-                                            <div key={deduction.id} className="space-y-1.5">
+                                            <div key={group.name} className="space-y-1.5">
                                                 <div className="flex items-center justify-between text-sm">
                                                     <span className="font-medium text-slate-700 dark:text-slate-300">
-                                                        {deduction.deduction_type?.name ?? '—'}
+                                                        {group.name}
+                                                        <span className="ml-1.5 text-xs text-slate-400">({group.count}x)</span>
                                                     </span>
                                                     <span className="font-semibold text-rose-600">
-                                                        {formatCurrency(amount)}
+                                                        {formatCurrency(group.total)}
                                                     </span>
                                                 </div>
                                                 <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
@@ -732,12 +746,12 @@ function Overview({
                                         Total Deductions
                                     </span>
                                     <span className="text-lg font-bold text-rose-600">
-                                        {formatCurrency(latestPeriodTotal)}
+                                        {formatCurrency(displayDeductionTotal)}
                                     </span>
                                 </div>
                                 {grossPay > 0 && (
                                     <div className="mt-1 text-right text-xs text-slate-400">
-                                        {(latestPeriodTotal / grossPay) * 100}% of gross pay
+                                        {((displayDeductionTotal / grossPay) * 100).toFixed(1)}% of gross pay
                                     </div>
                                 )}
                             </CardContent>
