@@ -199,6 +199,50 @@ export function CompensationDeductions({
     const currentPage = pagination?.current_page ?? 1;
     const lastPage = pagination?.last_page ?? 1;
 
+    // ── Helper: get clothing allowances for a period ──
+    const getClothingAllowancesForPeriod = useCallback((periodYear: number, periodMonth: number) => {
+        if (!allClothingAllowances || allClothingAllowances.length === 0) return [];
+        const periodStart = new Date(periodYear, periodMonth - 1, 1);
+        const periodEnd = new Date(periodYear, periodMonth, 0);
+        return allClothingAllowances.filter((ca) => {
+            const startDate = new Date(ca.start_date);
+            const endDate = ca.end_date ? new Date(ca.end_date) : null;
+            return startDate <= periodEnd && (!endDate || endDate >= periodStart);
+        });
+    }, [allClothingAllowances]);
+
+    // ── Helper: get hazard pays for a period ──
+    const getHazardPaysForPeriod = useCallback((periodYear: number, periodMonth: number) => {
+        if (!employee.hazard_pays || employee.hazard_pays.length === 0) return [];
+        const periodStart = new Date(periodYear, periodMonth - 1, 1);
+        const periodEnd = new Date(periodYear, periodMonth, 0);
+        return employee.hazard_pays.filter((hp) => {
+            const startDate = new Date(hp.start_date);
+            const endDate = hp.end_date ? new Date(hp.end_date) : null;
+            return startDate <= periodEnd && (!endDate || endDate >= periodStart);
+        });
+    }, [employee.hazard_pays]);
+
+    // ── Helper: get adjustments for a period ──
+    const getAdjustmentsForPeriod = useCallback((periodYear: number, periodMonth: number) => {
+        if (!allAdjustmentsGrouped) return [];
+        const key = `${periodYear}-${String(periodMonth).padStart(2, '0')}`;
+        const adjustments = allAdjustmentsGrouped[key];
+        return Array.isArray(adjustments) ? adjustments : [];
+    }, [allAdjustmentsGrouped]);
+
+    // ── Helper: compute signed adjustment ──
+    const computeSignedAdjustment = useCallback((adj: any) => {
+        const amt = Number(adj.amount) || 0;
+        const effect = (
+            (adj.adjustmentType && adj.adjustmentType.effect) ||
+            (typeof adj.adjustment_type === 'object' && adj.adjustment_type?.effect) ||
+            adj.effect ||
+            ''
+        ).toString().toLowerCase();
+        return effect.includes('neg') || effect === '-' || effect.includes('subtract') ? -amt : amt;
+    }, []);
+
     const groupDeductionsBySalary = useCallback((deductionList: EmployeeDeduction[]) => {
         const grouped = new Map<string | number, { salaryId: string | number | null; salary: any; deductions: EmployeeDeduction[] }>();
 
@@ -273,6 +317,18 @@ export function CompensationDeductions({
                                 : `${formatCurrency(salaryAmount)} (Current)`;
                             const salaryDeductions = group.deductions.reduce((sum, d) => sum + Number(d.amount), 0);
 
+                            // ── Period summary calculations ──
+                            const pera = getEffectiveAmount(employee.peras, periodYear, periodMonth);
+                            const rata = employee.is_rata_eligible ? getEffectiveAmount(employee.ratas, periodYear, periodMonth) : 0;
+                            const periodClothingAllowances = getClothingAllowancesForPeriod(periodYear, periodMonth);
+                            const periodHazardPays = getHazardPaysForPeriod(periodYear, periodMonth);
+                            const salaryClothingAllowance = periodClothingAllowances.reduce((sum, ca) => sum + Number(ca.amount), 0);
+                            const salaryHazardPay = periodHazardPays.reduce((sum, hp) => sum + Number(hp.amount), 0);
+                            const salaryGrossPay = salaryAmount + pera + rata + salaryHazardPay + salaryClothingAllowance;
+                            const periodAdjustments = getAdjustmentsForPeriod(periodYear, periodMonth);
+                            const salaryTotalAdjustments = periodAdjustments.reduce((sum, adj) => sum + computeSignedAdjustment(adj), 0);
+                            const salaryNetPay = salaryGrossPay - salaryDeductions + salaryTotalAdjustments;
+
                             return (
                                 <div key={`${periodKey}-salary-${group.salaryId}`} className="overflow-hidden rounded-md border shadow-sm">
                                     {/* --- Period & Actions Header --- */}
@@ -306,7 +362,7 @@ export function CompensationDeductions({
 
                                     {/* --- Deductions Table (clean & focused) --- */}
                                     <div className="px-0">
-                                        <Table>
+                                        <Table className='rounded-b-none'>
                                             <TableHeader className="bg-slate-100">
                                                 <TableRow>
                                                     <TableHead className="text-xs uppercase tracking-wider">Deduction Type</TableHead>
@@ -318,7 +374,7 @@ export function CompensationDeductions({
                                                 {group.deductions.map((d) => (
                                                     <TableRow key={d.id} className="group hover:bg-slate-50">
                                                         <TableCell className="font-medium">{d.deduction_type?.name ?? '—'}</TableCell>
-                                                        <TableCell className="text-right font-mono text-red-600">
+                                                        <TableCell className="text-right  text-red-600">
                                                             -{formatCurrency(Number(d.amount))}
                                                         </TableCell>
                                                         <TableCell className="text-center">
@@ -344,15 +400,61 @@ export function CompensationDeductions({
                                                     </TableRow>
                                                 ))}
                                                 {/* Total row */}
-                                                <TableRow className="bg-red-50/80 font-semibold">
-                                                    <TableCell className="text-sm text-red-700">Total Deductions</TableCell>
-                                                    <TableCell className="text-right font-mono text-sm font-bold text-red-700">
-                                                        -{formatCurrency(salaryDeductions)}
-                                                    </TableCell>
-                                                    <TableCell></TableCell>
-                                                </TableRow>
+
                                             </TableBody>
                                         </Table>
+                                    </div>
+
+                                    {/* ── Payslip Summary ── */}
+                                    <div className="border-t bg-white px-4 py-3">
+                                        <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                                            <div className="text-muted-foreground col-span-2 mb-1 text-xs font-semibold uppercase tracking-wider">
+                                                Payslip Summary
+                                            </div>
+                                            <div className="flex justify-between text-slate-600">
+                                                <span>Basic Salary</span>
+                                                <span className="font-medium text-slate-800">{formatCurrency(salaryAmount)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-slate-600">
+                                                <span>PERA</span>
+                                                <span className="font-medium text-slate-800">+ {formatCurrency(pera)}</span>
+                                            </div>
+                                            {employee.is_rata_eligible && (
+                                                <div className="flex justify-between text-slate-600">
+                                                    <span>RATA</span>
+                                                    <span className="font-medium text-slate-800">+ {formatCurrency(rata)}</span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between text-slate-600">
+                                                <span>Hazard Pay</span>
+                                                <span className="font-medium text-slate-800">+ {formatCurrency(salaryHazardPay)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-slate-600">
+                                                <span>Clothing Allowance</span>
+                                                <span className="font-medium text-slate-800">+ {formatCurrency(salaryClothingAllowance)}</span>
+                                            </div>
+                                            <div className="col-span-2 my-1 border-t border-dashed border-slate-300"></div>
+                                            <div className="flex justify-between font-semibold text-slate-800">
+                                                <span>Gross Pay</span>
+                                                <span>{formatCurrency(salaryGrossPay)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-slate-600">
+                                                <span>Adjustments</span>
+                                                <span className={salaryTotalAdjustments >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                                                    {salaryTotalAdjustments >= 0 ? '+ ' : '- '}
+                                                    {formatCurrency(Math.abs(salaryTotalAdjustments))}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between font-semibold text-red-700">
+                                                <span>Total Deductions</span>
+                                                <span>-{formatCurrency(salaryDeductions)}</span>
+                                            </div>
+                                            <div className="col-span-2 my-1 border-t border-dashed border-slate-300"></div>
+                                            <div className="col-span-2 flex justify-between text-base font-bold text-green-700">
+                                                <span>Net Pay</span>
+                                                <span>{formatCurrency(salaryNetPay)}</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             );
