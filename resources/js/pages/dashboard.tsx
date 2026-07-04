@@ -420,13 +420,32 @@ export default function Dashboard({
 
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Coins className="h-5 w-5" />
-                            Salaries by Source of Fund Code
-                        </CardTitle>
-                        <CardDescription>
-                            Distribution for {months.find((m) => m.value === filterData.month)?.label || 'Current'} {filterData.year}
-                        </CardDescription>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Coins className="h-5 w-5" />
+                                    Salaries by Source of Fund Code
+                                </CardTitle>
+                                <CardDescription>
+                                    Distribution for {months.find((m) => m.value === filterData.month)?.label || 'Current'} {filterData.year}
+                                </CardDescription>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                    router.get(
+                                        route('salaries.by-office-fund', {
+                                            month: filterData.month,
+                                            year: filterData.year,
+                                        }),
+                                    )
+                                }
+                            >
+                                By Office
+                                <ArrowUpRight className="ml-1 h-3 w-3" />
+                            </Button>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {salaryDistribution.flatMap((fund) => fund.codes).filter((code) => code.total_amount > 0).length > 0 ? (

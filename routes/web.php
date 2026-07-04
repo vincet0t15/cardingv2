@@ -186,6 +186,8 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
     // SALARIES - Full CRUD (requires salaries.* permissions)
     Route::middleware(['permission:salaries.view'])->prefix('salaries')->group(function () {
         Route::get('/', [SalaryController::class, 'index'])->name('salaries.index');
+        Route::get('by-office-fund', [SalaryController::class, 'byOfficeFund'])->name('salaries.by-office-fund');
+        Route::get('by-office-fund/print', [SalaryController::class, 'byOfficeFundPrint'])->name('salaries.by-office-fund.print');
         Route::get('print', [SalaryController::class, 'print'])->name('salaries.print');
         Route::get('history/{employee}', [SalaryController::class, 'history'])->name('salaries.history');
     });
