@@ -78,6 +78,16 @@ class MayDeductionsController extends Controller
 
         $employeesQuery = Employee::query()
             ->with(['office', 'employmentStatus'])
+            // OPTIMIZED: Pre-fetch deductions to eliminate N+1
+            ->with(['employeeDeductions' => function ($query) use ($deductionType, $filterMonth, $filterYear) {
+                $query->where('deduction_type_id', $deductionType->id);
+                if ($filterMonth) {
+                    $query->where('pay_period_month', (int) $filterMonth)
+                        ->where('pay_period_year', $filterYear);
+                } else {
+                    $query->where('pay_period_year', $filterYear);
+                }
+            }])
             ->whereHas('employeeDeductions', function ($query) use ($deductionType, $filterMonth, $filterYear) {
                 $query->where('deduction_type_id', $deductionType->id);
                 if ($filterMonth) {
@@ -106,18 +116,9 @@ class MayDeductionsController extends Controller
 
         $employees = $employeesQuery->paginate(20)->withQueryString();
 
-        $employeesWithDeductions = collect($employees->items())->map(function ($employee) use ($deductionType, $filterMonth, $filterYear) {
-            $deductionsQuery = $employee->employeeDeductions()
-                ->where('deduction_type_id', $deductionType->id);
-
-            if ($filterMonth) {
-                $deductionsQuery->where('pay_period_month', (int) $filterMonth)
-                    ->where('pay_period_year', $filterYear);
-            } else {
-                $deductionsQuery->where('pay_period_year', $filterYear);
-            }
-
-            $deductions = $deductionsQuery->get();
+        // OPTIMIZED: Deductions are pre-loaded as employeeDeductions
+        $employeesWithDeductions = collect($employees->items())->map(function ($employee) use ($deductionType) {
+            $deductions = $employee->employeeDeductions;
 
             return [
                 'id' => $employee->id,
@@ -222,6 +223,16 @@ class MayDeductionsController extends Controller
 
         $employeesQuery = Employee::query()
             ->with(['office', 'employmentStatus'])
+            // OPTIMIZED: Pre-fetch deductions to eliminate N+1
+            ->with(['employeeDeductions' => function ($query) use ($deductionType, $filterMonth, $filterYear) {
+                $query->where('deduction_type_id', $deductionType->id);
+                if ($filterMonth) {
+                    $query->where('pay_period_month', (int) $filterMonth)
+                        ->where('pay_period_year', $filterYear);
+                } else {
+                    $query->where('pay_period_year', $filterYear);
+                }
+            }])
             ->whereHas('employeeDeductions', function ($query) use ($deductionType, $filterMonth, $filterYear) {
                 $query->where('deduction_type_id', $deductionType->id);
                 if ($filterMonth) {
@@ -248,18 +259,9 @@ class MayDeductionsController extends Controller
             });
         }
 
-        $employees = $employeesQuery->get()->map(function ($employee) use ($deductionType, $filterMonth, $filterYear) {
-            $deductionsQuery = $employee->employeeDeductions()
-                ->where('deduction_type_id', $deductionType->id);
-
-            if ($filterMonth) {
-                $deductionsQuery->where('pay_period_month', (int) $filterMonth)
-                    ->where('pay_period_year', $filterYear);
-            } else {
-                $deductionsQuery->where('pay_period_year', $filterYear);
-            }
-
-            $deductions = $deductionsQuery->get();
+        // OPTIMIZED: Deductions are pre-loaded
+        $employees = $employeesQuery->get()->map(function ($employee) use ($deductionType) {
+            $deductions = $employee->employeeDeductions;
 
             return [
                 'id' => $employee->id,

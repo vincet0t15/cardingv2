@@ -46,13 +46,12 @@ class SupplierTransactionController extends Controller
 
         $transactions = $query->orderBy('id', 'desc')->paginate(15);
 
+        // OPTIMIZED: Use SQL YEAR() instead of loading all dates into PHP memory
         $yearOptions = SupplierTransaction::where('supplier_id', $supplier->id)
             ->whereNotNull('pr_date')
-            ->orderBy('id', 'desc')
-            ->pluck('pr_date')
-            ->map(fn($date) => Carbon::parse($date)->year)
-            ->unique()
-            ->sortDesc()
+            ->selectRaw('DISTINCT YEAR(pr_date) as year')
+            ->orderBy('year', 'desc')
+            ->pluck('year')
             ->values()
             ->all();
 

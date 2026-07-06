@@ -82,6 +82,11 @@ class PayrollController extends Controller
                     ->where('pay_period_year', $year)
                     ->with('deductionType');
             }])
+            // OPTIMIZED: Pre-fetch adjustments for the calculation period to avoid N+1 in calculatePayroll
+            ->with(['adjustments' => function ($query) use ($calculationMonth, $year) {
+                $query->where('pay_period_month', $calculationMonth)
+                    ->where('pay_period_year', $year);
+            }])
             ->orderBy('last_name', 'asc')
             ->paginate(50)
             ->withQueryString();
@@ -254,6 +259,11 @@ class PayrollController extends Controller
                     $query->where('pay_period_month', $month)
                         ->where('pay_period_year', $year);
                 }])
+                // OPTIMIZED: Pre-fetch adjustments to handle N+1 in chunked loop
+                ->with(['adjustments' => function ($query) use ($month, $year) {
+                    $query->where('pay_period_month', $month)
+                        ->where('pay_period_year', $year);
+                }])
                 ->orderBy('last_name', 'asc');
 
             $query->chunk(200, function ($employees) use (
@@ -317,8 +327,42 @@ class PayrollController extends Controller
         $officeId = $request->input('office_id');
         $employeeId = $request->input('employee_id');
 
+        $monthsToProcess = ($month && $month != 0) ? [$month] : range(1, 12);
+
         $employees = Employee::query()
             ->with(['employmentStatus', 'office'])
+            ->with(['salaries' => function ($query) use ($year) {
+                $query->whereYear('effective_date', '<=', $year)
+                    ->orderBy('effective_date', 'desc');
+            }])
+            ->with(['peras' => function ($query) use ($year) {
+                $query->whereYear('effective_date', '<=', $year)
+                    ->orderBy('effective_date', 'desc');
+            }])
+            ->with(['ratas' => function ($query) use ($year) {
+                $query->whereYear('effective_date', '<=', $year)
+                    ->orderBy('effective_date', 'desc');
+            }])
+            ->with(['hazardPays' => function ($query) use ($year) {
+                $query->where('start_date', '<=', \Carbon\Carbon::create($year, 12, 31)->endOfDay())
+                    ->where(function ($q) use ($year) {
+                        $q->whereNull('end_date')
+                            ->orWhere('end_date', '>=', \Carbon\Carbon::create($year, 1, 1)->startOfDay());
+                    })
+                    ->orderBy('start_date', 'desc');
+            }])
+            ->with(['clothingAllowances' => function ($query) use ($year) {
+                $query->where('start_date', '<=', \Carbon\Carbon::create($year, 12, 31)->endOfDay())
+                    ->where(function ($q) use ($year) {
+                        $q->whereNull('end_date')
+                            ->orWhere('end_date', '>=', \Carbon\Carbon::create($year, 1, 1)->startOfDay());
+                    })
+                    ->orderBy('start_date', 'desc');
+            }])
+            // OPTIMIZED: Pre-fetch deductions for entire year in single query (was N+1)
+            ->with(['deductions' => function ($query) use ($year) {
+                $query->where('pay_period_year', $year);
+            }])
             ->when($officeId, function ($query, $officeId) {
                 $query->where('office_id', $officeId);
             })
@@ -328,13 +372,23 @@ class PayrollController extends Controller
             ->orderBy('last_name', 'asc')
             ->get();
 
+        // OPTIMIZED: Pre-fetch all adjustments for the year in a single query
+        $allAdjustmentsForYear = \App\Models\Adjustment::query()
+            ->where('pay_period_year', $year)
+            ->selectRaw('employee_id, pay_period_month, SUM(amount) as total')
+            ->groupBy('employee_id', 'pay_period_month')
+            ->get()
+            ->groupBy('employee_id')
+            ->map(function ($rows) {
+                return $rows->keyBy('pay_period_month');
+            });
+
         $officeName = null;
         if ($officeId) {
             $officeName = Office::find($officeId)?->name;
         }
 
         $monthlyData = [];
-        $monthsToProcess = ($month && $month != 0) ? [$month] : range(1, 12);
 
         foreach ($monthsToProcess as $monthNum) {
             $monthEmployees = [];
@@ -356,19 +410,16 @@ class PayrollController extends Controller
                 // Use date range logic for hazard pay and clothing allowance
                 $hazardPay = $this->payrollService->getEffectiveAmountForDateRange($employee->hazardPays, $year, $monthNum);
                 $clothingAllowance = $this->payrollService->getEffectiveAmountForDateRange($employee->clothingAllowances, $year, $monthNum);
-                $deductions = $employee->deductions()
+                // OPTIMIZED: Filter the pre-fetched deductions collection instead of querying DB
+                $deductions = $employee->deductions
                     ->where('pay_period_month', $monthNum)
-                    ->where('pay_period_year', $year)
                     ->sum('amount');
 
-                // Sum adjustments for this employee and period
-                $adjustments = $employee->adjustments()
-                    ->where('pay_period_month', $monthNum)
-                    ->where('pay_period_year', $year)
-                    ->sum('amount');
+                // OPTIMIZED: Look up adjustments from pre-fetched map
+                $adjustments = (float) ($allAdjustmentsForYear->get($employee->id)?->get($monthNum)?->total ?? 0);
 
                 $grossPay = $salary + $pera + $rata + $hazardPay + $clothingAllowance;
-                $netPay = $grossPay - $deductions + (float) $adjustments;
+                $netPay = $grossPay - $deductions + $adjustments;
 
                 if ($salary > 0 || $pera > 0 || $rata > 0 || $hazardPay > 0 || $clothingAllowance > 0 || $deductions > 0) {
                     $monthEmployees[] = [
@@ -383,7 +434,7 @@ class PayrollController extends Controller
                         'clothing_allowance' => $clothingAllowance,
                         'gross_pay' => $grossPay,
                         'deductions' => $deductions,
-                        'adjustments' => (float) $adjustments,
+                        'adjustments' => $adjustments,
                         'net_pay' => $netPay,
                     ];
 
@@ -394,7 +445,7 @@ class PayrollController extends Controller
                     $totals['clothing_allowance'] += $clothingAllowance;
                     $totals['gross_pay'] += $grossPay;
                     $totals['deductions'] += $deductions;
-                    $totals['adjustments'] = ($totals['adjustments'] ?? 0) + (float) $adjustments;
+                    $totals['adjustments'] = ($totals['adjustments'] ?? 0) + $adjustments;
                     $totals['net_pay'] += $netPay;
                 }
             }
@@ -426,6 +477,22 @@ class PayrollController extends Controller
 
         $period1End = now()->setDate($period1Year, $period1Month, 1)->endOfMonth();
         $period2End = now()->setDate($period2Year, $period2Month, 1)->endOfMonth();
+
+        // OPTIMIZED: Pre-fetch adjustments in a single query (was N+1: 1 query per employee × 2 periods)
+        $allAdjustments = \App\Models\Adjustment::query()
+            ->where(function ($q) use ($period1Month, $period1Year, $period2Month, $period2Year) {
+                $q->where(function ($q2) use ($period1Month, $period1Year) {
+                    $q2->where('pay_period_month', $period1Month)
+                        ->where('pay_period_year', $period1Year);
+                })->orWhere(function ($q2) use ($period2Month, $period2Year) {
+                    $q2->where('pay_period_month', $period2Month)
+                        ->where('pay_period_year', $period2Year);
+                });
+            })
+            ->selectRaw('employee_id, pay_period_month, pay_period_year, SUM(amount) as total')
+            ->groupBy('employee_id', 'pay_period_month', 'pay_period_year')
+            ->get()
+            ->groupBy('employee_id');
 
         $employees = Employee::query()
             ->with(['employmentStatus', 'office'])
@@ -466,7 +533,7 @@ class PayrollController extends Controller
             ->orderBy('last_name', 'asc')
             ->get();
 
-        $employees->transform(function ($employee) use ($period1Month, $period1Year, $period2Month, $period2Year) {
+        $employees->transform(function ($employee) use ($period1Month, $period1Year, $period2Month, $period2Year, $allAdjustments) {
             $salary1 = $this->payrollService->getEffectiveAmount($employee->salaries, $period1Year, $period1Month);
             $pera1 = $this->payrollService->getEffectiveAmount($employee->peras, $period1Year, $period1Month);
             $rata1 = $employee->is_rata_eligible ? $this->payrollService->getEffectiveAmount($employee->ratas, $period1Year, $period1Month) : 0;
@@ -476,13 +543,11 @@ class PayrollController extends Controller
                 ->where('pay_period_year', $period1Year)
                 ->sum('amount');
 
-            $adjustments1 = $employee->adjustments()
-                ->where('pay_period_month', $period1Month)
-                ->where('pay_period_year', $period1Year)
-                ->sum('amount');
+            // OPTIMIZED: Look up pre-fetched adjustments instead of N+1 query
+            $adjustments1 = (float) ($allAdjustments->get($employee->id, collect())->firstWhere('pay_period_month', $period1Month)?->firstWhere('pay_period_year', $period1Year)?->total ?? 0);
 
             $grossPay1 = $salary1 + $pera1 + $rata1;
-            $netPay1 = $grossPay1 - $deductions1 + (float) $adjustments1;
+            $netPay1 = $grossPay1 - $deductions1 + $adjustments1;
 
             $salary2 = $this->payrollService->getEffectiveAmount($employee->salaries, $period2Year, $period2Month);
             $pera2 = $this->payrollService->getEffectiveAmount($employee->peras, $period2Year, $period2Month);
@@ -493,13 +558,11 @@ class PayrollController extends Controller
                 ->where('pay_period_year', $period2Year)
                 ->sum('amount');
 
-            $adjustments2 = $employee->adjustments()
-                ->where('pay_period_month', $period2Month)
-                ->where('pay_period_year', $period2Year)
-                ->sum('amount');
+            // OPTIMIZED: Look up pre-fetched adjustments instead of N+1 query
+            $adjustments2 = (float) ($allAdjustments->get($employee->id, collect())->firstWhere('pay_period_month', $period2Month)?->firstWhere('pay_period_year', $period2Year)?->total ?? 0);
 
             $grossPay2 = $salary2 + $pera2 + $rata2;
-            $netPay2 = $grossPay2 - $deductions2 + (float) $adjustments2;
+            $netPay2 = $grossPay2 - $deductions2 + $adjustments2;
 
             return [
                 'id' => $employee->id,

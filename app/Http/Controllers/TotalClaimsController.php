@@ -130,6 +130,16 @@ class TotalClaimsController extends Controller
 
         $employeesQuery = Employee::query()
             ->with(['office', 'employmentStatus'])
+            // OPTIMIZED: Pre-fetch claims to eliminate N+1 in the collection loop
+            ->with(['claims' => function ($query) use ($claimType, $filterMonth, $filterYear) {
+                $query->where('claim_type_id', $claimType->id);
+                if ($filterMonth) {
+                    $query->whereMonth('claim_date', $filterMonth)
+                        ->whereYear('claim_date', $filterYear);
+                } else {
+                    $query->whereYear('claim_date', $filterYear);
+                }
+            }])
             ->whereHas('claims', function ($query) use ($claimType, $filterMonth, $filterYear) {
                 $query->where('claim_type_id', $claimType->id);
                 if ($filterMonth) {
@@ -158,18 +168,9 @@ class TotalClaimsController extends Controller
 
         $employees = $employeesQuery->paginate(20)->withQueryString();
 
-        $employeesWithClaims = collect($employees->items())->map(function ($employee) use ($claimType, $filterMonth, $filterYear) {
-            $claimsQuery = $employee->claims()
-                ->where('claim_type_id', $claimType->id);
-
-            if ($filterMonth) {
-                $claimsQuery->whereMonth('claim_date', $filterMonth)
-                    ->whereYear('claim_date', $filterYear);
-            } else {
-                $claimsQuery->whereYear('claim_date', $filterYear);
-            }
-
-            $claims = $claimsQuery->get();
+        // OPTIMIZED: Claims are already eager-loaded. Use in-memory collection instead of N+1 queries.
+        $employeesWithClaims = collect($employees->items())->map(function ($employee) use ($claimType) {
+            $claims = $employee->claims; // Already loaded by ->with(['claims' => ...])
 
             return [
                 'id' => $employee->id,
@@ -272,6 +273,16 @@ class TotalClaimsController extends Controller
 
         $employeesQuery = Employee::query()
             ->with(['office', 'employmentStatus'])
+            // OPTIMIZED: Pre-fetch claims to eliminate N+1
+            ->with(['claims' => function ($query) use ($claimType, $filterMonth, $filterYear) {
+                $query->where('claim_type_id', $claimType->id);
+                if ($filterMonth) {
+                    $query->whereMonth('claim_date', $filterMonth)
+                        ->whereYear('claim_date', $filterYear);
+                } else {
+                    $query->whereYear('claim_date', $filterYear);
+                }
+            }])
             ->whereHas('claims', function ($query) use ($claimType, $filterMonth, $filterYear) {
                 $query->where('claim_type_id', $claimType->id);
                 if ($filterMonth) {
@@ -298,18 +309,9 @@ class TotalClaimsController extends Controller
             });
         }
 
-        $employees = $employeesQuery->get()->map(function ($employee) use ($claimType, $filterMonth, $filterYear) {
-            $claimsQuery = $employee->claims()
-                ->where('claim_type_id', $claimType->id);
-
-            if ($filterMonth) {
-                $claimsQuery->whereMonth('claim_date', $filterMonth)
-                    ->whereYear('claim_date', $filterYear);
-            } else {
-                $claimsQuery->whereYear('claim_date', $filterYear);
-            }
-
-            $claims = $claimsQuery->get();
+        // OPTIMIZED: Claims are already eager-loaded; no need for separate queries per employee
+        $employees = $employeesQuery->get()->map(function ($employee) use ($claimType) {
+            $claims = $employee->claims;
 
             return [
                 'id' => $employee->id,

@@ -75,5 +75,23 @@ class AppServiceProvider extends ServiceProvider
         if (config('app.env') !== 'local') {
             URL::forceScheme('https');
         }
+
+        // Dashboard cache invalidation — clear cached cumulative data when related models change
+        \Illuminate\Database\Eloquent\Model::saved(function ($model) {
+            if ($model instanceof \App\Models\Employee || $model instanceof \App\Models\Salary ||
+                $model instanceof \App\Models\Pera || $model instanceof \App\Models\Rata ||
+                $model instanceof \App\Models\Claim || $model instanceof \App\Models\EmployeeDeduction ||
+                $model instanceof \App\Models\Supplier || $model instanceof \App\Models\SupplierTransaction) {
+                \Cache::forget('dashboard_master_data');
+            }
+        });
+        \Illuminate\Database\Eloquent\Model::deleted(function ($model) {
+            if ($model instanceof \App\Models\Employee || $model instanceof \App\Models\Salary ||
+                $model instanceof \App\Models\Pera || $model instanceof \App\Models\Rata ||
+                $model instanceof \App\Models\Claim || $model instanceof \App\Models\EmployeeDeduction ||
+                $model instanceof \App\Models\Supplier || $model instanceof \App\Models\SupplierTransaction) {
+                \Cache::forget('dashboard_master_data');
+            }
+        });
     }
 }

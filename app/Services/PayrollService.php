@@ -80,16 +80,21 @@ class PayrollService
         $hazardPay = $this->getEffectiveAmountForDateRange($employee->hazardPays, $year, $month);
         $clothingAllowance = $this->getEffectiveAmountForDateRange($employee->clothingAllowances, $year, $month);
 
-        // Use direct query to avoid lazy-loading all employee deductions
-        $totalDeductions = (float) EmployeeDeduction::where('employee_id', $employee->id)
-            ->where('pay_period_month', $month)
-            ->where('pay_period_year', $year)
-            ->sum('amount');
-        // Sum adjustments for the given pay period (can be positive or negative)
-        $adjustments = (float) $employee->adjustments()
-            ->where('pay_period_month', $month)
-            ->where('pay_period_year', $year)
-            ->sum('amount');
+        // OPTIMIZED: Use eager-loaded deductions if available; fall back to direct query only when not loaded
+        $totalDeductions = $employee->relationLoaded('deductions')
+            ? (float) $employee->deductions->sum('amount')
+            : (float) EmployeeDeduction::where('employee_id', $employee->id)
+                ->where('pay_period_month', $month)
+                ->where('pay_period_year', $year)
+                ->sum('amount');
+
+        // OPTIMIZED: Use eager-loaded adjustments if available; fall back to direct query when not loaded
+        $adjustments = $employee->relationLoaded('adjustments')
+            ? (float) $employee->adjustments->sum('amount')
+            : (float) $employee->adjustments()
+                ->where('pay_period_month', $month)
+                ->where('pay_period_year', $year)
+                ->sum('amount');
         $grossPay = $salary + $pera + $rata + $hazardPay + $clothingAllowance;
         // Include adjustments into the final net pay calculation
         $netPay = $grossPay - $totalDeductions + $adjustments;

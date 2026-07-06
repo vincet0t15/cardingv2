@@ -18,6 +18,7 @@ use App\Models\SupplierTransaction;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 use Inertia\Inertia;
 
@@ -145,142 +146,136 @@ class DashboardController extends Controller
         $totalClaims = $claimsQuery->count();
         $totalClaimsAmount = $claimsQuery->sum('amount');
 
-        // Helper: compute cumulative total from monthly records grouped by employee
-        $cumulativeTotal = function ($records, $hasEndDate = false) {
-            $total = 0;
-            $grouped = $records->groupBy('employee_id');
-            foreach ($grouped as $empId => $empRecords) {
+        // Compensation totals — cumulative based on effective periods
+        // OPTIMIZED + CACHED: Expensive computation cached for 1 hour
+        $masterData = Cache::remember('dashboard_master_data', 3600, function () {
+            $cumulativeTotal = function ($records, $hasEndDate = false) {
+                $total = 0;
+                $grouped = $records->groupBy('employee_id');
+                foreach ($grouped as $empId => $empRecords) {
+                    $sorted = $empRecords->sortBy('effective_date')->values();
+                    for ($i = 0; $i < $sorted->count(); $i++) {
+                        $rec = $sorted[$i];
+                        $start = \Carbon\Carbon::parse($rec->effective_date)->startOfMonth();
+                        if ($hasEndDate && $rec->end_date) {
+                            $end = \Carbon\Carbon::parse($rec->end_date)->startOfMonth();
+                        } elseif ($i + 1 < $sorted->count()) {
+                            $end = \Carbon\Carbon::parse($sorted[$i + 1]->effective_date)->startOfMonth();
+                        } else {
+                            $end = now()->startOfMonth();
+                        }
+                        $months = max(1, $start->diffInMonths($end));
+                        $total += $rec->amount * $months;
+                    }
+                }
+                return $total;
+            };
+
+            $totalSalaries = $cumulativeTotal(Salary::select('id', 'employee_id', 'amount', 'effective_date', 'end_date')->get(), true);
+            $totalPera = $cumulativeTotal(Pera::select('id', 'employee_id', 'amount', 'effective_date')->get(), false);
+            $totalRata = $cumulativeTotal(Rata::select('id', 'employee_id', 'amount', 'effective_date')->get(), false);
+
+            // Salary Distribution by Fund and Code
+            $allSourceOfFundCodes = SourceOfFundCode::where('status', true)
+                ->with('generalFund')
+                ->orderBy('code')
+                ->get();
+
+            $salaryRecords = Salary::select('id', 'employee_id', 'amount', 'effective_date', 'end_date', 'source_of_fund_code_id')
+                ->with('sourceOfFundCode')
+                ->get();
+            $salariesByCode = [];
+
+            $salaryGrouped = $salaryRecords->groupBy('employee_id');
+            foreach ($salaryGrouped as $empId => $empRecords) {
                 $sorted = $empRecords->sortBy('effective_date')->values();
                 for ($i = 0; $i < $sorted->count(); $i++) {
                     $rec = $sorted[$i];
+                    $codeId = $rec->source_of_fund_code_id;
+                    if (! $codeId) continue;
+
                     $start = \Carbon\Carbon::parse($rec->effective_date)->startOfMonth();
-                    if ($hasEndDate && $rec->end_date) {
+                    if ($rec->end_date) {
                         $end = \Carbon\Carbon::parse($rec->end_date)->startOfMonth();
                     } elseif ($i + 1 < $sorted->count()) {
-                        // Next record's effective_date is this record's end
                         $end = \Carbon\Carbon::parse($sorted[$i + 1]->effective_date)->startOfMonth();
                     } else {
                         $end = now()->startOfMonth();
                     }
                     $months = max(1, $start->diffInMonths($end));
-                    $total += $rec->amount * $months;
+                    $cumulative = $rec->amount * $months;
+
+                    if (! isset($salariesByCode[$codeId])) {
+                        $codeInfo = $allSourceOfFundCodes->firstWhere('id', $codeId);
+                        $salariesByCode[$codeId] = [
+                            'code_id' => $codeId,
+                            'code' => $codeInfo->code ?? '',
+                            'code_description' => $codeInfo->description ?? '',
+                            'general_fund_id' => $codeInfo->general_fund_id ?? null,
+                            'total_amount' => 0,
+                            'employee_count' => [],
+                        ];
+                    }
+                    $salariesByCode[$codeId]['total_amount'] += $cumulative;
+                    $salariesByCode[$codeId]['employee_count'][$empId] = true;
                 }
             }
-            return $total;
-        };
 
-        // Compensation totals — cumulative based on effective periods
-        $totalSalaries = $cumulativeTotal(Salary::all(), true);   // has end_date
-        $totalPera = $cumulativeTotal(Pera::all(), false);       // no end_date
-        $totalRata = $cumulativeTotal(Rata::all(), false);       // no end_date
+            $salariesByCode = collect(array_values($salariesByCode))->map(function ($item) {
+                $item['employee_count'] = count($item['employee_count']);
+                return $item;
+            });
 
-        // Salaries by General Fund breakdown for selected month/year (or all if no filter)
-        $allGeneralFunds = GeneralFund::where('status', true)
-            ->orderBy('code')
-            ->get();
+            $salariesByFundDistribution = $allSourceOfFundCodes->groupBy('general_fund_id')->map(function ($codes) use ($salariesByCode) {
+                $fundCodes = $codes->map(function ($code) use ($salariesByCode) {
+                    $existing = $salariesByCode->firstWhere('code_id', $code->id);
 
-        // Will compute salariesByFund after salaryDistribution is built below
-        $salariesByFund = [];
-
-        // Salary Distribution by Fund and Code
-        $allSourceOfFundCodes = SourceOfFundCode::where('status', true)
-            ->with('generalFund')
-            ->orderBy('code')
-            ->get();
-
-        // Compute cumulative salaries by source of fund code (amount × months active)
-        $salaryRecords = Salary::with('sourceOfFundCode')->get();
-        $salariesByCode = [];
-
-        $salaryGrouped = $salaryRecords->groupBy('employee_id');
-        foreach ($salaryGrouped as $empId => $empRecords) {
-            $sorted = $empRecords->sortBy('effective_date')->values();
-            for ($i = 0; $i < $sorted->count(); $i++) {
-                $rec = $sorted[$i];
-                $codeId = $rec->source_of_fund_code_id;
-                if (! $codeId) continue;
-
-                $start = \Carbon\Carbon::parse($rec->effective_date)->startOfMonth();
-                if ($rec->end_date) {
-                    $end = \Carbon\Carbon::parse($rec->end_date)->startOfMonth();
-                } elseif ($i + 1 < $sorted->count()) {
-                    $end = \Carbon\Carbon::parse($sorted[$i + 1]->effective_date)->startOfMonth();
-                } else {
-                    $end = now()->startOfMonth();
-                }
-                $months = max(1, $start->diffInMonths($end));
-                $cumulative = $rec->amount * $months;
-
-                if (! isset($salariesByCode[$codeId])) {
-                    $codeInfo = $allSourceOfFundCodes->firstWhere('id', $codeId);
-                    $salariesByCode[$codeId] = [
-                        'code_id' => $codeId,
-                        'code' => $codeInfo->code ?? '',
-                        'code_description' => $codeInfo->description ?? '',
-                        'general_fund_id' => $codeInfo->general_fund_id ?? null,
-                        'total_amount' => 0,
-                        'employee_count' => [],
+                    return [
+                        'code_id' => $code->id,
+                        'code' => $code->code,
+                        'code_description' => $code->description,
+                        'total_amount' => $existing ? $existing['total_amount'] : 0.0,
+                        'employee_count' => $existing ? $existing['employee_count'] : 0,
                     ];
-                }
-                $salariesByCode[$codeId]['total_amount'] += $cumulative;
-                $salariesByCode[$codeId]['employee_count'][$empId] = true;
-            }
-        }
+                });
 
-        // Convert employee_count arrays to counts and reindex
-        $salariesByCode = collect(array_values($salariesByCode))->map(function ($item) {
-            $item['employee_count'] = count($item['employee_count']);
-            return $item;
-        });
-
-        // Group by General Fund
-        $salariesByFundDistribution = $allSourceOfFundCodes->groupBy('general_fund_id')->map(function ($codes) use ($salariesByCode) {
-            $fundCodes = $codes->map(function ($code) use ($salariesByCode) {
-                $existing = $salariesByCode->firstWhere('code_id', $code->id);
+                $fundTotal = $fundCodes->sum('total_amount');
+                $fundEmployees = $fundCodes->sum('employee_count');
 
                 return [
-                    'code_id' => $code->id,
-                    'code' => $code->code,
-                    'code_description' => $code->description,
-                    'total_amount' => $existing ? $existing['total_amount'] : 0.0,
-                    'employee_count' => $existing ? $existing['employee_count'] : 0,
+                    'codes' => $fundCodes->values(),
+                    'total_amount' => $fundTotal,
+                    'employee_count' => $fundEmployees,
                 ];
             });
 
-            $fundTotal = $fundCodes->sum('total_amount');
-            $fundEmployees = $fundCodes->sum('employee_count');
+            $allGeneralFunds = GeneralFund::where('status', true)->orderBy('code')->get();
+            $salaryDistribution = $allGeneralFunds->map(function ($fund) use ($salariesByFundDistribution) {
+                $existing = $salariesByFundDistribution->get($fund->id);
 
-            return [
-                'codes' => $fundCodes->values(),
-                'total_amount' => $fundTotal,
-                'employee_count' => $fundEmployees,
-            ];
+                return [
+                    'id' => $fund->id,
+                    'code' => $fund->code,
+                    'description' => $fund->description,
+                    'codes' => $existing ? $existing['codes'] : [],
+                    'total_amount' => $existing ? $existing['total_amount'] : 0.0,
+                    'employee_count' => $existing ? $existing['employee_count'] : 0,
+                ];
+            })->values();
+
+            $salariesByFund = $salaryDistribution->map(function ($fund) {
+                return [
+                    'id' => $fund['id'],
+                    'code' => $fund['code'],
+                    'description' => $fund['description'],
+                    'total_amount' => $fund['total_amount'],
+                ];
+            });
+
+            return compact('totalSalaries', 'totalPera', 'totalRata', 'salaryDistribution', 'salariesByFund');
         });
 
-        // Merge with all general funds
-        $allGeneralFunds = GeneralFund::where('status', true)->orderBy('code')->get();
-        $salaryDistribution = $allGeneralFunds->map(function ($fund) use ($salariesByFundDistribution) {
-            $existing = $salariesByFundDistribution->get($fund->id);
-
-            return [
-                'id' => $fund->id,
-                'code' => $fund->code,
-                'description' => $fund->description,
-                'codes' => $existing ? $existing['codes'] : [],
-                'total_amount' => $existing ? $existing['total_amount'] : 0.0,
-                'employee_count' => $existing ? $existing['employee_count'] : 0,
-            ];
-        })->values();
-
-        // Build salariesByFund from salaryDistribution (cumulative totals by general fund)
-        $salariesByFund = $salaryDistribution->map(function ($fund) {
-            return [
-                'id' => $fund['id'],
-                'code' => $fund['code'],
-                'description' => $fund['description'],
-                'total_amount' => $fund['total_amount'],
-            ];
-        });
+        extract($masterData);
 
         // Recent activity (placeholder - can be enhanced with actual activity log)
         $recentActivity = [];
@@ -310,6 +305,7 @@ class DashboardController extends Controller
             });
 
         // Top Employees by Total Claims Amount this month (or all if no filter)
+        // OPTIMIZATION: Replaced N+1 by selecting employee_id first, then loading employees+offices in 2 queries
         $topClaimantsQuery = Claim::query();
 
         if ($useFilters) {
@@ -317,99 +313,131 @@ class DashboardController extends Controller
                 ->whereYear('claim_date', $currentYear);
         }
 
-        $topClaimants = $topClaimantsQuery->selectRaw('employee_id, SUM(amount) as total_amount, COUNT(*) as claim_count')
+        $topClaimantsAggregates = $topClaimantsQuery
+            ->selectRaw('employee_id, SUM(amount) as total_amount, COUNT(*) as claim_count')
             ->groupBy('employee_id')
-            ->with(['employee.office'])
             ->orderByDesc('total_amount')
             ->limit(5)
+            ->get();
+
+        $topClaimantEmployeeIds = $topClaimantsAggregates->pluck('employee_id')->all();
+        $topClaimantEmployees = Employee::with('office')
+            ->whereIn('id', $topClaimantEmployeeIds)
             ->get()
-            ->map(function ($item) {
-                return [
-                    'employee_id' => $item->employee_id,
-                    'employee_name' => $item->employee->last_name . ', ' . $item->employee->first_name,
-                    'office' => $item->employee->office?->name ?? 'N/A',
-                    'total_amount' => (float) $item->total_amount,
-                    'claim_count' => (int) $item->claim_count,
-                ];
-            });
+            ->keyBy('id');
+
+        $topClaimants = $topClaimantsAggregates->map(function ($item) use ($topClaimantEmployees) {
+            $employee = $topClaimantEmployees->get($item->employee_id);
+            return [
+                'employee_id' => $item->employee_id,
+                'employee_name' => ($employee?->last_name ?? '') . ', ' . ($employee?->first_name ?? ''),
+                'office' => $employee?->office?->name ?? 'N/A',
+                'total_amount' => (float) $item->total_amount,
+                'claim_count' => (int) $item->claim_count,
+            ];
+        });
 
         // Top 10 Employees with Most Travel Claims (by amount) - Includes Travel Reimbursement + Meal Allowance + Cash Advance - Travel
         $mostTravelClaimsQuery = Claim::whereHas('claimType', function ($query) {
             $query->whereIn('code', ['TRAVEL', 'MEAL', 'CASH_ADVANCE_TRAVEL']);
-        })->with(['employee.office']);
+        });
 
         if ($useFilters) {
             $mostTravelClaimsQuery->whereMonth('claim_date', $currentMonth)
                 ->whereYear('claim_date', $currentYear);
         }
 
-        $mostTravelClaims = $mostTravelClaimsQuery->selectRaw('employee_id, COUNT(*) as travel_count, SUM(amount) as total_travel_amount')
+        $mostTravelAggregates = $mostTravelClaimsQuery
+            ->selectRaw('employee_id, COUNT(*) as travel_count, SUM(amount) as total_travel_amount')
             ->groupBy('employee_id')
-            ->with(['employee.office'])
             ->orderByDesc('total_travel_amount')
             ->limit(10)
+            ->get();
+
+        $mostTravelEmployeeIds = $mostTravelAggregates->pluck('employee_id')->all();
+        $mostTravelEmployees = Employee::with('office')
+            ->whereIn('id', $mostTravelEmployeeIds)
             ->get()
-            ->map(function ($item) {
-                return [
-                    'employee_id' => $item->employee_id,
-                    'employee_name' => $item->employee->last_name . ', ' . $item->employee->first_name,
-                    'office' => $item->employee->office?->name ?? 'N/A',
-                    'travel_count' => (int) $item->travel_count,
-                    'total_travel_amount' => (float) $item->total_travel_amount,
-                ];
-            });
+            ->keyBy('id');
+
+        $mostTravelClaims = $mostTravelAggregates->map(function ($item) use ($mostTravelEmployees) {
+            $employee = $mostTravelEmployees->get($item->employee_id);
+            return [
+                'employee_id' => $item->employee_id,
+                'employee_name' => ($employee?->last_name ?? '') . ', ' . ($employee?->first_name ?? ''),
+                'office' => $employee?->office?->name ?? 'N/A',
+                'travel_count' => (int) $item->travel_count,
+                'total_travel_amount' => (float) $item->total_travel_amount,
+            ];
+        });
 
         // Top 10 Employees with Most Travel Trips (by count, not amount) - Travel Reimbursement + Cash Advance - Travel
         $mostTripsQuery = Claim::whereHas('claimType', function ($query) {
             $query->whereIn('code', ['TRAVEL', 'CASH_ADVANCE_TRAVEL']);
-        })->with(['employee.office']);
+        });
 
         if ($useFilters) {
             $mostTripsQuery->whereMonth('claim_date', $currentMonth)
                 ->whereYear('claim_date', $currentYear);
         }
 
-        $mostTrips = $mostTripsQuery->selectRaw('employee_id, COUNT(*) as travel_count, SUM(amount) as total_travel_amount')
+        $mostTripsAggregates = $mostTripsQuery
+            ->selectRaw('employee_id, COUNT(*) as travel_count, SUM(amount) as total_travel_amount')
             ->groupBy('employee_id')
-            ->with(['employee.office'])
             ->orderByDesc('travel_count')
             ->limit(10)
+            ->get();
+
+        $mostTripsEmployeeIds = $mostTripsAggregates->pluck('employee_id')->all();
+        $mostTripsEmployees = Employee::with('office')
+            ->whereIn('id', $mostTripsEmployeeIds)
             ->get()
-            ->map(function ($item) {
-                return [
-                    'employee_id' => $item->employee_id,
-                    'employee_name' => $item->employee->last_name . ', ' . $item->employee->first_name,
-                    'office' => $item->employee->office?->name ?? 'N/A',
-                    'travel_count' => (int) $item->travel_count,
-                    'total_travel_amount' => (float) $item->total_travel_amount,
-                ];
-            });
+            ->keyBy('id');
+
+        $mostTrips = $mostTripsAggregates->map(function ($item) use ($mostTripsEmployees) {
+            $employee = $mostTripsEmployees->get($item->employee_id);
+            return [
+                'employee_id' => $item->employee_id,
+                'employee_name' => ($employee?->last_name ?? '') . ', ' . ($employee?->first_name ?? ''),
+                'office' => $employee?->office?->name ?? 'N/A',
+                'travel_count' => (int) $item->travel_count,
+                'total_travel_amount' => (float) $item->total_travel_amount,
+            ];
+        });
 
         // Top 10 Employees with Most Overtime Claims (by amount)
         $mostOvertimeClaimsQuery = Claim::whereHas('claimType', function ($query) {
             $query->where('code', 'OVERTIME');
-        })->with(['employee.office']);
+        });
 
         if ($useFilters) {
             $mostOvertimeClaimsQuery->whereMonth('claim_date', $currentMonth)
                 ->whereYear('claim_date', $currentYear);
         }
 
-        $mostOvertimeClaims = $mostOvertimeClaimsQuery->selectRaw('employee_id, COUNT(*) as overtime_count, SUM(amount) as total_overtime_amount')
+        $mostOvertimeAggregates = $mostOvertimeClaimsQuery
+            ->selectRaw('employee_id, COUNT(*) as overtime_count, SUM(amount) as total_overtime_amount')
             ->groupBy('employee_id')
-            ->with(['employee.office'])
             ->orderByDesc('total_overtime_amount')
             ->limit(10)
+            ->get();
+
+        $mostOvertimeEmployeeIds = $mostOvertimeAggregates->pluck('employee_id')->all();
+        $mostOvertimeEmployees = Employee::with('office')
+            ->whereIn('id', $mostOvertimeEmployeeIds)
             ->get()
-            ->map(function ($item) {
-                return [
-                    'employee_id' => $item->employee_id,
-                    'employee_name' => $item->employee->last_name . ', ' . $item->employee->first_name,
-                    'office' => $item->employee->office?->name ?? 'N/A',
-                    'overtime_count' => (int) $item->overtime_count,
-                    'total_overtime_amount' => (float) $item->total_overtime_amount,
-                ];
-            });
+            ->keyBy('id');
+
+        $mostOvertimeClaims = $mostOvertimeAggregates->map(function ($item) use ($mostOvertimeEmployees) {
+            $employee = $mostOvertimeEmployees->get($item->employee_id);
+            return [
+                'employee_id' => $item->employee_id,
+                'employee_name' => ($employee?->last_name ?? '') . ', ' . ($employee?->first_name ?? ''),
+                'office' => $employee?->office?->name ?? 'N/A',
+                'overtime_count' => (int) $item->overtime_count,
+                'total_overtime_amount' => (float) $item->total_overtime_amount,
+            ];
+        });
 
         // Claims by Office - Travel and Meal claims
         $claimsByOfficeQuery = Claim::whereHas('claimType', function ($q) {

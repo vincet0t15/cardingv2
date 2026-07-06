@@ -53,15 +53,21 @@ class EmployeeController extends Controller
         $offices = Office::orderBy('name')->get();
         $employmentStatuses = EmploymentStatus::orderBy('name')->get();
 
+        // OPTIMIZED: 4 separate count queries reduced to 1 query with conditional aggregation
+        // Combines total, plantilla, cos/jo, and unique offices counts into a single query
+        $statsRow = Employee::query()
+            ->leftJoin('employment_statuses', 'employment_statuses.id', '=', 'employees.employment_status_id')
+            ->selectRaw('COUNT(*) as total_employees')
+            ->selectRaw('COUNT(DISTINCT employees.office_id) as unique_offices')
+            ->selectRaw('SUM(CASE WHEN employment_statuses.name IN (?, ?) THEN 1 ELSE 0 END) as plantilla_count', ['Plantilla', 'Co-Term'])
+            ->selectRaw('SUM(CASE WHEN employment_statuses.name IN (?, ?, ?) THEN 1 ELSE 0 END) as cosjo_count', ['COS', 'JO', 'COS/JO'])
+            ->first();
+
         $stats = [
-            'total_employees' => Employee::count(),
-            'plantilla_count' => Employee::whereHas('employmentStatus', function ($q) {
-                $q->whereIn('name', ['Plantilla', 'Co-Term']);
-            })->count(),
-            'cosjo_count' => Employee::whereHas('employmentStatus', function ($q) {
-                $q->whereIn('name', ['COS', 'JO', 'COS/JO']);
-            })->count(),
-            'unique_offices' => Employee::distinct()->count('office_id'),
+            'total_employees' => (int) ($statsRow->total_employees ?? 0),
+            'plantilla_count' => (int) ($statsRow->plantilla_count ?? 0),
+            'cosjo_count' => (int) ($statsRow->cosjo_count ?? 0),
+            'unique_offices' => (int) ($statsRow->unique_offices ?? 0),
         ];
 
         return Inertia::render('employees/Index', [
