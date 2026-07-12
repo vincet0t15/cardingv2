@@ -73,6 +73,8 @@ class SalaryRepository implements SalaryRepositoryInterface
         return $this->model->create($data);
     }
 
+
+
     public function update(int $id, array $data): Model
     {
         $salary = $this->model->findOrFail($id);
