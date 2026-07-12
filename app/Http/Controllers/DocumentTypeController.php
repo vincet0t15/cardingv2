@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\DocumentTypeRepositoryInterface;
 use App\Models\DocumentType;
 use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
@@ -11,20 +12,17 @@ use Inertia\Response;
 class DocumentTypeController extends Controller
 {
     use HandlesDeletionRequests;
+
+    public function __construct(
+        private readonly DocumentTypeRepositoryInterface $documentTypeRepo
+    ) {}
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', DocumentType::class);
         $search = $request->input('search');
 
-        $documentTypes = DocumentType::query()
-            ->when($search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%");
-            })
-            ->with('createdBy')
-            ->orderBy('name')
-            ->paginate(20)
-            ->withQueryString();
+        $documentTypes = $this->documentTypeRepo->getAllPaginated($search);
 
         return Inertia::render('document-types/index', [
             'documentTypes' => $documentTypes,
@@ -44,7 +42,7 @@ class DocumentTypeController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        DocumentType::create($validated);
+        $this->documentTypeRepo->create($validated);
 
         return redirect()->back()->with('success', 'Document type created successfully');
     }
@@ -59,7 +57,7 @@ class DocumentTypeController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        $documentType->update($validated);
+        $this->documentTypeRepo->update($documentType->id, $validated);
 
         return redirect()->back()->with('success', 'Document type updated successfully');
     }

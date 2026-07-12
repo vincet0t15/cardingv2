@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\SupplierRepositoryInterface;
 use App\Models\Supplier;
 use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
@@ -11,6 +12,11 @@ use Inertia\Response;
 class SupplierController extends Controller
 {
     use HandlesDeletionRequests;
+
+    public function __construct(
+        private readonly SupplierRepositoryInterface $supplierRepo
+    ) {}
+
     /**
      * Display a listing of suppliers.
      */
@@ -19,14 +25,7 @@ class SupplierController extends Controller
         $this->authorize('viewAny', Supplier::class);
         $search = $request->input('search');
 
-        $suppliers = Supplier::query()
-            ->when($search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            })
-            ->orderBy('name')
-            ->paginate(20)
-            ->withQueryString();
+        $suppliers = $this->supplierRepo->getAllPaginated($search);
 
         return Inertia::render('suppliers/index', [
             'suppliers' => $suppliers,
@@ -52,7 +51,7 @@ class SupplierController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        Supplier::create($validated);
+        $this->supplierRepo->create($validated);
 
         return redirect()->route('suppliers.index')->with('success', 'Supplier created successfully.');
     }
@@ -73,7 +72,7 @@ class SupplierController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        $supplier->update($validated);
+        $this->supplierRepo->update($supplier->id, $validated);
 
         return redirect()->route('suppliers.index')->with('success', 'Supplier updated successfully.');
     }

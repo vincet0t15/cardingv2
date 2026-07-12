@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\SourceOfFundCodeRepositoryInterface;
+use App\Contracts\Repositories\GeneralFundRepositoryInterface;
 use App\Models\GeneralFund;
 use App\Models\SourceOfFundCode;
 use App\Traits\HandlesDeletionRequests;
@@ -12,27 +14,19 @@ use Inertia\Response;
 class SourceOfFundCodeController extends Controller
 {
     use HandlesDeletionRequests;
+
+    public function __construct(
+        private readonly SourceOfFundCodeRepositoryInterface $sourceOfFundCodeRepo,
+        private readonly GeneralFundRepositoryInterface $generalFundRepo
+    ) {}
+
     public function index(Request $request)
     {
         $search = $request->input('search');
 
-        $sourceOfFundCodes = SourceOfFundCode::with(['parent', 'generalFund'])
-            ->when($search, function ($query, $search) {
-                $query->where('code', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-            })
-            ->orderByRaw('CASE WHEN is_category = 1 THEN 0 ELSE 1 END')
-            ->orderBy('code')
-            ->paginate(50)
-            ->withQueryString();
-
-        $categories = SourceOfFundCode::where('is_category', true)
-            ->orderBy('code')
-            ->get();
-
-        $generalFunds = GeneralFund::where('status', true)
-            ->orderBy('code')
-            ->get();
+        $sourceOfFundCodes = $this->sourceOfFundCodeRepo->getAllPaginated($search);
+        $categories = $this->sourceOfFundCodeRepo->getCategories();
+        $generalFunds = $this->generalFundRepo->getActive();
 
         return Inertia::render('SourceOfFundCode/index', [
             'sourceOfFundCodes' => $sourceOfFundCodes,
@@ -65,7 +59,7 @@ class SourceOfFundCodeController extends Controller
             $validated['general_fund_id'] = null;
         }
 
-        SourceOfFundCode::create($validated);
+        $this->sourceOfFundCodeRepo->create($validated);
 
         return redirect()->back()->with('success', 'Source of fund code created successfully.');
     }
@@ -91,18 +85,18 @@ class SourceOfFundCodeController extends Controller
             $validated['general_fund_id'] = null;
         }
 
-        $sourceOfFundCode->update($validated);
+        $this->sourceOfFundCodeRepo->update($sourceOfFundCode->id, $validated);
 
         return redirect()->back()->with('success', 'Source of fund code updated successfully.');
     }
 
     public function destroy(SourceOfFundCode $sourceOfFundCode)
     {
-        if ($sourceOfFundCode->salaries()->exists()) {
+        if ($this->sourceOfFundCodeRepo->hasSalaries($sourceOfFundCode->id)) {
             return redirect()->back()->with('error', 'Cannot delete source of fund code that has salary records.');
         }
 
-        if ($sourceOfFundCode->children()->exists()) {
+        if ($this->sourceOfFundCodeRepo->hasChildren($sourceOfFundCode->id)) {
             return redirect()->back()->with('error', 'Cannot delete source of fund code that has child codes. Delete child codes first.');
         }
 

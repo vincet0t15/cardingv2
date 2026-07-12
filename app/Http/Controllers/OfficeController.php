@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\OfficeRepositoryInterface;
+use App\Contracts\Repositories\DeleteRequestRepositoryInterface;
 use App\Models\DeleteRequest;
-use App\Models\Notification;
-use App\Models\Office;
 use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,24 +15,19 @@ class OfficeController extends Controller
 {
     use HandlesDeletionRequests;
 
+    public function __construct(
+        private readonly OfficeRepositoryInterface $officeRepo,
+        private readonly DeleteRequestRepositoryInterface $deleteRequestRepo
+    ) {}
+
     public function index(Request $request)
     {
-        $this->authorize('viewAny', Office::class);
+        $this->authorize('viewAny', \App\Models\Office::class);
         $search = $request->input('search');
 
-        // Get pending delete requests for current user
-        $pendingDeleteRequests = DeleteRequest::where('status', DeleteRequest::STATUS_PENDING)
-            ->where('requested_by', Auth::id())
-            ->get()
-            ->keyBy('requestable_id');
+        $pendingDeleteRequests = $this->deleteRequestRepo->getPendingForUser(Auth::id());
 
-        $offices = Office::query()
-            ->when($search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%");
-            })
-            ->paginate(50)
-            ->withQueryString()
+        $offices = $this->officeRepo->getAllPaginated($search)
             ->through(function ($office) use ($pendingDeleteRequests) {
                 $office->deleteRequest = $pendingDeleteRequests->get($office->id);
                 return $office;
@@ -48,18 +43,18 @@ class OfficeController extends Controller
 
     public function store(Request $request)
     {
-        $this->authorize('create', Office::class);
+        $this->authorize('create', \App\Models\Office::class);
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:offices,name',
             'code' => 'required|string|max:255|unique:offices,code',
         ]);
 
-        Office::create($validated);
+        $this->officeRepo->create($validated);
 
         return redirect()->back()->with('success', 'Office created successfully.');
     }
 
-    public function update(Request $request, Office $office)
+    public function update(Request $request, \App\Models\Office $office)
     {
         $this->authorize('update', $office);
         $validated = $request->validate([
@@ -67,16 +62,16 @@ class OfficeController extends Controller
             'code' => 'required|string|max:255|unique:offices,code,' . $office->id,
         ]);
 
-        $office->update($validated);
+        $this->officeRepo->update($office->id, $validated);
 
         return redirect()->back()->with('success', 'Office updated successfully.');
     }
 
     public function destroy(Request $request, $id)
     {
-        $office = Office::findOrFail($id);
+        $office = $this->officeRepo->findById($id);
 
-        if ($office->employees()->exists()) {
+        if ($this->officeRepo->hasEmployees($id)) {
             return redirect()->back()->with('error', 'Cannot delete office that has employees assigned.');
         }
 

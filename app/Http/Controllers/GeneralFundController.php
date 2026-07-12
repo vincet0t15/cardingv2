@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\GeneralFundRepositoryInterface;
 use App\Models\GeneralFund;
 use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
@@ -11,21 +12,15 @@ use Inertia\Response;
 class GeneralFundController extends Controller
 {
     use HandlesDeletionRequests;
+
+    public function __construct(
+        private readonly GeneralFundRepositoryInterface $generalFundRepo
+    ) {}
+
     public function index(Request $request)
     {
         $search = $request->input('search');
-
-        $generalFunds = GeneralFund::withCount('sourceOfFundCodes')
-            ->with(['sourceOfFundCodes' => function ($query) {
-                $query->orderBy('code');
-            }])
-            ->when($search, function ($query, $search) {
-                $query->where('code', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-            })
-            ->orderBy('code')
-            ->paginate(15)
-            ->withQueryString();
+        $generalFunds = $this->generalFundRepo->getAllPaginated($search);
 
         return Inertia::render('GeneralFund/index', [
             'generalFunds' => $generalFunds,
@@ -43,7 +38,7 @@ class GeneralFundController extends Controller
             'status' => 'boolean',
         ]);
 
-        GeneralFund::create($validated);
+        $this->generalFundRepo->create($validated);
 
         return redirect()->back()->with('success', 'General Fund created successfully.');
     }
@@ -56,14 +51,14 @@ class GeneralFundController extends Controller
             'status' => 'boolean',
         ]);
 
-        $generalFund->update($validated);
+        $this->generalFundRepo->update($generalFund->id, $validated);
 
         return redirect()->back()->with('success', 'General Fund updated successfully.');
     }
 
     public function destroy(GeneralFund $generalFund)
     {
-        if ($generalFund->sourceOfFundCodes()->exists()) {
+        if ($this->generalFundRepo->hasSourceOfFundCodes($generalFund->id)) {
             return redirect()->back()->with('error', 'Cannot delete General Fund that has source of fund codes assigned.');
         }
 

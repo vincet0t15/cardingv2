@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\EmploymentStatusRepositoryInterface;
 use App\Models\EmploymentStatus;
 use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
@@ -11,16 +12,16 @@ use Inertia\Response;
 class EmploymentStatusController extends Controller
 {
     use HandlesDeletionRequests;
+
+    public function __construct(
+        private readonly EmploymentStatusRepositoryInterface $employmentStatusRepo
+    ) {}
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', EmploymentStatus::class);
         $search = $request->input('search');
-        $employmentStatuses = EmploymentStatus::query()
-            ->when($search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%");
-            })
-            ->paginate(10)
-            ->withQueryString();
+        $employmentStatuses = $this->employmentStatusRepo->getAllPaginated($search);
 
         return Inertia::render('settings/EmploymentStatus/index', [
             'employmentStatuses' => $employmentStatuses,
@@ -37,7 +38,7 @@ class EmploymentStatusController extends Controller
             'name' => 'required|string|max:255|unique:employment_statuses,name',
         ]);
 
-        EmploymentStatus::create(['name' => $validated['name']]);
+        $this->employmentStatusRepo->create(['name' => $validated['name']]);
 
         return redirect()->back()->with('success', 'Employment Status created successfully.');
     }
@@ -49,14 +50,14 @@ class EmploymentStatusController extends Controller
             'name' => 'required|string|max:255|unique:employment_statuses,name,' . $employmentStatus->id,
         ]);
 
-        $employmentStatus->update(['name' => $validated['name']]);
+        $this->employmentStatusRepo->update($employmentStatus->id, ['name' => $validated['name']]);
 
         return redirect()->back()->with('success', 'Employment Status updated successfully.');
     }
 
     public function destroy(EmploymentStatus $employmentStatus)
     {
-        if ($employmentStatus->employees()->exists()) {
+        if ($this->employmentStatusRepo->hasEmployees($employmentStatus->id)) {
             return redirect()->back()->with('error', 'Cannot delete employment status that has employees assigned.');
         }
 

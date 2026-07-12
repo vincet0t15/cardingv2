@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\ReferenceTypeRepositoryInterface;
 use App\Models\ReferenceType;
 use App\Traits\HandlesDeletionRequests;
 use Illuminate\Http\Request;
@@ -12,19 +13,17 @@ use Inertia\Response;
 class ReferenceTypeController extends Controller
 {
     use HandlesDeletionRequests;
+
+    public function __construct(
+        private readonly ReferenceTypeRepositoryInterface $referenceTypeRepo
+    ) {}
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', ReferenceType::class);
 
         $search = $request->input('search');
-        $referenceTypes = ReferenceType::query()
-            ->when($search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-            })
-            ->orderBy('name')
-            ->paginate(10)
-            ->withQueryString();
+        $referenceTypes = $this->referenceTypeRepo->getAllPaginated($search);
 
         return Inertia::render('settings/ReferenceType/index', [
             'referenceTypes' => $referenceTypes,
@@ -43,7 +42,7 @@ class ReferenceTypeController extends Controller
             'description' => 'nullable|string|max:1000',
         ]);
 
-        ReferenceType::create([
+        $this->referenceTypeRepo->create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'created_by' => Auth::id(),
@@ -61,7 +60,7 @@ class ReferenceTypeController extends Controller
             'description' => 'nullable|string|max:1000',
         ]);
 
-        $referenceType->update([
+        $this->referenceTypeRepo->update($referenceType->id, [
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
         ]);
@@ -71,7 +70,7 @@ class ReferenceTypeController extends Controller
 
     public function destroy(ReferenceType $referenceType)
     {
-        if ($referenceType->adjustments()->exists()) {
+        if ($this->referenceTypeRepo->hasAdjustments($referenceType->id)) {
             return redirect()->back()->with('error', 'Cannot delete reference type that has adjustments assigned.');
         }
 

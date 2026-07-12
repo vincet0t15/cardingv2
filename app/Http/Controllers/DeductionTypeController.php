@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\DeductionTypeRepositoryInterface;
+use App\Contracts\Repositories\DeductionCategoryRepositoryInterface;
 use App\Models\DeductionType;
 use App\Models\DeductionCategory;
 use App\Traits\HandlesDeletionRequests;
@@ -12,25 +14,23 @@ use Inertia\Response;
 class DeductionTypeController extends Controller
 {
     use HandlesDeletionRequests;
+
+    public function __construct(
+        private readonly DeductionTypeRepositoryInterface $deductionTypeRepo,
+        private readonly DeductionCategoryRepositoryInterface $deductionCategoryRepo
+    ) {}
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', DeductionType::class);
         $search = $request->input('search');
 
-        $deductionTypes = DeductionType::query()
-            ->when($search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%");
-            })
-            ->orderBy('name')
-            ->paginate(50)
-            ->withQueryString();
+        $deductionTypes = $this->deductionTypeRepo->getAllPaginated($search);
+        $categories = $this->deductionCategoryRepo->getAll()->map(fn($c) => ['id' => $c->id, 'name' => $c->name])->toArray();
 
         return Inertia::render('deduction-types/index', [
             'deductionTypes' => $deductionTypes,
-            'categories' => DeductionCategory::orderBy('name')->get()->map(function ($c) {
-                return ['id' => $c->id, 'name' => $c->name];
-            })->toArray(),
+            'categories' => $categories,
             'filters' => [
                 'search' => $search,
             ],
@@ -48,7 +48,7 @@ class DeductionTypeController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        DeductionType::create($validated);
+        $this->deductionTypeRepo->create($validated);
 
         return redirect()->back()->with('success', 'Deduction type created successfully');
     }
@@ -64,14 +64,14 @@ class DeductionTypeController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        $deductionType->update($validated);
+        $this->deductionTypeRepo->update($deductionType->id, $validated);
 
         return redirect()->back()->with('success', 'Deduction type updated successfully');
     }
 
     public function destroy(DeductionType $deductionType)
     {
-        if ($deductionType->employeeDeductions()->exists()) {
+        if ($this->deductionTypeRepo->hasEmployeeDeductions($deductionType->id)) {
             return redirect()->back()->with('error', 'Cannot delete deduction type that has existing employee deductions.');
         }
 

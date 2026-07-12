@@ -2,24 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\ClaimTypeRepositoryInterface;
 use App\Models\ClaimType;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+
 class ClaimTypeController extends Controller
 {
+    public function __construct(
+        private readonly ClaimTypeRepositoryInterface $claimTypeRepo
+    ) {}
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', ClaimType::class);
         $search = $request->query('search');
-        $claimTypes = ClaimType::query()
-            ->when($search, function ($query) use ($search) {
-                $query->where('name', 'like', '%' . $search . '%')
-                    ->orWhere('code', 'like', '%' . $search . '%');
-            })
-            ->orderBy('name')
-            ->paginate(50)
-            ->withQueryString();
+        $claimTypes = $this->claimTypeRepo->getAllPaginated($search);
 
         return Inertia::render('claim-types/index', [
             'claimTypes' => $claimTypes,
@@ -39,7 +38,7 @@ class ClaimTypeController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        ClaimType::create($validated);
+        $this->claimTypeRepo->create($validated);
 
         return redirect()->back()->with('success', 'Claim type created successfully');
     }
@@ -54,7 +53,7 @@ class ClaimTypeController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        $claimType->update($validated);
+        $this->claimTypeRepo->update($claimType->id, $validated);
 
         return redirect()->back()->with('success', 'Claim type updated successfully');
     }
@@ -63,11 +62,11 @@ class ClaimTypeController extends Controller
     {
         $this->authorize('delete', $claimType);
 
-        if ($claimType->claims()->exists()) {
+        if ($this->claimTypeRepo->hasClaims($claimType->id)) {
             return redirect()->back()->with('error', 'Cannot delete claim type with existing claims');
         }
 
-        $claimType->delete();
+        $this->claimTypeRepo->delete($claimType->id);
 
         return redirect()->back()->with('success', 'Claim type deleted successfully');
     }

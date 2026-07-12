@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\SupplierTransactionRepositoryInterface;
 use App\Models\Supplier;
 use App\Models\SupplierTransaction;
 use App\Traits\HandlesDeletionRequests;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -14,46 +14,22 @@ use Inertia\Response;
 class SupplierTransactionController extends Controller
 {
     use HandlesDeletionRequests;
+
+    public function __construct(
+        private readonly SupplierTransactionRepositoryInterface $supplierTransactionRepo
+    ) {}
+
     /**
      * Display the supplier's transactions.
      */
     public function show(Request $request, Supplier $supplier): Response
     {
-        $query = SupplierTransaction::where('supplier_id', $supplier->id);
         $search = $request->input('search');
         $year = $request->input('year');
         $month = $request->input('month');
 
-        if ($search) {
-            $query->where(function ($query) use ($search) {
-                $query->where('pr_no', 'like', "%{$search}%")
-                    ->orWhere('po_no', 'like', "%{$search}%")
-                    ->orWhere('sale_invoice_no', 'like', "%{$search}%")
-                    ->orWhere('or_no', 'like', "%{$search}%")
-                    ->orWhere('dr_no', 'like', "%{$search}%")
-                    ->orWhere('particulars', 'like', "%{$search}%")
-                    ->orWhere('earmark', 'like', "%{$search}%");
-            });
-        }
-
-        if ($year) {
-            $query->whereYear('pr_date', $year);
-        }
-
-        if ($month) {
-            $query->whereMonth('pr_date', $month);
-        }
-
-        $transactions = $query->orderBy('id', 'desc')->paginate(15);
-
-        // OPTIMIZED: Use SQL YEAR() instead of loading all dates into PHP memory
-        $yearOptions = SupplierTransaction::where('supplier_id', $supplier->id)
-            ->whereNotNull('pr_date')
-            ->selectRaw('DISTINCT YEAR(pr_date) as year')
-            ->orderBy('year', 'desc')
-            ->pluck('year')
-            ->values()
-            ->all();
+        $transactions = $this->supplierTransactionRepo->getSupplierTransactions($supplier->id, $search, $year, $month);
+        $yearOptions = $this->supplierTransactionRepo->getYearOptions($supplier->id);
 
         return Inertia::render('suppliers/show', [
             'supplier' => $supplier,
@@ -70,32 +46,11 @@ class SupplierTransactionController extends Controller
      */
     public function report(Request $request, Supplier $supplier): Response
     {
-        $query = SupplierTransaction::where('supplier_id', $supplier->id);
         $search = $request->input('search');
         $year = $request->input('year');
         $month = $request->input('month');
 
-        if ($search) {
-            $query->where(function ($query) use ($search) {
-                $query->where('pr_no', 'like', "%{$search}%")
-                    ->orWhere('po_no', 'like', "%{$search}%")
-                    ->orWhere('sale_invoice_no', 'like', "%{$search}%")
-                    ->orWhere('or_no', 'like', "%{$search}%")
-                    ->orWhere('dr_no', 'like', "%{$search}%")
-                    ->orWhere('particulars', 'like', "%{$search}%")
-                    ->orWhere('earmark', 'like', "%{$search}%");
-            });
-        }
-
-        if ($year) {
-            $query->whereYear('pr_date', $year);
-        }
-
-        if ($month) {
-            $query->whereMonth('pr_date', $month);
-        }
-
-        $transactions = $query->orderBy('pr_date', 'desc')->get();
+        $transactions = $this->supplierTransactionRepo->getSupplierTransactionsReport($supplier->id, $search, $year, $month);
 
         return Inertia::render('suppliers/transaction-report', [
             'supplier' => $supplier,
@@ -140,7 +95,7 @@ class SupplierTransactionController extends Controller
             'earmark' => 'nullable|string|max:255',
         ]);
 
-        $supplier->transactions()->create($validated);
+        $this->supplierTransactionRepo->create($supplier->id, $validated);
 
         if ($request->wantsJson()) {
             return response()->json(['message' => 'Transaction added successfully.'], 201);
@@ -185,7 +140,7 @@ class SupplierTransactionController extends Controller
             'earmark' => 'nullable|string|max:255',
         ]);
 
-        $transaction->update($validated);
+        $this->supplierTransactionRepo->update($transaction->id, $validated);
 
         if ($request->wantsJson()) {
             return response()->json(['message' => 'Transaction updated successfully.']);

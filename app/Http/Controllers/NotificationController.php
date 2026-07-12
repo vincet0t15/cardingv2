@@ -2,24 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\NotificationRepositoryInterface;
 use App\Models\Notification;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class NotificationController extends Controller
 {
+    public function __construct(
+        private readonly NotificationRepositoryInterface $notificationRepo
+    ) {}
+
     public function index(Request $request)
     {
-        $notifications = $request->user()
-            ->notifications()
-            ->with('notifiable')
-            ->orderBy('created_at', 'desc')
-            ->paginate(20)
-            ->through(function ($notification) {
-                return array_merge($notification->toArray(), [
-                    'actionable' => $notification->actionable,
-                ]);
-            });
+        $notifications = $this->notificationRepo->getUserNotifications($request->user()->id);
 
         return Inertia::render('notifications/index', [
             'notifications' => $notifications,
@@ -28,17 +24,7 @@ class NotificationController extends Controller
 
     public function recent(Request $request)
     {
-        $notifications = $request->user()
-            ->notifications()
-            ->with('notifiable')
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get()
-            ->map(function ($notification) {
-                return array_merge($notification->toArray(), [
-                    'actionable' => $notification->actionable,
-                ]);
-            });
+        $notifications = $this->notificationRepo->getRecentNotifications($request->user()->id);
 
         return response()->json([
             'notifications' => $notifications,
@@ -48,31 +34,24 @@ class NotificationController extends Controller
     public function unreadCount(Request $request)
     {
         return response()->json([
-            'count' => $request->user()
-                ->notifications()
-                ->where('is_read', false)
-                ->count(),
+            'count' => $this->notificationRepo->getUnreadCount($request->user()->id),
         ]);
     }
 
     public function markAsRead(Notification $notification, Request $request)
     {
-        // Check if the notification belongs to the current user
         if ($notification->user_id !== $request->user()->id) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $notification->markAsRead();
+        $this->notificationRepo->markAsRead($notification->id, $request->user()->id);
 
         return response()->json(['success' => true]);
     }
 
     public function markAllAsRead(Request $request)
     {
-        $request->user()
-            ->notifications()
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
+        $this->notificationRepo->markAllAsRead($request->user()->id);
 
         return response()->json(['success' => true]);
     }

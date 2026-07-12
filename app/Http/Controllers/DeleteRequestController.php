@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\DeleteRequestRepositoryInterface;
 use App\Models\DeleteRequest;
 use App\Models\Notification;
 use Illuminate\Http\Request;
@@ -10,20 +11,16 @@ use Inertia\Inertia;
 
 class DeleteRequestController extends Controller
 {
+    public function __construct(
+        private readonly DeleteRequestRepositoryInterface $deleteRequestRepo
+    ) {}
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', DeleteRequest::class);
 
-        $query = DeleteRequest::with(['requestedBy', 'approvedBy'])
-            ->orderBy('created_at', 'desc');
+        $deleteRequests = $this->deleteRequestRepo->getAllPaginated($request->status);
 
-        if ($request->status) {
-            $query->where('status', $request->status);
-        }
-
-        $deleteRequests = $query->paginate(15);
-
-        // Ensure relationships are included in the response
         $deleteRequests = $deleteRequests->through(fn($request) => [
             ...$request->toArray(),
             'requestedBy' => $request->requestedBy?->only(['id', 'name', 'username']),
@@ -42,7 +39,7 @@ class DeleteRequestController extends Controller
     {
         $this->authorize('view', $deleteRequest);
 
-        $deleteRequest->load(['requestedBy', 'approvedBy', 'requestable']);
+        $deleteRequest = $this->deleteRequestRepo->findById($deleteRequest->id, ['requestedBy', 'approvedBy', 'requestable']);
 
         return Inertia::render('delete-requests/show', [
             'deleteRequest' => $deleteRequest,
@@ -57,21 +54,11 @@ class DeleteRequestController extends Controller
             return redirect()->back()->with('error', 'This request has already been processed.');
         }
 
-        $model = $deleteRequest->requestable;
+        $result = $this->deleteRequestRepo->approve($deleteRequest->id, Auth::id());
 
-        if (!$model) {
-            $deleteRequest->update(['status' => DeleteRequest::STATUS_REJECTED]);
-            $this->markRequestNotificationAsRead($deleteRequest);
+        if (!$result) {
             return redirect()->back()->with('error', 'The requested item no longer exists.');
         }
-
-        $model->delete();
-
-        $deleteRequest->update([
-            'status' => DeleteRequest::STATUS_APPROVED,
-            'approved_by' => Auth::id(),
-            'approved_at' => now(),
-        ]);
 
         $this->markRequestNotificationAsRead($deleteRequest);
 
@@ -86,12 +73,7 @@ class DeleteRequestController extends Controller
             return redirect()->back()->with('error', 'This request has already been processed.');
         }
 
-        $deleteRequest->update([
-            'status' => DeleteRequest::STATUS_REJECTED,
-            'approved_by' => Auth::id(),
-            'approved_at' => now(),
-            'reason' => $request->input('reason'),
-        ]);
+        $this->deleteRequestRepo->reject($deleteRequest->id, Auth::id(), $request->input('reason'));
 
         $this->markRequestNotificationAsRead($deleteRequest);
 
@@ -114,14 +96,7 @@ class DeleteRequestController extends Controller
 
     public function myRequests(Request $request)
     {
-        $query = DeleteRequest::where('requested_by', Auth::id())
-            ->orderBy('created_at', 'desc');
-
-        if ($request->status) {
-            $query->where('status', $request->status);
-        }
-
-        $deleteRequests = $query->paginate(15);
+        $deleteRequests = $this->deleteRequestRepo->getMyRequests(Auth::id(), $request->status);
 
         return Inertia::render('delete-requests/my-requests', [
             'deleteRequests' => $deleteRequests,

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\AdjustmentTypeRepositoryInterface;
 use App\Models\AdjustmentType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,19 +13,17 @@ use App\Traits\HandlesDeletionRequests;
 class AdjustmentTypeController extends Controller
 {
     use HandlesDeletionRequests;
+
+    public function __construct(
+        private readonly AdjustmentTypeRepositoryInterface $adjustmentTypeRepo
+    ) {}
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', AdjustmentType::class);
 
         $search = $request->input('search');
-        $adjustmentTypes = AdjustmentType::query()
-            ->when($search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-            })
-            ->orderBy('name')
-            ->paginate(10)
-            ->withQueryString();
+        $adjustmentTypes = $this->adjustmentTypeRepo->getAllPaginated($search);
 
         return Inertia::render('settings/AdjustmentType/index', [
             'adjustmentTypes' => $adjustmentTypes,
@@ -44,7 +43,7 @@ class AdjustmentTypeController extends Controller
             'effect' => 'required|in:positive,negative',
         ]);
 
-        AdjustmentType::create([
+        $this->adjustmentTypeRepo->create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'effect' => $validated['effect'],
@@ -64,7 +63,7 @@ class AdjustmentTypeController extends Controller
             'effect' => 'required|in:positive,negative',
         ]);
 
-        $adjustmentType->update([
+        $this->adjustmentTypeRepo->update($adjustmentType->id, [
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'effect' => $validated['effect'],
@@ -75,7 +74,7 @@ class AdjustmentTypeController extends Controller
 
     public function destroy(AdjustmentType $adjustmentType)
     {
-        if ($adjustmentType->adjustments()->exists()) {
+        if ($this->adjustmentTypeRepo->hasAdjustments($adjustmentType->id)) {
             return redirect()->back()->with('error', 'Cannot delete adjustment type that has adjustments assigned.');
         }
 

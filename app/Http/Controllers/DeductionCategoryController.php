@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\DeductionCategoryRepositoryInterface;
 use App\Models\DeductionCategory;
 use App\Models\DeductionType;
 use App\Traits\HandlesDeletionRequests;
@@ -12,37 +13,19 @@ use Inertia\Response;
 class DeductionCategoryController extends Controller
 {
     use HandlesDeletionRequests;
+
+    public function __construct(
+        private readonly DeductionCategoryRepositoryInterface $deductionCategoryRepo
+    ) {}
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', DeductionCategory::class);
         $search = $request->input('search');
 
-        $categories = DeductionCategory::query()
-            ->with('deductionTypes')
-            ->when($search, function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%");
-            })
-            ->orderBy('name')
-            ->paginate(50)
-            ->withQueryString();
-
-        $uncategorized = DeductionType::query()
-            ->whereNull('category_id')
-            ->orderBy('name')
-            ->get()
-            ->map(function ($t) {
-                return [
-                    'id' => $t->id,
-                    'name' => $t->name,
-                    'code' => $t->code,
-                    'is_active' => (bool) $t->is_active,
-                    'category_id' => $t->category_id,
-                ];
-            })->toArray();
-
-        $allCategories = DeductionCategory::orderBy('name')->get()->map(function ($c) {
-            return ['id' => $c->id, 'name' => $c->name];
-        })->toArray();
+        $categories = $this->deductionCategoryRepo->getAllPaginated($search);
+        $uncategorized = $this->deductionCategoryRepo->getUncategorizedTypes();
+        $allCategories = $this->deductionCategoryRepo->getAll()->map(fn($c) => ['id' => $c->id, 'name' => $c->name])->toArray();
 
         return Inertia::render('deduction-categories/index', [
             'categories' => $categories,
@@ -60,7 +43,7 @@ class DeductionCategoryController extends Controller
             'name' => 'required|string|max:255|unique:deduction_categories,name',
         ]);
 
-        DeductionCategory::create($validated);
+        $this->deductionCategoryRepo->create($validated);
 
         return redirect()->back()->with('success', 'Category created successfully');
     }
@@ -73,14 +56,14 @@ class DeductionCategoryController extends Controller
             'name' => 'required|string|max:255|unique:deduction_categories,name,' . $deductionCategory->id,
         ]);
 
-        $deductionCategory->update($validated);
+        $this->deductionCategoryRepo->update($deductionCategory->id, $validated);
 
         return redirect()->back()->with('success', 'Category updated successfully');
     }
 
     public function destroy(DeductionCategory $deductionCategory)
     {
-        if ($deductionCategory->deductionTypes()->exists()) {
+        if ($this->deductionCategoryRepo->hasDeductionTypes($deductionCategory->id)) {
             return redirect()->back()->with('error', 'Cannot delete category that has associated deduction types.');
         }
 

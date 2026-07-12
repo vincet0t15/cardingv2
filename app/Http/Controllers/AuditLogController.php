@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\Repositories\AuditLogRepositoryInterface;
 use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -9,39 +10,38 @@ use Inertia\Inertia;
 
 class AuditLogController extends Controller
 {
+    public function __construct(
+        private readonly AuditLogRepositoryInterface $auditLogRepo
+    ) {}
+
     /**
      * Display audit logs
      */
     public function index(Request $request)
     {
-        // Permission is checked via route middleware
-        $query = $this->buildAuditLogQuery($request)->with('user')->orderBy('created_at', 'desc');
+        $auditLogs = $this->auditLogRepo->getAllPaginated(
+            $request->search,
+            $request->action,
+            $request->model_type,
+            $request->user_id,
+            $request->date_from,
+            $request->date_to,
+            $request->exclude_settings,
+            $request->per_page ?? 20
+        );
 
-        $perPage = $request->per_page ?? 20;
-        $auditLogs = $query->paginate($perPage)->appends($request->except('page'));
-
-        // Get unique model types for filter
-        $modelTypes = AuditLog::distinct()->pluck('model_type')
-            ->map(function ($modelType) {
-                return [
-                    'value' => $modelType,
-                    'label' => class_basename($modelType),
-                ];
-            })
-            ->values();
-
-        // Get all users for filter
+        $modelTypes = $this->auditLogRepo->getModelTypes();
         $users = User::orderBy('name')->get(['id', 'name']);
 
-        // Get statistics for the current filtered query
-        $statsQuery = clone $query;
-        $stats = [
-            'total_logs' => $statsQuery->count(),
-            'today_logs' => (clone $query)->whereDate('created_at', today())->count(),
-            'created_count' => (clone $query)->where('action', 'created')->count(),
-            'updated_count' => (clone $query)->where('action', 'updated')->count(),
-            'deleted_count' => (clone $query)->where('action', 'deleted')->count(),
-        ];
+        $stats = $this->auditLogRepo->getStatistics(
+            $request->search,
+            $request->action,
+            $request->model_type,
+            $request->user_id,
+            $request->date_from,
+            $request->date_to,
+            $request->exclude_settings
+        );
 
         return Inertia::render('AuditLogs/Index', [
             'auditLogs' => $auditLogs,
@@ -54,29 +54,15 @@ class AuditLogController extends Controller
 
     public function performance(Request $request)
     {
-        $query = $this->buildAuditLogQuery($request);
-
-        $performanceMetrics = (clone $query)
-            ->whereNotNull('user_id')
-            ->selectRaw('user_id, count(*) as total_actions')
-            ->selectRaw('sum(case when action = "created" then 1 else 0 end) as created_count')
-            ->selectRaw('sum(case when action = "updated" then 1 else 0 end) as updated_count')
-            ->selectRaw('sum(case when action = "deleted" then 1 else 0 end) as deleted_count')
-            ->groupBy('user_id')
-            ->reorder()
-            ->orderByDesc('total_actions')
-            ->with('user')
-            ->get()
-            ->map(function ($row) {
-                return [
-                    'user_id' => $row->user_id,
-                    'user_name' => $row->user?->name ?? 'Unknown',
-                    'created_count' => (int) $row->created_count,
-                    'updated_count' => (int) $row->updated_count,
-                    'deleted_count' => (int) $row->deleted_count,
-                    'total_actions' => (int) $row->total_actions,
-                ];
-            });
+        $performanceMetrics = $this->auditLogRepo->getPerformanceMetrics(
+            $request->search,
+            $request->action,
+            $request->model_type,
+            $request->user_id,
+            $request->date_from,
+            $request->date_to,
+            $request->exclude_settings
+        );
 
         return Inertia::render('AuditLogs/Performance', [
             'performanceMetrics' => $performanceMetrics,
@@ -87,13 +73,16 @@ class AuditLogController extends Controller
     {
         $user = User::findOrFail($userId);
 
-        $perPage = $request->per_page ?? 20;
-        $auditLogs = $this->buildAuditLogQuery($request)
-            ->where('user_id', $userId)
-            ->with('user')
-            ->orderBy('created_at', 'desc')
-            ->paginate($perPage)
-            ->appends($request->except('page'));
+        $auditLogs = $this->auditLogRepo->getUserPerformance(
+            $userId,
+            $request->search,
+            $request->action,
+            $request->model_type,
+            $request->date_from,
+            $request->date_to,
+            $request->exclude_settings,
+            $request->per_page ?? 20
+        );
 
         return Inertia::render('AuditLogs/PerformanceUser', [
             'user' => [
@@ -104,46 +93,12 @@ class AuditLogController extends Controller
         ]);
     }
 
-    private function buildAuditLogQuery(Request $request)
-    {
-        return AuditLog::query()
-            ->when($request->search, function ($q, $search) {
-                $q->where(function ($query) use ($search) {
-                    $query->where('action', 'like', "%{$search}%")
-                        ->orWhere('model_type', 'like', "%{$search}%")
-                        ->orWhere('description', 'like', "%{$search}%")
-                        ->orWhereHas('user', function ($q) use ($search) {
-                            $q->where('name', 'like', "%{$search}%");
-                        });
-                });
-            })
-            ->when($request->exclude_settings, function ($q) {
-                $q->whereNotIn('model_type', $this->getSettingsModelTypes());
-            })
-            ->when($request->action, function ($q, $action) {
-                $q->where('action', $action);
-            })
-            ->when($request->model_type, function ($q, $modelType) {
-                $q->where('model_type', $modelType);
-            })
-            ->when($request->user_id, function ($q, $userId) {
-                $q->where('user_id', $userId);
-            })
-            ->when($request->date_from, function ($q, $dateFrom) {
-                $q->whereDate('created_at', '>=', $dateFrom);
-            })
-            ->when($request->date_to, function ($q, $dateTo) {
-                $q->whereDate('created_at', '<=', $dateTo);
-            });
-    }
-
     /**
      * Display specific audit log details
      */
     public function show(AuditLog $auditLog)
     {
-        // Permission is checked via route middleware
-        $auditLog->load('user');
+        $auditLog = $this->auditLogRepo->findById($auditLog->id);
 
         return Inertia::render('AuditLogs/Show', [
             'auditLog' => $auditLog,
@@ -155,29 +110,14 @@ class AuditLogController extends Controller
      */
     public function export(Request $request)
     {
-        // Permission is checked via route middleware
-        $query = AuditLog::with('user')
-            ->when($request->action, function ($q, $action) {
-                $q->where('action', $action);
-            })
-            ->when($request->exclude_settings, function ($q) {
-                $q->whereNotIn('model_type', $this->getSettingsModelTypes());
-            })
-            ->when($request->model_type, function ($q, $modelType) {
-                $q->where('model_type', $modelType);
-            })
-            ->when($request->user_id, function ($q, $userId) {
-                $q->where('user_id', $userId);
-            })
-            ->when($request->date_from, function ($q, $dateFrom) {
-                $q->whereDate('created_at', '>=', $dateFrom);
-            })
-            ->when($request->date_to, function ($q, $dateTo) {
-                $q->whereDate('created_at', '<=', $dateTo);
-            })
-            ->orderBy('created_at', 'desc');
-
-        $auditLogs = $query->get();
+        $auditLogs = $this->auditLogRepo->export(
+            $request->action,
+            $request->model_type,
+            $request->user_id,
+            $request->date_from,
+            $request->date_to,
+            $request->exclude_settings
+        );
 
         $csvData = "Date,Time,User,Action,Model,Description,IP Address\n";
 
@@ -197,19 +137,5 @@ class AuditLogController extends Controller
         return response($csvData)
             ->header('Content-Type', 'text/csv')
             ->header('Content-Disposition', 'attachment; filename="audit_logs_' . now()->format('Y-m-d') . '.csv"');
-    }
-
-    protected function getSettingsModelTypes(): array
-    {
-        return [
-            \App\Models\Office::class,
-            \App\Models\EmploymentStatus::class,
-            \App\Models\ReferenceType::class,
-            \App\Models\DocumentType::class,
-            \App\Models\DeductionType::class,
-            \App\Models\AdjustmentType::class,
-            \App\Models\SourceOfFundCode::class,
-            \App\Models\GeneralFund::class,
-        ];
     }
 }
