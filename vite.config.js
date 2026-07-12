@@ -16,6 +16,19 @@ export default defineConfig({
     esbuild: {
         jsx: 'automatic',
     },
+    build: {
+        chunkSizeWarningLimit: 1000,
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'vendor-react': ['react', 'react-dom'],
+                    'vendor-inertia': ['@inertiajs/react'],
+                    'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select', '@radix-ui/react-tabs', '@radix-ui/react-tooltip'],
+                    'vendor-utils': ['axios', 'clsx', 'tailwind-merge', 'class-variance-authority'],
+                },
+            },
+        },
+    },
     server: {
         host: '127.0.0.1',
         port: 5173,
