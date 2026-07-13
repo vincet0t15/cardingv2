@@ -72,7 +72,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(EmployeeDeduction::class, EmployeeDeductionPolicy::class);
         Gate::policy(\App\Models\DeleteRequest::class, DeleteRequestPolicy::class);
 
-        // Commented out - no SSL certificate configured
+                // Commented out - no SSL certificate configured
         // if (config('app.env') !== 'local') {
         //     URL::forceScheme('https');
         // }

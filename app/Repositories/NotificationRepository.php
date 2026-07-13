@@ -5,7 +5,7 @@ namespace App\Repositories;
 use App\Contracts\Repositories\NotificationRepositoryInterface;
 use App\Models\Notification;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection;
 
 class NotificationRepository implements NotificationRepositoryInterface
 {

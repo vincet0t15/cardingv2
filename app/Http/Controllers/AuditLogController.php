@@ -26,7 +26,7 @@ class AuditLogController extends Controller
             $request->user_id,
             $request->date_from,
             $request->date_to,
-            $request->exclude_settings,
+            $request->exclude_settings ?? false,
             $request->per_page ?? 20
         );
 
@@ -40,7 +40,7 @@ class AuditLogController extends Controller
             $request->user_id,
             $request->date_from,
             $request->date_to,
-            $request->exclude_settings
+            $request->exclude_settings ?? false
         );
 
         return Inertia::render('AuditLogs/Index', [
@@ -61,7 +61,7 @@ class AuditLogController extends Controller
             $request->user_id,
             $request->date_from,
             $request->date_to,
-            $request->exclude_settings
+            $request->exclude_settings ?? false
         );
 
         return Inertia::render('AuditLogs/Performance', [
@@ -80,7 +80,7 @@ class AuditLogController extends Controller
             $request->model_type,
             $request->date_from,
             $request->date_to,
-            $request->exclude_settings,
+            $request->exclude_settings ?? false,
             $request->per_page ?? 20
         );
 
@@ -116,7 +116,7 @@ class AuditLogController extends Controller
             $request->user_id,
             $request->date_from,
             $request->date_to,
-            $request->exclude_settings
+            $request->exclude_settings ?? false
         );
 
         $csvData = "Date,Time,User,Action,Model,Description,IP Address\n";
