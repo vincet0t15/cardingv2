@@ -72,9 +72,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(EmployeeDeduction::class, EmployeeDeductionPolicy::class);
         Gate::policy(\App\Models\DeleteRequest::class, DeleteRequestPolicy::class);
 
-        if (config('app.env') !== 'local') {
-            URL::forceScheme('https');
-        }
+        // Commented out - no SSL certificate configured
+        // if (config('app.env') !== 'local') {
+        //     URL::forceScheme('https');
+        // }
 
         // Dashboard cache invalidation — clear cached cumulative data when related models change
         \Illuminate\Database\Eloquent\Model::saved(function ($model) {
