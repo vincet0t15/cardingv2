@@ -39,7 +39,7 @@ class AuditLogRepository implements AuditLogRepositoryInterface
         ];
     }
 
-    public function getPerformanceMetrics(?string $search = null, ?string $action = null, ?string $modelType = null, ?int $userId = null, ?string $dateFrom = null, ?string $dateTo = null, bool $excludeSettings = false): Collection
+    public function getPerformanceMetrics(?string $search = null, ?string $action = null, ?string $modelType = null, ?int $userId = null, ?string $dateFrom = null, ?string $dateTo = null, bool $excludeSettings = false): \Illuminate\Support\Collection
     {
         return $this->buildQuery($search, $action, $modelType, $userId, $dateFrom, $dateTo, $excludeSettings)
             ->whereNotNull('user_id')
