@@ -455,7 +455,8 @@ class DashboardController extends Controller
                 return $claim->employee->office?->id ?? 0;
             })
             ->map(function ($claims, $officeId) {
-                $office = $claims->first()->employee->office;
+                $firstClaim = $claims->first();
+                $office = $firstClaim?->employee?->office;
 
                 return [
                     'office_name' => $office?->name ?? 'Unknown',
@@ -484,7 +485,8 @@ class DashboardController extends Controller
                 return $claim->employee->office?->id ?? 0;
             })
             ->map(function ($claims, $officeId) {
-                $office = $claims->first()->employee->office;
+                $firstClaim = $claims->first();
+                $office = $firstClaim?->employee?->office;
 
                 return [
                     'office_name' => $office?->name ?? 'Unknown',
