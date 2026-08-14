@@ -573,7 +573,10 @@ class EmployeeSourceOfFundController extends Controller
             })
             ->orderBy('last_name', 'asc');
 
-        $employees = $employeesQuery->paginate(50)->withQueryString();
+        // Load all employees (not paginated) so the in-memory fund filter below
+        // evaluates every employee. Paginating first would only scan the first
+        // page of employees and undercount the fund's employee list.
+        $employees = $employeesQuery->get();
 
         $periodEnd = $month ? now()->setDate($year, (int) $month, 1)->endOfMonth() : now()->setDate($year, 12, 31);
 
@@ -707,7 +710,7 @@ class EmployeeSourceOfFundController extends Controller
 
         $employeesCollection = collect($fundEmployees);
         $perPage = 50;
-        $currentPage = $employees->currentPage();
+        $currentPage = (int) $request->input('page', 1);
         $total = count($fundEmployees);
         $items = $employeesCollection
             ->slice(($currentPage - 1) * $perPage, $perPage)

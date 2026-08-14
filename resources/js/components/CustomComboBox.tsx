@@ -23,6 +23,7 @@ interface CustomComboBoxProps {
 
 export function CustomComboBox({ items, placeholder, value, defaultValue, onSelect, showClear = false }: CustomComboBoxProps) {
     const comboboxRef = useRef<HTMLDivElement | null>(null);
+    const containerRef = useRef<HTMLDivElement | null>(null);
 
     const selectedItem = useMemo(() => {
         if (value == null) return null;
@@ -50,7 +51,7 @@ export function CustomComboBox({ items, placeholder, value, defaultValue, onSele
     }, [selectedItem?.value]);
 
     return (
-        <div ref={comboboxRef}>
+        <div ref={containerRef}>
             <ComboboxRoot
                 items={items}
                 itemToStringValue={(item: CustomComboBoxItem) => item.label}
@@ -68,7 +69,7 @@ export function CustomComboBox({ items, placeholder, value, defaultValue, onSele
                 }}
             >
                 <ComboboxInputComponent placeholder={placeholder} showClear={showClear} />
-                <ComboboxContent>
+                <ComboboxContent container={containerRef}>
                     <ComboboxEmpty>No items found.</ComboboxEmpty>
                     <ComboboxList>
                         {(item) => (
