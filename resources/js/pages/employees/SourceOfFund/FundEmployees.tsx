@@ -147,7 +147,7 @@ export default function FundSourceEmployees() {
                             if (filters.month) params.append('month', filters.month.toString());
                             if (filters.office_id) params.append('office_id', filters.office_id.toString());
                             if (filters.search) params.append('search', filters.search);
-                            window.open(route('employees.source-of-fund.print', { fundCode: fundCode }) + '?' + params.toString(), '_blank');
+                            window.open(route('employees.source-of-fund.fund-print', { fundCode: fundCode }) + '?' + params.toString(), '_blank');
                         }}
                     >
                         <Printer className="mr-1 h-4 w-4" />

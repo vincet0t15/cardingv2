@@ -147,14 +147,15 @@ Route::middleware(['auth', 'active', 'linked'])->group(function () {
         Route::get('/sample', [EmployeeImportController::class, 'downloadSample'])->name('employees.import.sample');
     });
 
-    // EMPLOYEE PRINT REPORT
-    Route::get('employees/{employee}/print', [ManageEmployeeController::class, 'print'])->name('employees.print');
-
     // EMPLOYEES BY SOURCE OF FUND (View report - requires employees.source_of_fund.view permission)
     Route::middleware(['permission:employees.source_of_fund.view'])->get('employees/source-of-fund', [EmployeeSourceOfFundController::class, 'index'])->name('employees.source-of-fund.index');
     Route::middleware(['permission:employees.source_of_fund.view'])->get('employees/source-of-fund/print', [EmployeeSourceOfFundController::class, 'print'])->name('employees.source-of-fund.print');
     Route::middleware(['permission:employees.source_of_fund.view'])->get('employees/source-of-fund/{fundCode}/employees', [EmployeeSourceOfFundController::class, 'fundEmployees'])->name('employees.source-of-fund.employees');
     Route::middleware(['permission:employees.source_of_fund.view'])->get('employees/source-of-fund/{fundCode}/print', [EmployeeSourceOfFundController::class, 'fundEmployeesPrint'])->name('employees.source-of-fund.fund-print');
+
+    // EMPLOYEE PRINT REPORT (placed after the source-of-fund routes so the {employee}
+    // wildcard does not capture 'source-of-fund')
+    Route::get('employees/{employee}/print', [ManageEmployeeController::class, 'print'])->name('employees.print');
 
     // EMPLOYEES - View/Edit/Delete (parameterized routes must be last)
     Route::get('employees/{employee}', [EmployeeController::class, 'show'])->name('employees.show');
