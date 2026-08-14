@@ -8,7 +8,7 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { type LinkProps } from '@/types/pagination';
 import { Head, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, FileText, Filter, Printer, Search, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, FileText, Filter, Printer, Search, X } from 'lucide-react';
 import { useState } from 'react';
 
 interface EmployeeRow {
@@ -154,6 +154,46 @@ export default function FundSourceEmployees() {
                         Print
                     </Button>
                 </div>
+
+                {fundCode === 'Unfunded' && (
+                    <Card className="border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20">
+                        <CardContent className="pt-5">
+                            <div className="flex items-start gap-3">
+                                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+                                <div className="space-y-3 text-sm text-amber-900 dark:text-amber-100">
+                                    <div>
+                                        <p className="font-semibold">Why are these employees &quot;Unfunded&quot;?</p>
+                                        <p className="mt-1 text-amber-800 dark:text-amber-200">
+                                            The employees in this list have a Salary, Hazard Pay, or Clothing Allowance record that is{' '}
+                                            <span className="font-semibold">missing a Source of Fund</span>. When their compensation record was
+                                            encoded, the <span className="font-mono">Source of Fund</span> field was left blank, so it was saved
+                                            as <span className="font-semibold">NULL</span> in the database. The report automatically tags a record
+                                            as &quot;Unfunded&quot; whenever it has no source of fund.
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold">How to fix this</p>
+                                        <ul className="mt-1 list-decimal space-y-1 pl-5 text-amber-800 dark:text-amber-200">
+                                            <li>
+                                                Open the employee&apos;s profile &rarr; <span className="font-semibold">Compensation</span> &rarr;
+                                                edit the Salary / Hazard Pay / Clothing Allowance, then select the correct{' '}
+                                                <span className="font-semibold">Source of Fund</span>.
+                                            </li>
+                                            <li>
+                                                Once it is saved with a source of fund, the employee will be removed from this list and moved to
+                                                the correct fund card above.
+                                            </li>
+                                            <li>
+                                                To prevent this from happening again: make the <span className="font-semibold">Source of Fund</span>{' '}
+                                                field required on the form so a salary cannot be processed without a fund.
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 <Card>
                     <CardHeader>

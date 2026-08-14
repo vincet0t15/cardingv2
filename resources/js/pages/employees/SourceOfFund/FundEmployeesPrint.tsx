@@ -85,6 +85,21 @@ export default function PrintFundEmployees({ fundInfo, employees, filters }: Pro
                 </p>
             </div>
 
+            {fundInfo.code === 'Unfunded' && (
+                <div className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-[11px] text-amber-900">
+                    <p className="font-bold">About &quot;Unfunded&quot;:</p>
+                    <p className="mt-1">
+                        The employees in this list have a Salary, Hazard Pay, or Clothing Allowance record that is missing a Source of Fund (saved
+                        as NULL in the database). The report automatically tags such records as &quot;Unfunded&quot;.
+                    </p>
+                    <p className="mt-1">
+                        <span className="font-bold">How to fix this:</span> Open the employee&apos;s profile &rarr; Compensation &rarr; edit the
+                        Salary / Hazard Pay / Clothing Allowance and select the correct Source of Fund. Once saved with a source of fund, the
+                        employee will be removed from this list.
+                    </p>
+                </div>
+            )}
+
             <table className="w-full border-collapse border">
                 <thead>
                     <tr className="bg-gray-200">
