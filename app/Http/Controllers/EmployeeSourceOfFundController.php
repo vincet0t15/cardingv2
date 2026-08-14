@@ -584,6 +584,36 @@ class EmployeeSourceOfFundController extends Controller
         $fundTotal = 0;
         $fundInfo = null;
 
+        // Build the same active-general-fund lookup used by index() so the
+        // "Unfunded" (and funded) classification matches the summary cards.
+        $generalFundsLookup = GeneralFund::where('status', true)
+            ->get()
+            ->keyBy('id')
+            ->map(fn ($gf) => [
+                'name' => $gf->description,
+                'code' => $gf->code,
+                'description' => $gf->description,
+            ]);
+
+        // Returns the fund display name for a compensation record, mirroring the
+        // logic in index(): a null/missing source_of_fund_code resolves to 'Unfunded'.
+        $fundDisplayNameFor = function ($record) use ($generalFundsLookup) {
+            if (!$record) {
+                return null;
+            }
+
+            $fundCode = $record->sourceOfFundCode?->code;
+
+            if (!$fundCode) {
+                return 'Unfunded';
+            }
+
+            $generalFundId = $record->sourceOfFundCode?->general_fund_id;
+            $generalFundName = $generalFundsLookup->get($generalFundId)['name'] ?? null;
+
+            return $generalFundName ? "{$generalFundName} - {$fundCode}" : $fundCode;
+        };
+
         foreach ($employees as $employee) {
             $salary = $employee->salaries
                 ->where('effective_date', '<=', $periodEnd)
@@ -622,44 +652,23 @@ class EmployeeSourceOfFundController extends Controller
             $hasFund = false;
 
             if ($salary) {
-                $sfc = $salary->sourceOfFundCode;
-                if ($sfc) {
-                    $displayName = $sfc->generalFund?->description
-                        ? "{$sfc->generalFund->description} - {$sfc->code}"
-                        : $sfc->code;
-
-                    if ($displayName === $fundCode || ($fundCode === 'Unfunded' && !$sfc->generalFund)) {
-                        $hasFund = true;
-                        $totalCompensation += (float) $salary->amount;
-                    }
+                if ($fundDisplayNameFor($salary) === $fundCode) {
+                    $hasFund = true;
+                    $totalCompensation += (float) $salary->amount;
                 }
             }
 
             if ($hazardPay) {
-                $sfc = $hazardPay->sourceOfFundCode;
-                if ($sfc) {
-                    $displayName = $sfc->generalFund?->description
-                        ? "{$sfc->generalFund->description} - {$sfc->code}"
-                        : $sfc->code;
-
-                    if ($displayName === $fundCode || ($fundCode === 'Unfunded' && !$sfc->generalFund)) {
-                        $hasFund = true;
-                        $totalCompensation += (float) $hazardPay->amount;
-                    }
+                if ($fundDisplayNameFor($hazardPay) === $fundCode) {
+                    $hasFund = true;
+                    $totalCompensation += (float) $hazardPay->amount;
                 }
             }
 
             if ($clothingAllowance) {
-                $sfc = $clothingAllowance->sourceOfFundCode;
-                if ($sfc) {
-                    $displayName = $sfc->generalFund?->description
-                        ? "{$sfc->generalFund->description} - {$sfc->code}"
-                        : $sfc->code;
-
-                    if ($displayName === $fundCode || ($fundCode === 'Unfunded' && !$sfc->generalFund)) {
-                        $hasFund = true;
-                        $totalCompensation += (float) $clothingAllowance->amount;
-                    }
+                if ($fundDisplayNameFor($clothingAllowance) === $fundCode) {
+                    $hasFund = true;
+                    $totalCompensation += (float) $clothingAllowance->amount;
                 }
             }
 
@@ -820,6 +829,36 @@ class EmployeeSourceOfFundController extends Controller
         $fundEmployees = [];
         $fundTotal = 0;
 
+        // Build the same active-general-fund lookup used by index() so the
+        // "Unfunded" (and funded) classification matches the summary cards.
+        $generalFundsLookup = GeneralFund::where('status', true)
+            ->get()
+            ->keyBy('id')
+            ->map(fn ($gf) => [
+                'name' => $gf->description,
+                'code' => $gf->code,
+                'description' => $gf->description,
+            ]);
+
+        // Returns the fund display name for a compensation record, mirroring the
+        // logic in index(): a null/missing source_of_fund_code resolves to 'Unfunded'.
+        $fundDisplayNameFor = function ($record) use ($generalFundsLookup) {
+            if (!$record) {
+                return null;
+            }
+
+            $fundCode = $record->sourceOfFundCode?->code;
+
+            if (!$fundCode) {
+                return 'Unfunded';
+            }
+
+            $generalFundId = $record->sourceOfFundCode?->general_fund_id;
+            $generalFundName = $generalFundsLookup->get($generalFundId)['name'] ?? null;
+
+            return $generalFundName ? "{$generalFundName} - {$fundCode}" : $fundCode;
+        };
+
         foreach ($employees as $employee) {
             $salary = $employee->salaries
                 ->where('effective_date', '<=', $periodEnd)
@@ -861,47 +900,26 @@ class EmployeeSourceOfFundController extends Controller
             $clothingAmount = 0;
 
             if ($salary) {
-                $sfc = $salary->sourceOfFundCode;
-                if ($sfc) {
-                    $displayName = $sfc->generalFund?->description
-                        ? "{$sfc->generalFund->description} - {$sfc->code}"
-                        : $sfc->code;
-
-                    if ($displayName === $fundCode || ($fundCode === 'Unfunded' && !$sfc->generalFund)) {
-                        $hasFund = true;
-                        $salaryAmount = (float) $salary->amount;
-                        $totalCompensation += $salaryAmount;
-                    }
+                if ($fundDisplayNameFor($salary) === $fundCode) {
+                    $hasFund = true;
+                    $salaryAmount = (float) $salary->amount;
+                    $totalCompensation += $salaryAmount;
                 }
             }
 
             if ($hazardPay) {
-                $sfc = $hazardPay->sourceOfFundCode;
-                if ($sfc) {
-                    $displayName = $sfc->generalFund?->description
-                        ? "{$sfc->generalFund->description} - {$sfc->code}"
-                        : $sfc->code;
-
-                    if ($displayName === $fundCode || ($fundCode === 'Unfunded' && !$sfc->generalFund)) {
-                        $hasFund = true;
-                        $hazardPayAmount = (float) $hazardPay->amount;
-                        $totalCompensation += $hazardPayAmount;
-                    }
+                if ($fundDisplayNameFor($hazardPay) === $fundCode) {
+                    $hasFund = true;
+                    $hazardPayAmount = (float) $hazardPay->amount;
+                    $totalCompensation += $hazardPayAmount;
                 }
             }
 
             if ($clothingAllowance) {
-                $sfc = $clothingAllowance->sourceOfFundCode;
-                if ($sfc) {
-                    $displayName = $sfc->generalFund?->description
-                        ? "{$sfc->generalFund->description} - {$sfc->code}"
-                        : $sfc->code;
-
-                    if ($displayName === $fundCode || ($fundCode === 'Unfunded' && !$sfc->generalFund)) {
-                        $hasFund = true;
-                        $clothingAmount = (float) $clothingAllowance->amount;
-                        $totalCompensation += $clothingAmount;
-                    }
+                if ($fundDisplayNameFor($clothingAllowance) === $fundCode) {
+                    $hasFund = true;
+                    $clothingAmount = (float) $clothingAllowance->amount;
+                    $totalCompensation += $clothingAmount;
                 }
             }
 
